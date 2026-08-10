@@ -1,0 +1,133 @@
+// ---------- 角色映射表：英文名 → 中文名 ----------
+// 来源：萌娘百科 鸣潮/译名对照表 + Encore API
+const CHARACTER_MAP = {
+  // 瑝珑角色
+  'Rover': '漂泊者',
+  'Yangyang': '秧秧',
+  'Chixia': '炽霞',
+  'Baizhi': '白芷',
+  'Changli': '长离',
+  'Jinhsi': '今汐',
+  'Yinlin': '吟霖',
+  'Jiyan': '忌炎',
+  'Lingyang': '凌阳',
+  'Verina': '维里奈',
+  'Jianxin': '鉴心',
+  'Taoqi': '桃祈',
+  'Yuanwu': '渊武',
+  'Danjin': '丹瑾',
+  'Mortefi': '莫特斐',
+  'Sanhua': '散华',
+  'Zhezhi': '折枝',
+  'Xiangli Yao': '相里要',
+  'XiangliYao': '相里要',
+  'Youhu': '釉瑚',
+  'Lumi': '灯灯',
+  'Encore': '安可',
+  'Aalto': '秋水',
+  'Camellya': '椿',
+  'Shorekeeper': '守岸人',
+  'Phoebe': '菲比',
+  'Brant': '布兰特',
+  'Roccia': '洛可可',
+  'Zani': '赞妮',
+  'Carlotta': '珂莱塔',
+  'Cantarella': '坎特蕾拉',
+  'Ciaccona': '夏空',
+  'Cartethyia': '卡提希娅',
+  'Lupa': '露帕',
+  'Calcharo': '卡卡罗',
+  'Phrolova': '弗洛洛',
+  'Qiuyuan': '仇远',
+  'Galbrena': '嘉贝莉娜',
+  'Iuno': '尤诺',
+  'Augusta': '奥古斯塔',
+  'Chisa': '千咲',
+  'Buling': '卜灵',
+  'Lynae': '琳奈',
+  'Mornye': '莫宁',
+  'Aemeath': '爱弥斯',
+  'Luuk Herssen': '陆·赫斯',
+  'Sigrika': '西格莉卡',
+  'Denia': '达妮娅',
+  'Hiyuki': '绯雪',
+  'Lucilla': '洛瑟菈',
+  'Rebecca': '丽贝卡',
+  'Lucy': '露西',
+  'Suisui': '穗穗',
+  'Yangyang Xuanling': '秧秧·玄翎',
+  'YangyangXuanling': '秧秧·玄翎',
+  // 常见目录名映射（mod目录可能用不同名称）
+  'rover': '漂泊者',
+  'yangyang': '秧秧',
+  'chixia': '炽霞',
+  'baizhi': '白芷',
+  'changli': '长离',
+  'jinhsi': '今汐',
+  'yinlin': '吟霖',
+  'jiyan': '忌炎',
+  'lingyang': '凌阳',
+  'verina': '维里奈',
+  'jianxin': '鉴心',
+  'taoqi': '桃祈',
+  'yuanwu': '渊武',
+  'danjin': '丹瑾',
+  'mortefi': '莫特斐',
+  'sanhua': '散华',
+  'zhezhi': '折枝',
+  'xiangliyao': '相里要',
+  'youhu': '釉瑚',
+  'lumi': '灯灯',
+  'encore': '安可',
+  'aalto': '秋水',
+  'camellya': '椿',
+  'shorekeeper': '守岸人',
+  'phoebe': '菲比',
+  'brant': '布兰特',
+  'roccia': '洛可可',
+  'zani': '赞妮',
+  'carlotta': '珂莱塔',
+  'cantarella': '坎特蕾拉',
+  'ciaccona': '夏空',
+  'cartethyia': '卡提希娅',
+  'lupa': '露帕',
+  'calcharo': '卡卡罗',
+  'phrolova': '弗洛洛',
+  'qiuyuan': '仇远',
+  'galbrena': '嘉贝莉娜',
+  'iuno': '尤诺',
+  'augusta': '奥古斯塔',
+  'chisa': '千咲',
+  'buling': '卜灵',
+  'lynae': '琳奈',
+  'mornye': '莫宁',
+  'aemeath': '爱弥斯',
+  'luukherssen': '陆·赫斯',
+  'sigrika': '西格莉卡',
+  'denia': '达妮娅',
+  'hiyuki': '绯雪',
+  'lucilla': '洛瑟菈',
+  'rebecca': '丽贝卡',
+  'lucy': '露西',
+  'suisui': '穗穗',
+  // 联动角色
+  'yangyangxuanling': '秧秧·玄翎',
+}
+
+// 从目录名获取中文名
+function getChineseName(dirName) {
+  // 直接匹配
+  if (CHARACTER_MAP[dirName]) return CHARACTER_MAP[dirName]
+  // 忽略大小写匹配
+  const lower = dirName.toLowerCase()
+  if (CHARACTER_MAP[lower]) return CHARACTER_MAP[lower]
+  // 尝试去掉 DISABLED_ 前缀
+  let clean = dirName
+  while (clean.startsWith('DISABLED_')) clean = clean.slice('DISABLED_'.length)
+  if (CHARACTER_MAP[clean]) return CHARACTER_MAP[clean]
+  if (CHARACTER_MAP[clean.toLowerCase()]) return CHARACTER_MAP[clean.toLowerCase()]
+  // 无法匹配，返回原名
+  return dirName
+}
+
+module.exports = { CHARACTER_MAP, getChineseName }

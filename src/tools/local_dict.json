@@ -1,0 +1,6491 @@
+{
+  "a1": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lucilla\\DISABLED_Lucilla - Latex Queen1.1\\xb\\mod.ini",
+    "sources": []
+  },
+  "a1_cloth_up": {
+    "translation": "a1cloth上侧",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "a1_skirt": {
+    "translation": "a1裙子",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "a2_cloth": {
+    "translation": "a2衣服",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "ac": {
+    "translation": "配饰A",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "acc": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\cartethyia\\DISABLED_卡提希娅-大卡-艾男漂草（567890=【】p切换）\\mod.ini",
+    "sources": []
+  },
+  "acc_a": {
+    "translation": "配件组A",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "acc_b": {
+    "translation": "配件组B",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "accessories": {
+    "translation": "饰品",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "accessories_b": {
+    "translation": "饰品B",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "accessories_d": {
+    "translation": "饰品D",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "active_d": {
+    "translation": "激活D",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "active_db": {
+    "translation": "激活db",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "active_do": {
+    "translation": "激活do",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "alone_weapon": {
+    "translation": "alone武器",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "anal_toy": {
+    "translation": "后庭toy",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "anim": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\cartethyia\\DISABLED_卡提希娅-大卡-艾男漂草（567890=【】p切换）\\mod.ini",
+    "sources": []
+  },
+  "anklets": {
+    "translation": "（0,1） anklets样式",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\hiyuki\\DISABLED_绯雪-朝颜淡2.0（内附切换） og 辉映星辰允如光\\mod.ini",
+    "sources": []
+  },
+  "apron": {
+    "translation": "围裙",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "armdec": {
+    "translation": "手臂装饰",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "armlong": {
+    "translation": "长袖臂套",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "armring": {
+    "translation": "臂环",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "arms": {
+    "translation": "手臂样式（no_alt VK_RIGHT）",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\phoebe\\DISABLED_菲比-堕落修女-改色（上下左右alt+上下左右9切换）\\페비 타락수녀(색변경)\\mod.ini",
+    "sources": []
+  },
+  "armsbrace": {
+    "translation": "臂缚",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "armshort": {
+    "translation": "短袖臂套",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "armthing": {
+    "translation": "臂饰",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "auto": {
+    "translation": "自动",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "b_neiku": {
+    "translation": "========== 黑色形态独立设置（持久化）==========",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\denia\\DISABLED_达妮娅 兔兔泡芙\\主界面-红\\mod.ini",
+    "sources": []
+  },
+  "b_qunzi": {
+    "translation": "========== 黑色形态独立设置（持久化）==========",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\denia\\DISABLED_达妮娅 兔兔泡芙\\主界面-红\\mod.ini",
+    "sources": []
+  },
+  "b_shangyi": {
+    "translation": "========== 黑色形态独立设置（持久化）==========",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\denia\\DISABLED_达妮娅 兔兔泡芙\\主界面-红\\mod.ini",
+    "sources": []
+  },
+  "b_siwa": {
+    "translation": "========== 黑色形态独立设置（持久化）==========",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\denia\\DISABLED_达妮娅 兔兔泡芙\\主界面-红\\mod.ini",
+    "sources": []
+  },
+  "b_toushi": {
+    "translation": "========== 黑色形态独立设置（持久化）==========",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\denia\\DISABLED_达妮娅 兔兔泡芙\\主界面-红\\mod.ini",
+    "sources": []
+  },
+  "b_weiba": {
+    "translation": "========== 黑色形态独立设置（持久化）==========",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\denia\\DISABLED_达妮娅 兔兔泡芙\\主界面-红\\mod.ini",
+    "sources": []
+  },
+  "b_xiezi": {
+    "translation": "========== 黑色形态独立设置（持久化）==========",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\denia\\DISABLED_达妮娅 兔兔泡芙\\主界面-红\\mod.ini",
+    "sources": []
+  },
+  "b_zhuangrong": {
+    "translation": "========== 黑色形态独立设置（持久化）==========",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\denia\\DISABLED_达妮娅 兔兔泡芙\\主界面-红\\mod.ini",
+    "sources": []
+  },
+  "back": {
+    "translation": "（0,1） 背部样式",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\hiyuki\\DISABLED_绯雪-朝颜淡2.0（内附切换） og 辉映星辰允如光\\mod.ini",
+    "sources": []
+  },
+  "background_back": {
+    "translation": "background（0,1） 背部样式",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "background_reload_random": {
+    "translation": "backgroundreload随机",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "backswing": {
+    "translation": "背部绑带",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "backtatoo": {
+    "translation": "背部纹身",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "bangtui": {
+    "translation": "绑腿",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "baobao": {
+    "translation": "包包",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "beach_cardigan": {
+    "translation": "海滩cardigan",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "belly": {
+    "translation": "腹部",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "belly_gauze": {
+    "translation": "腹部薄纱",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "bellydec": {
+    "translation": "腹部装饰",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "bgindex": {
+    "translation": "背景索引",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "bianti": {
+    "translation": "整体变体",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "bikini_color": {
+    "translation": "bikini颜色",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "body": {
+    "translation": "身体纹理（no_alt VK_DOWN）",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\phoebe\\DISABLED_菲比-堕落修女-改色（上下左右alt+上下左右9切换）\\페비 타락수녀(색변경)\\mod.ini",
+    "sources": []
+  },
+  "body_acc": {
+    "translation": "身体配件组",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "body_bottom": {
+    "translation": "身体bottom",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "body_scale": {
+    "translation": "身体缩放",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "body_scale_reset": {
+    "translation": "身体缩放reset",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "body_tex": {
+    "translation": "身体tex",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "body_upper": {
+    "translation": "身体上部",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "bodychain": {
+    "translation": "身体链饰",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "bodysuit_t": {
+    "translation": "bodysuitt样式",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "bohuan": {
+    "translation": "脖环",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "bondage": {
+    "translation": "束缚",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "boob_lace": {
+    "translation": "胸部lace",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "boob_support": {
+    "translation": "胸部支撑",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "boobs": {
+    "translation": "胸部",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "boobsize": {
+    "translation": "（0,1） 胸部大小",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\hiyuki\\DISABLED_绯雪-朝颜淡2.0（内附切换） og 辉映星辰允如光\\mod.ini",
+    "sources": []
+  },
+  "bottom_ribbons": {
+    "translation": "bottom丝带",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "bow": {
+    "translation": "蝴蝶结",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "bow_hairpin": {
+    "translation": "蝴蝶结发夹",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "bowhairpin": {
+    "translation": "===== 切换变量 =====",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\rover\\女漂-小恶魔v3.5整合版（上下左右。？]） og 狩野樱\\DISABLED_女漂-魅魔v3.5整合版 og 狩野樱\\mod.ini",
+    "sources": []
+  },
+  "bracelets": {
+    "translation": "手链",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "braid": {
+    "translation": "编发",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "branches": {
+    "translation": "枝条",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "brandom": {
+    "translation": "身体随机",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "breakmode": {
+    "translation": "破坏模式",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "bright": {
+    "translation": "亮色",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "brightness": {
+    "translation": "亮度",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "brightness_add": {
+    "translation": "亮度add",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "brightness_add_accelerate": {
+    "translation": "亮度addaccelerate",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "brightness_down": {
+    "translation": "亮度下侧",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "brightness_mod": {
+    "translation": "亮度mod",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "brightness_sub": {
+    "translation": "亮度sub",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "brightness_sub_accelerate": {
+    "translation": "亮度subaccelerate",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "brightness_up": {
+    "translation": "亮度上侧",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "brooch": {
+    "translation": "胸针",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "bunny_suit": {
+    "translation": "bunny套装",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "buou": {
+    "translation": "布偶",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "butterfly": {
+    "translation": "蝴蝶",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "chain": {
+    "translation": "锁链",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "chain_waist": {
+    "translation": "锁链waist",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "char": {
+    "translation": "角色",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "check": {
+    "translation": "检查",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "check1": {
+    "translation": "检查1",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "check2": {
+    "translation": "检查2",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "chest_adorn": {
+    "translation": "chest装饰",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "chest_rope2": {
+    "translation": "chest绳索2",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "chestdec": {
+    "translation": "胸口装饰",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "chi_bnag_da_xiao_active": {
+    "translation": "chibnagdaxiao激活",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "chi_bnag_da_xiao_active01": {
+    "translation": "chibnagdaxiao激活01",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "chi_bnag_da_xiao_active02": {
+    "translation": "chibnagdaxiao激活02",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "chi_bnag_da_xiao_active03": {
+    "translation": "chibnagdaxiao激活03",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "choke": {
+    "translation": "项圈",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "cloth": {
+    "translation": "衣服",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "cloth_tongxue_color": {
+    "translation": "cloth同学颜色",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "cloth1": {
+    "translation": "衣服1",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "clothcolor": {
+    "translation": "下面4个一批，同色系改",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\aemeath\\DISABLED_爱弥斯-余烬之夜降临-去筒靴-整合版2.0（内附切换说明）\\mod.ini",
+    "sources": []
+  },
+  "clothes": {
+    "translation": "服装",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "coat_t": {
+    "translation": "coatt样式",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "collar": {
+    "translation": "（0,1） 项圈样式",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\hiyuki\\DISABLED_绯雪-朝颜淡2.0（内附切换） og 辉映星辰允如光\\mod.ini",
+    "sources": []
+  },
+  "color": {
+    "translation": "===== 切换变量 =====",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\rover\\女漂-小恶魔v3.5整合版（上下左右。？]） og 狩野樱\\DISABLED_女漂-魅魔v3.5整合版 og 狩野樱\\mod.ini",
+    "sources": []
+  },
+  "color_b": {
+    "translation": "颜色B",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "color_d": {
+    "translation": "颜色D",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "color1": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\rover\\DISABLED_女漂-望归full（上下左右0‘。？）by PebbleRox\\Rover-WangGui\\mod.ini",
+    "sources": []
+  },
+  "color2": {
+    "translation": "===== 切换变量 =====2",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "colour": {
+    "translation": "（0,1） colour样式",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\hiyuki\\DISABLED_绯雪-朝颜淡2.0（内附切换） og 辉映星辰允如光\\mod.ini",
+    "sources": []
+  },
+  "commnd_list_brightness_add": {
+    "translation": "commndlist亮度add",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "commnd_list_brightness_add_accelerate": {
+    "translation": "commndlist亮度addaccelerate",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "commnd_list_brightness_add_accelerate_num_pad": {
+    "translation": "commndlist亮度addacceleratenumpad",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "commnd_list_brightness_add_num_pad": {
+    "translation": "commndlist亮度addnumpad",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "commnd_list_brightness_sub": {
+    "translation": "commndlist亮度sub",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "commnd_list_brightness_sub_accelerate": {
+    "translation": "commndlist亮度subaccelerate",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "commnd_list_brightness_sub_accelerate_num_pad": {
+    "translation": "commndlist亮度subacceleratenumpad",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "commnd_list_brightness_sub_num_pad": {
+    "translation": "commndlist亮度subnumpad",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "commnd_list_saturation_add": {
+    "translation": "commndlist饱和度add",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "commnd_list_saturation_add_accelerate": {
+    "translation": "commndlist饱和度addaccelerate",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "commnd_list_saturation_add_accelerate_num_pad": {
+    "translation": "commndlist饱和度addacceleratenumpad",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "commnd_list_saturation_add_num_pad": {
+    "translation": "commndlist饱和度addnumpad",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "commnd_list_saturation_sub": {
+    "translation": "commndlist饱和度sub",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "commnd_list_saturation_sub_accelerate": {
+    "translation": "commndlist饱和度subaccelerate",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "commnd_list_saturation_sub_accelerate_num_pad": {
+    "translation": "commndlist饱和度subacceleratenumpad",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "commnd_list_saturation_sub_num_pad": {
+    "translation": "commndlist饱和度subnumpad",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "commnd_list_value_add": {
+    "translation": "commndlist数值add",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "commnd_list_value_add_accelerate": {
+    "translation": "commndlist数值addaccelerate",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "commnd_list_value_add_accelerate_num_pad": {
+    "translation": "commndlist数值addacceleratenumpad",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "commnd_list_value_add_num_pad": {
+    "translation": "commndlist数值addnumpad",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "commnd_list_value_sub": {
+    "translation": "commndlist数值sub",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "commnd_list_value_sub_accelerate": {
+    "translation": "commndlist数值subaccelerate",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "commnd_list_value_sub_accelerate_num_pad": {
+    "translation": "commndlist数值subacceleratenumpad",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "commnd_list_value_sub_num_pad": {
+    "translation": "commndlist数值subnumpad",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "controller": {
+    "translation": "控制器",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "cross": {
+    "translation": "十字架样式（alt VK_LEFT）",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\phoebe\\DISABLED_菲比-堕落修女-改色（上下左右alt+上下左右9切换）\\페비 타락수녀(색변경)\\mod.ini",
+    "sources": []
+  },
+  "crotch_strips": {
+    "translation": "胯部条带",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "cum": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\cartethyia\\DISABLED_卡提希娅-大卡-艾男漂草（567890=【】p切换）\\mod.ini",
+    "sources": []
+  },
+  "d1": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lucilla\\DISABLED_Lucilla - Latex Queen1.1\\js\\mod.ini",
+    "sources": []
+  },
+  "dashijie_texture": {
+    "translation": "dashijie材质",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "decrease_brightness": {
+    "translation": "decrease亮度",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "demonmode": {
+    "translation": "恶魔模式",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "diaodai": {
+    "translation": "吊带",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "dingding": {
+    "translation": "顶部",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "down": {
+    "translation": "下侧",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "down_ribbon": {
+    "translation": "下侧ribbon",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "drapes": {
+    "translation": "垂幔",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "dress": {
+    "translation": "裙装",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "dresscolor": {
+    "translation": "服装颜色",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "dressfront": {
+    "translation": "裙身前襟",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "dsj_1005": {
+    "translation": "短上衣1005",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "dsj_2003": {
+    "translation": "短上衣2003",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "dsj_2004": {
+    "translation": "短上衣2004",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "dsj_2005": {
+    "translation": "短上衣2005",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "dsj_2008": {
+    "translation": "短上衣2008",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "dsj_2009": {
+    "translation": "短上衣2009",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "dsj_2011": {
+    "translation": "短上衣2011",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "dsj_2013": {
+    "translation": "短上衣2013",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "dsj_3004": {
+    "translation": "短上衣3004",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "dsj_c1_variant": {
+    "translation": "短上衣c1variant",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "dsj_c3_variant": {
+    "translation": "短上衣c3variant",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "dsj_texture": {
+    "translation": "短上衣材质",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "dsj2_1001": {
+    "translation": "短上衣21001",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "dsj2_1003": {
+    "translation": "短上衣21003",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "dsj2_1006_2006": {
+    "translation": "短上衣210062006",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "dsj2_1008": {
+    "translation": "短上衣21008",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "dz": {
+    "translation": "带子",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "dzz": {
+    "translation": "带坠",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "e": {
+    "translation": "眼睛样式",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lucilla\\洛瑟菈-逆兔（ctrl+alt）by yyzj\\C\\mod.ini",
+    "sources": []
+  },
+  "ear": {
+    "translation": "耳朵",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "earrings": {
+    "translation": "（0,1） 耳环样式",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\hiyuki\\DISABLED_绯雪-朝颜淡2.0（内附切换） og 辉映星辰允如光\\mod.ini",
+    "sources": []
+  },
+  "ears": {
+    "translation": "（0,1） 耳朵样式",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\hiyuki\\DISABLED_绯雪-朝颜淡2.0（内附切换） og 辉映星辰允如光\\mod.ini",
+    "sources": []
+  },
+  "emotion": {
+    "translation": "表情",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "end": "二阶段",
+  "epaulet": {
+    "translation": "肩章",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "erduo": {
+    "translation": "耳朵",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "erji": {
+    "translation": "耳机",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "eye": {
+    "translation": "眼睛",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "eyec": {
+    "translation": "眼睛",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "eyes": {
+    "translation": "眼睛",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "eyescolor": {
+    "translation": "下面4个一批，同色系改",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\aemeath\\DISABLED_爱弥斯-余烬之夜降临-去筒靴-整合版2.0（内附切换说明）\\mod.ini",
+    "sources": []
+  },
+  "f": {
+    "translation": "脸部",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lucilla\\洛瑟菈-逆兔（ctrl+alt）by yyzj\\C\\mod.ini",
+    "sources": []
+  },
+  "face": {
+    "translation": "下面4个一批，同色系改",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\aemeath\\DISABLED_爱弥斯-余烬之夜降临-去筒靴-整合版2.0（内附切换说明）\\mod.ini",
+    "sources": []
+  },
+  "face_color": {
+    "translation": "脸部颜色",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "face_color_b": {
+    "translation": "脸部颜色B",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "face_color_d": {
+    "translation": "脸部颜色D",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "face_d": {
+    "translation": "脸部D",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "face_fxliquid": {
+    "translation": "脸部fxliquid",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "face_fxmode": {
+    "translation": "脸部fxmode",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "facefx_liquid": {
+    "translation": "面部特效液体",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "facefx_mode": {
+    "translation": "面部特效mode",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "facelight": {
+    "translation": "面部光效",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "faxing": {
+    "translation": "发型",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "faxu": {
+    "translation": "发须",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "fazhan": {
+    "translation": "发簪",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "feather": {
+    "translation": "羽毛",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "featherback": {
+    "translation": "背后羽毛",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "featherside": {
+    "translation": "侧面羽毛",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "featherskirt": {
+    "translation": "羽毛裙",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "fhdiaosheng": {
+    "translation": "发饰吊绳",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "fire_tail": {
+    "translation": "fire尾巴",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "fishnet": {
+    "translation": "渔网袜",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "flaps": {
+    "translation": "衣襟",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "flowers": {
+    "translation": "花朵",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "footdec": {
+    "translation": "足部装饰",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "footnails": {
+    "translation": "脚趾甲",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "force_power_up": {
+    "translation": "forcepower上侧",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "fps": {
+    "translation": "帧率",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "frame": "二阶段",
+  "frame帧": "二阶段",
+  "frillback": {
+    "translation": "背后褶边",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "frillcollar": {
+    "translation": "领口褶边",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "frillfront": {
+    "translation": "前襟褶边",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "front": {
+    "translation": "（0,1,2） front样式",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\hiyuki\\DISABLED_绯雪-朝颜淡2.0（内附切换） og 辉映星辰允如光\\mod.ini",
+    "sources": []
+  },
+  "front_hair": {
+    "translation": "前侧头发",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "front_skirt": {
+    "translation": "前侧裙子",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "front_t": {
+    "translation": "前侧t",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "fronthair": {
+    "translation": "（0,1） fronthair样式",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\hiyuki\\DISABLED_绯雪-朝颜淡2.0（内附切换） og 辉映星辰允如光\\mod.ini",
+    "sources": []
+  },
+  "fur": {
+    "translation": "毛皮",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "fuyoushou": {
+    "translation": "附属右手",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "fweapon": {
+    "translation": "副武器",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "g": {
+    "translation": "g样式",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lucilla\\洛瑟菈-逆兔（ctrl+alt）by yyzj\\C\\mod.ini",
+    "sources": []
+  },
+  "glass": {
+    "translation": "玻璃",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "glasses": {
+    "translation": "（0,1） 眼镜样式",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\hiyuki\\DISABLED_绯雪-朝颜淡2.0（内附切换） og 辉映星辰允如光\\mod.ini",
+    "sources": []
+  },
+  "glow": {
+    "translation": "（0,1） glow样式",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\hiyuki\\DISABLED_绯雪-朝颜淡2.0（内附切换） og 辉映星辰允如光\\mod.ini",
+    "sources": []
+  },
+  "glow_color": {
+    "translation": "发光颜色",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "glow_decrease": {
+    "translation": "发光decrease",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "glow_increase": {
+    "translation": "发光increase",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "glow_level": {
+    "translation": "发光等级",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "glow_mod_change": {
+    "translation": "发光mod更换",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "glow_off": {
+    "translation": "发光关闭",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "glow_veil": {
+    "translation": "发光面纱样式（alt VK_DOWN）",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "glowcolor": {
+    "translation": "发光颜色",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "gouzaoti": {
+    "translation": "构造体",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "guashi": {
+    "translation": "挂饰",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "gugoudiaosheng": {
+    "translation": "钩吊绳",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "gui_click": {
+    "translation": "鬼click",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "gui_clicked": {
+    "translation": "鬼clicked",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "gui_hold": {
+    "translation": "鬼hold",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "gui_menu": {
+    "translation": "鬼菜单",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "gui_right_click": {
+    "translation": "鬼右侧click",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "gui_right_clicked": {
+    "translation": "鬼右侧clicked",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "h": {
+    "translation": "头发",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lucilla\\洛瑟菈-逆兔（ctrl+alt）by yyzj\\C\\mod.ini",
+    "sources": []
+  },
+  "hair": {
+    "translation": "头发样式（alt VK_UP）",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\phoebe\\DISABLED_菲比-堕落修女-改色（上下左右alt+上下左右9切换）\\페비 타락수녀(색변경)\\mod.ini",
+    "sources": []
+  },
+  "hair_acc": {
+    "translation": "头发配件组",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "hair_adorn": {
+    "translation": "头发装饰",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "hair_b": {
+    "translation": "头发B",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "hair_band": {
+    "translation": "头发带子",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "hair_clip": {
+    "translation": "头发夹子",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "hair_color": {
+    "translation": "头发颜色",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "hair_colour": {
+    "translation": "头发颜色",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "hair_d": {
+    "translation": "头发D",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "hair_dresser": {
+    "translation": "头发衣柜",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "hair_ribbon": {
+    "translation": "头发ribbon",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "hair_wings": {
+    "translation": "头发翅膀",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "hair0": {
+    "translation": "头发样式（alt VK_UP）0",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "hair1": {
+    "translation": "头发样式（alt VK_UP）1",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "hair2": {
+    "translation": "头发样式（alt VK_UP）2",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "hairacc": {
+    "translation": "（0,1） hairacc样式",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\hiyuki\\DISABLED_绯雪-朝颜淡2.0（内附切换） og 辉映星辰允如光\\mod.ini",
+    "sources": []
+  },
+  "hairband": {
+    "translation": "发带",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "hairc": {
+    "translation": "发饰C",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "hairchain": {
+    "translation": "发链",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "haircolor": {
+    "translation": "下面4个一批，同色系改",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\aemeath\\DISABLED_爱弥斯-余烬之夜降临-去筒靴-整合版2.0（内附切换说明）\\mod.ini",
+    "sources": []
+  },
+  "hairdec": {
+    "translation": "发饰",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "hairpins": {
+    "translation": "发夹",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "hairstyle": {
+    "translation": "发型",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "hands": {
+    "translation": "手部",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "harness": {
+    "translation": "背带",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "hdeco": {
+    "translation": "头饰",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "head_acc": {
+    "translation": "head配件组",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "head_accessories": {
+    "translation": "head饰品",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "headband": {
+    "translation": "发带",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "headdress": {
+    "translation": "头饰",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "headdress1": {
+    "translation": "头饰1",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "headdress2": {
+    "translation": "头饰2",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "headdress3": {
+    "translation": "头饰3",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "heart": {
+    "translation": "下面4个一批，同色系改",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\aemeath\\DISABLED_爱弥斯-余烬之夜降临-去筒靴-整合版2.0（内附切换说明）\\mod.ini",
+    "sources": []
+  },
+  "heartdown": {
+    "translation": "心形坠饰",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "heartdress": {
+    "translation": "心形裙",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "heartfeather": {
+    "translation": "心形羽饰",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "heisha": {
+    "translation": "黑纱",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "help": {
+    "translation": "帮助",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "highheels": {
+    "translation": "高跟鞋",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "hold": {
+    "translation": "长按",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "hold_left": {
+    "translation": "hold左侧",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "hold_left2": {
+    "translation": "长按左侧2",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "hold_press_lb": {
+    "translation": "长按presslb",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "hold_press_r": {
+    "translation": "长按pressr",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "hold_reset": {
+    "translation": "长按reset",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "hold_reset_sizes": {
+    "translation": "长按resetsizes",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "hold_right": {
+    "translation": "hold右侧",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "hold_right2": {
+    "translation": "长按右侧2",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "hold_shape": {
+    "translation": "hold塑形",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "hold2": {
+    "translation": "长按2",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "hornacc": {
+    "translation": "角饰",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "horns": {
+    "translation": "角",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "houbai": {
+    "translation": "后背",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "houfa": {
+    "translation": "后发",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "hua": {
+    "translation": "花朵",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "hubi": {
+    "translation": "护臂",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "hudie": {
+    "translation": "蝴蝶",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "hujian": {
+    "translation": "护甲",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "hulu": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\buling\\卜灵 兔女郎 3.5\\mod.ini",
+    "sources": []
+  },
+  "hutui": {
+    "translation": "护腿",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "icon": {
+    "translation": "图标",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "img_x": {
+    "translation": "持久化存储位置",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\cartethyia\\DISABLED_卡提希娅 兔女郎 3.5\\mod.ini",
+    "sources": []
+  },
+  "img_y": {
+    "translation": "持久化存储位置",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\cartethyia\\DISABLED_卡提希娅 兔女郎 3.5\\mod.ini",
+    "sources": []
+  },
+  "increase_brightness": {
+    "translation": "increase亮度",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "is_burst": {
+    "translation": "is迸发特效",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "is_ui_menu": {
+    "translation": "isui菜单",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "jackets": {
+    "translation": "外套",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "jct": {
+    "translation": "裙摆",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "jeo": {
+    "translation": "组合",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "jianbang": {
+    "translation": "肩膀",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "jiao": {
+    "translation": "脚",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "jiaoliao": {
+    "translation": "脚饰",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "jinggun": {
+    "translation": "颈环棍",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "js1_texture": {
+    "translation": "js1材质",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "juese1texture": {
+    "translation": "juese1材质",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "larm": {
+    "translation": "左臂",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "last": "跨组切换专用",
+  "lbccolor": {
+    "translation": "蕾丝颜色",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "leg_acc": {
+    "translation": "leg配件组",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "leg_rope": {
+    "translation": "leg绳索",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "legacc": {
+    "translation": "腿部配件",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "legring": {
+    "translation": "腿环",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "legs": {
+    "translation": "腿部粗细（alt VK_RIGHT）",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\phoebe\\DISABLED_菲比-堕落修女-改色（上下左右alt+上下左右9切换）\\페비 타락수녀(색변경)\\mod.ini",
+    "sources": []
+  },
+  "legs_inside": {
+    "translation": "腿部粗细（alt VK_RIGHT）inside",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "leirou": {
+    "translation": "泪肉",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "lets": {
+    "translation": "表情",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "letter": {
+    "translation": "字母",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "light": {
+    "translation": "灯光",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "light_beach_cardigan_color": {
+    "translation": "灯光海滩cardigan颜色",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "lingdai": {
+    "translation": "领带",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "lingkou": {
+    "translation": "领口",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "lleg": {
+    "translation": "左腿",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "lock": {
+    "translation": "锁定",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "long_jiao": {
+    "translation": "long鞋子",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "long_jiao2": {
+    "translation": "long鞋子2",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "long_sleeves": {
+    "translation": "long（0,1） 袖子样式",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "longhair": {
+    "translation": "长发",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "longsleeves": {
+    "translation": "长袖",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "love": {
+    "translation": "爱心",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "low": {
+    "translation": "低",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "lower": {
+    "translation": "下侧",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "lower_clothes": {
+    "translation": "下侧服装",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "lucia": {
+    "translation": "露西亚",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "lucia_0005_4006": {
+    "translation": "露西亚00054006",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "lucia_12_variant": {
+    "translation": "露西亚12variant",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "lucia_4": {
+    "translation": "露西亚4",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "lucia_4002": {
+    "translation": "露西亚4002",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "lucia_4003": {
+    "translation": "露西亚4003",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "lucia_4004": {
+    "translation": "露西亚4004",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "lucia_4005": {
+    "translation": "露西亚4005",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "lucia_5002": {
+    "translation": "露西亚5002",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "lucia_5003": {
+    "translation": "露西亚5003",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "lucia_tex_backslash": {
+    "translation": "露西亚tex背部斜带",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "lucia_tex_bracket": {
+    "translation": "露西亚tex支架",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "lucia_tex_rbracket": {
+    "translation": "露西亚tex右侧支架",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "lucia_texture_backslash": {
+    "translation": "露西亚材质背部斜带",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "lucia_texture_bracket": {
+    "translation": "露西亚材质支架",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "lucia_texture_right_bracket": {
+    "translation": "露西亚材质右侧支架",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "lucia_ul_0002": {
+    "translation": "露西亚ul0002",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "lucia_ul0002": {
+    "translation": "露西亚ul0002",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "lucia0005and4006": {
+    "translation": "露西亚0005组合4006",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "lucia12variant": {
+    "translation": "露西亚12variant",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "lucia4": {
+    "translation": "露西亚4",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "lucia4002": {
+    "translation": "露西亚4002",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "lucia4003": {
+    "translation": "露西亚4003",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "lucia4004": {
+    "translation": "露西亚4004",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "lucia4005": {
+    "translation": "露西亚4005",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "lucia5002": {
+    "translation": "露西亚5002",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "lucia5003": {
+    "translation": "露西亚5003",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "lun": {
+    "translation": "轮",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "main": {
+    "translation": "主体",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "make_up": {
+    "translation": "挂在上侧",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "makeup": {
+    "translation": "妆容",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "maozi": {
+    "translation": "帽子",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "mask": {
+    "translation": "（0,1） 面具样式",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\hiyuki\\DISABLED_绯雪-朝颜淡2.0（内附切换） og 辉映星辰允如光\\mod.ini",
+    "sources": []
+  },
+  "mecha_wings": {
+    "translation": "机甲翅膀",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "mega": {
+    "translation": "巨型",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "menu": {
+    "translation": "菜单",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "merge": "分步合并骨架",
+  "mermaid_tail": {
+    "translation": "mermaid尾巴",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "modactive": "只有当",
+  "mouse_hold": {
+    "translation": "mouse长按",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "mouse_left": {
+    "translation": "mouse左侧",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "neck_tie": {
+    "translation": "neck领结",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "necklace": {
+    "translation": "（0,1） 项链样式",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\hiyuki\\DISABLED_绯雪-朝颜淡2.0（内附切换） og 辉映星辰允如光\\mod.ini",
+    "sources": []
+  },
+  "necklace_b": {
+    "translation": "（0,1） 项链样式B",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "necklace_d": {
+    "translation": "（0,1） 项链样式D",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "necklace1": {
+    "translation": "（0,1） 项链样式1",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "necktie": {
+    "translation": "领带",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "neiku": {
+    "translation": "内裤",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "nipplepatch": {
+    "translation": "乳贴",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "nipplering": {
+    "translation": "乳环",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "nk": {
+    "translation": "内裤",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "outfit": {
+    "translation": "服装",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "panci": {
+    "translation": "盘饰",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "panties": {
+    "translation": "（0,1,2） 内裤样式",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\hiyuki\\DISABLED_绯雪-朝颜淡2.0（内附切换） og 辉映星辰允如光\\mod.ini",
+    "sources": []
+  },
+  "panty": {
+    "translation": "内裤",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "part": {
+    "translation": "部位",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "part_0": {
+    "translation": "部位0",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "part_1": {
+    "translation": "部位1",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "part_3_002": {
+    "translation": "部位3002",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "part_3_003": {
+    "translation": "部位3003",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "part_3_005": {
+    "translation": "部位3005",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "part_3_007": {
+    "translation": "部位3007",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "part_3_008": {
+    "translation": "部位3008",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "part_3_a": {
+    "translation": "部位3A",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "part_3_a001": {
+    "translation": "部位3a001",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "part_3_a004": {
+    "translation": "部位3a004",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "part_3_a005": {
+    "translation": "部位3a005",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "part_3_b002": {
+    "translation": "部位3b002",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "part_3_c": {
+    "translation": "部位3C",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "part_4_002": {
+    "translation": "部位4002",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "part_4_003": {
+    "translation": "部位4003",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "part_5": {
+    "translation": "部位5",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "part_5_001": {
+    "translation": "部位5001",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "part_5_002": {
+    "translation": "部位5002",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "part_5_003": {
+    "translation": "部位5003",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "part_5_004": {
+    "translation": "部位5004",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "part_body_accessory": {
+    "translation": "部位身体挂饰",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "part_ear": {
+    "translation": "部位ear",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "part_gloves": {
+    "translation": "部位gloves",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "part_hair": {
+    "translation": "部位头发",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "part_head_acc": {
+    "translation": "部位head配件组",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "part_head_accessory": {
+    "translation": "部位head挂饰",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "part_headacc": {
+    "translation": "部位headacc",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "part_lower_acc": {
+    "translation": "部位下侧配件组",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "part_loweracc": {
+    "translation": "部位下装配件",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "part_shoes": {
+    "translation": "部位shoes",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "part_skin": {
+    "translation": "部位skin",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "part_tail": {
+    "translation": "部位尾巴",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "part1": {
+    "translation": "部位1",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "part2": {
+    "translation": "部位2",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "parts": {
+    "translation": "部位",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "pelvic": {
+    "translation": "骨盆",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "persist_active_d": {
+    "translation": "persist激活D",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "piercing": {
+    "translation": "穿孔样式（no_alt VK_LEFT）",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\phoebe\\DISABLED_菲比-堕落修女-改色（上下左右alt+上下左右9切换）\\페비 타락수녀(색변경)\\mod.ini",
+    "sources": []
+  },
+  "pifeng": {
+    "translation": "披风",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "pijian": {
+    "translation": "披肩",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "pluses": {
+    "translation": "加号",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "portraits_reload_random": {
+    "translation": "portraitsreload随机",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "prandom": {
+    "translation": "预设随机",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "preset": {
+    "translation": "预设",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "pubic_hair": {
+    "translation": "pubic头发",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "pussy": {
+    "translation": "私密",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "qiang_hua_bian": {
+    "translation": "qiang花朵bian",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "qipao": {
+    "translation": "旗袍",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "r_neiku": {
+    "translation": "========== 红色形态独立设置（持久化）==========",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\denia\\DISABLED_达妮娅 兔兔泡芙\\主界面-红\\mod.ini",
+    "sources": []
+  },
+  "r_qunzi": {
+    "translation": "========== 红色形态独立设置（持久化）==========",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\denia\\DISABLED_达妮娅 兔兔泡芙\\主界面-红\\mod.ini",
+    "sources": []
+  },
+  "r_shangyi": {
+    "translation": "========== 红色形态独立设置（持久化）==========",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\denia\\DISABLED_达妮娅 兔兔泡芙\\主界面-红\\mod.ini",
+    "sources": []
+  },
+  "r_siwa": {
+    "translation": "========== 红色形态独立设置（持久化）==========",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\denia\\DISABLED_达妮娅 兔兔泡芙\\主界面-红\\mod.ini",
+    "sources": []
+  },
+  "r_toushi": {
+    "translation": "========== 红色形态独立设置（持久化）==========",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\denia\\DISABLED_达妮娅 兔兔泡芙\\主界面-红\\mod.ini",
+    "sources": []
+  },
+  "r_weiba": {
+    "translation": "========== 红色形态独立设置（持久化）==========",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\denia\\DISABLED_达妮娅 兔兔泡芙\\主界面-红\\mod.ini",
+    "sources": []
+  },
+  "r_xiezi": {
+    "translation": "========== 红色形态独立设置（持久化）==========",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\denia\\DISABLED_达妮娅 兔兔泡芙\\主界面-红\\mod.ini",
+    "sources": []
+  },
+  "r_zhuangrong": {
+    "translation": "========== 红色形态独立设置（持久化）==========",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\denia\\DISABLED_达妮娅 兔兔泡芙\\主界面-红\\mod.ini",
+    "sources": []
+  },
+  "random": {
+    "translation": "随机",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "rarm": {
+    "translation": "右臂",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "rib": {
+    "translation": "肋骨",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "ribbons": {
+    "translation": "丝带",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "rings": {
+    "translation": "戒指",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "rleg": {
+    "translation": "右腿",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "rope": {
+    "translation": "绳索",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "rose": {
+    "translation": "玫瑰",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "sash": {
+    "translation": "（0,1,2,3,4） sash样式",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\hiyuki\\DISABLED_绯雪-朝颜淡2.0（内附切换） og 辉映星辰允如光\\mod.ini",
+    "sources": []
+  },
+  "sat": {
+    "translation": "饱和度",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "saturation": {
+    "translation": "饱和度",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "saturation_add": {
+    "translation": "饱和度add",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "saturation_add_accelerate": {
+    "translation": "饱和度addaccelerate",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "saturation_sub": {
+    "translation": "饱和度sub",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "saturation_sub_accelerate": {
+    "translation": "饱和度subaccelerate",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "scale": {
+    "translation": "缩放",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "scale_marks": {
+    "translation": "缩放marks",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "scarf": {
+    "translation": "围巾",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "sexy": {
+    "translation": "性感",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "shadow": {
+    "translation": "阴影",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "shang_yi": {
+    "translation": "上yi",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "shenhen": {
+    "translation": "深痕",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "shetou": {
+    "translation": "舌头",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "shoe": {
+    "translation": "鞋子",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "shoe_b": {
+    "translation": "鞋子B",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "shoe_d": {
+    "translation": "鞋子D",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "shoes": {
+    "translation": "（0,1,2,3,4,5） 鞋子样式",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\hiyuki\\DISABLED_绯雪-朝颜淡2.0（内附切换） og 辉映星辰允如光\\mod.ini",
+    "sources": []
+  },
+  "shoubi": {
+    "translation": "手臂",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "shoubia": {
+    "translation": "手表",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "shouhuan": {
+    "translation": "手环",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "shufudai": {
+    "translation": "束缚带",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "shui_jing_chi_bnag": {
+    "translation": "shui颈部chibnag",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "shuiyi": {
+    "translation": "睡意",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "side": {
+    "translation": "侧面",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "side_tassel": {
+    "translation": "侧面穗",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "sidetassel": {
+    "translation": "侧穗",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "siwa_color": {
+    "translation": "siwa颜色",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "siwu": {
+    "translation": "私物",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "skin": {
+    "translation": "皮肤纹理（9）",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\phoebe\\DISABLED_菲比-堕落修女-改色（上下左右alt+上下左右9切换）\\페비 타락수녀(색변경)\\mod.ini",
+    "sources": []
+  },
+  "skirt": {
+    "translation": "裙子",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "skirt_acc": {
+    "translation": "裙子配件组",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "skirt_b": {
+    "translation": "裙子B",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "skirt_d": {
+    "translation": "裙子D",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "skirt_dress": {
+    "translation": "裙子裙装",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "skirt1": {
+    "translation": "裙子1",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "skirtacc": {
+    "translation": "裙饰",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "skirtband": {
+    "translation": "裙带",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "sleeves": {
+    "translation": "（0,1） 袖子样式",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\hiyuki\\DISABLED_绯雪-朝颜淡2.0（内附切换） og 辉映星辰允如光\\mod.ini",
+    "sources": []
+  },
+  "socks_color": {
+    "translation": "socks颜色",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "sockscolor": {
+    "translation": "下面4个一批，同色系改",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\aemeath\\DISABLED_爱弥斯-余烬之夜降临-去筒靴-整合版2.0（内附切换说明）\\mod.ini",
+    "sources": []
+  },
+  "speed": {
+    "translation": "速度变量（等会要用）",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\phoebe\\手杖-菲比-圣诞2.0 by 晨星（0切换）\\DISABLED_菲比-圣诞-序列019\\mod-自动生成.ini",
+    "sources": []
+  },
+  "status": "分步合并骨架",
+  "stockings": {
+    "translation": "（0,1,2,3,4） 丝袜样式",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\hiyuki\\DISABLED_绯雪-朝颜淡2.0（内附切换） og 辉映星辰允如光\\mod.ini",
+    "sources": []
+  },
+  "stockingsarm": {
+    "translation": "臂袜",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "stockingsbody": {
+    "translation": "连裤袜",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "stockingscolor": {
+    "translation": "丝袜颜色",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "stoking": {
+    "translation": "袜",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "string": {
+    "translation": "线",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "strings": {
+    "translation": "细绳",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "suit": {
+    "translation": "套装",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "suspender": {
+    "translation": "===== 切换变量 =====",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\rover\\女漂-小恶魔v3.5整合版（上下左右。？]） og 狩野樱\\DISABLED_女漂-魅魔v3.5整合版 og 狩野樱\\mod.ini",
+    "sources": []
+  },
+  "suzu": {
+    "translation": "（0,1） suzu样式",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\hiyuki\\DISABLED_绯雪-朝颜淡2.0（内附切换） og 辉映星辰允如光\\mod.ini",
+    "sources": []
+  },
+  "sw": {
+    "translation": "丝袜",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_anim": {
+    "translation": "动画",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_arm_and_back_straps": {
+    "translation": "arm组合backstraps",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_armband_and_elbows": {
+    "translation": "armband组合肘部",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_armcloth": {
+    "translation": "手臂布料",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_arms_acc": {
+    "translation": "arms配件组",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_bangdaisuolian": {
+    "translation": "绑带锁链",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_baoshi": {
+    "translation": "宝石",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_beach_skirt": {
+    "translation": "海滩裙子",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_beidai": {
+    "translation": "背部背带",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_belts": {
+    "translation": "腰带",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_body": {
+    "translation": "身体",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_body_chain": {
+    "translation": "身体锁链",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_boobs": {
+    "translation": "胸部",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_bottle": {
+    "translation": "瓶子",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_breast_chain": {
+    "translation": "breast锁链",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_buttplug": {
+    "translation": "后庭塞",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_cat_ears": {
+    "translation": "cat（0,1） 耳朵样式",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_chair": {
+    "translation": "椅子",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_char_b": {
+    "translation": "角色B",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_char_e": {
+    "translation": "角色e",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_char_j": {
+    "translation": "角色j",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_char_s": {
+    "translation": "角色s",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_char_v": {
+    "translation": "角色v",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_cloth": {
+    "translation": "衣服",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_clothing": {
+    "translation": "服装",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_dress": {
+    "translation": "裙装",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_erzhuitoushi": {
+    "translation": "耳坠头饰",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_face": {
+    "translation": "脸部",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_face_change": {
+    "translation": "脸部更换",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_face_mask_and_blindfold": {
+    "translation": "脸部mask组合遮眼罩",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_fashi_shouwan": {
+    "translation": "fashi手腕",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_fps": {
+    "translation": "帧率",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_glasses_naureola": {
+    "translation": "（0,1） 眼镜样式naureola",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_guazhui": {
+    "translation": "挂坠",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_hair": {
+    "translation": "头发",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_hair_change": {
+    "translation": "头发更换",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_head_accessories": {
+    "translation": "head饰品",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_headphones": {
+    "translation": "耳机",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_heels_wings": {
+    "translation": "heels翅膀",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_houyao": {
+    "translation": "后腰",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_houyaozhuangshi": {
+    "translation": "后腰装饰",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_huawen": {
+    "translation": "花纹",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_huwan": {
+    "translation": "护腕",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_icon": {
+    "translation": "图标",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_jiake": {
+    "translation": "甲壳",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_jiao": {
+    "translation": "脚",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_jiaohuan_weiba": {
+    "translation": "jiaohuan尾巴",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_jiaoshenghen": {
+    "translation": "脚绳痕迹",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_jing_hua": {
+    "translation": "颈部花朵",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_leftribbon": {
+    "translation": "左丝带",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_leg_stockings": {
+    "translation": "leg（0,1,2,3,4） 丝袜样式",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_lingdai_xiangquan": {
+    "translation": "领带项圈",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_lingzi_xiangquan": {
+    "translation": "lingzi项圈",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_maozi_toufa": {
+    "translation": "帽子头发",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_maozi_tuer": {
+    "translation": "帽子tuer",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_naughty_stuff": {
+    "translation": "顽皮塞入",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_neiku": {
+    "translation": "内裤",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_piaodai": {
+    "translation": "飘带",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_pifeng": {
+    "translation": "披风",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_pifeng_shoubi": {
+    "translation": "披风手臂",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_qianfachangdu": {
+    "translation": "前发长度",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_qianfashu": {
+    "translation": "前发数",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_qiantoufa": {
+    "translation": "前头发",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_rightribbon": {
+    "translation": "右丝带",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_ruding": {
+    "translation": "乳钉",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_shang": {
+    "translation": "上",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_shangban": {
+    "translation": "上半身",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_shangbanbody": {
+    "translation": "上半身",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_shenghen": {
+    "translation": "伤痕",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_shenti": {
+    "translation": "身体",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_shipin": {
+    "translation": "饰品",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_shoe": {
+    "translation": "鞋子",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_shoes": {
+    "translation": "鞋子",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_shoubi": {
+    "translation": "手臂",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_shouwan": {
+    "translation": "手腕",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_shouwan_fashi": {
+    "translation": "手腕fashi",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_shouwan_tuer": {
+    "translation": "手腕tuer",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_shouwan_xiangquan": {
+    "translation": "手腕项圈",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_shouwan_xiuzi": {
+    "translation": "手腕xiuzi",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_shouzhuo_zhihuan": {
+    "translation": "手镯指环",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_sidecape": {
+    "translation": "侧披风",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_skirt": {
+    "translation": "裙子",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_suolian": {
+    "translation": "锁链",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_suolianbangdai": {
+    "translation": "锁链绑带",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_sw": {
+    "translation": "丝袜",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_t5": {
+    "translation": "t样式5",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_tacet_mark": {
+    "translation": "塔赛特印记",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_tail": {
+    "translation": "尾巴",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_textures": {
+    "translation": "材质",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_thorns": {
+    "translation": "荆棘",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_tie": {
+    "translation": "领结",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_toggle0": {
+    "translation": "开关0",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_toggle1": {
+    "translation": "开关1",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_toggle10": {
+    "translation": "开关10",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_toggle11": {
+    "translation": "开关11",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_toggle12": {
+    "translation": "开关12",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_toggle13": {
+    "translation": "开关13",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_toggle14": {
+    "translation": "开关14",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_toggle15": {
+    "translation": "开关15",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_toggle16": {
+    "translation": "开关16",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_toggle17": {
+    "translation": "开关17",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_toggle18": {
+    "translation": "开关18",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_toggle19": {
+    "translation": "开关19",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_toggle2": {
+    "translation": "开关2",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_toggle20": {
+    "translation": "开关20",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_toggle21": {
+    "translation": "开关21",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_toggle22": {
+    "translation": "开关22",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_toggle23": {
+    "translation": "开关23",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_toggle24": {
+    "translation": "开关24",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_toggle25": {
+    "translation": "开关25",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_toggle26": {
+    "translation": "开关26",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_toggle27": {
+    "translation": "开关27",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_toggle28": {
+    "translation": "开关28",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_toggle3": {
+    "translation": "开关3",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_toggle4": {
+    "translation": "开关4",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_toggle5": {
+    "translation": "开关5",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_toggle6": {
+    "translation": "开关6",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_toggle7": {
+    "translation": "开关7",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_toggle8": {
+    "translation": "开关8",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_toggle9": {
+    "translation": "开关9",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_toubu": {
+    "translation": "头部",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_toufa": {
+    "translation": "头发",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_toufa_fashi": {
+    "translation": "头发fashi",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_toufalingdang": {
+    "translation": "头发铃铛",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_toumings": {
+    "translation": "透明丝袜",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_toumingx": {
+    "translation": "透明X",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_trouserstuff": {
+    "translation": "裤内填充",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_tuer_shouwan": {
+    "translation": "tuer手腕",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_tuer_shouwwan": {
+    "translation": "tuer手腕",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_tuer_xiangquan": {
+    "translation": "tuer项圈",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_tuer_yhou": {
+    "translation": "tuer后仰",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_tuibu": {
+    "translation": "腿部补丁",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_tuizhi": {
+    "translation": "腿趾甲",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_tunbu": {
+    "translation": "臀部",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_tunvlang": {
+    "translation": "臀围",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_vars_aka_toggles_defaults": {
+    "translation": "默认变量切换",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_weiba": {
+    "translation": "尾巴",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_weiba_jiaohuan": {
+    "translation": "尾巴jiaohuan",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_wings": {
+    "translation": "翅膀",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_wings_head": {
+    "translation": "翅膀head",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_xeizi": {
+    "translation": "蛾子",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_xia": {
+    "translation": "下",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_xiabanshenti": {
+    "translation": "下半身",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_xiangquan": {
+    "translation": "项圈",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_xiangquan_jiaohuan": {
+    "translation": "项圈jiaohuan",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_xiangquan_tuer": {
+    "translation": "项圈tuer",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_xiezi": {
+    "translation": "鞋子",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_xiongbu": {
+    "translation": "胸部",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_xiongdai": {
+    "translation": "胸带",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_xiongqian": {
+    "translation": "胸前",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_xiongqianxin": {
+    "translation": "胸前心",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_xiuzi_shouwan": {
+    "translation": "xiuzi手腕",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_yanzhao": {
+    "translation": "眼罩",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_yfashi": {
+    "translation": "一发式",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_yinmao": {
+    "translation": "阴毛",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_yqunzi": {
+    "translation": "长裙子",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_yshang": {
+    "translation": "上衣",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_yshangban": {
+    "translation": "上半身",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_yuanbangdai_shoubi": {
+    "translation": "圆绑带手臂",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_yuanhuxiong": {
+    "translation": "圆弧胸",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_yuanshangbam": {
+    "translation": "圆上臂M",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_yuanshangban": {
+    "translation": "圆扇柄",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_yuanshangbanzhuangshi_xiangquan": {
+    "translation": "圆上装饰项圈",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_yuanxiaban": {
+    "translation": "圆下半",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_yuanxiongbu": {
+    "translation": "圆胸部",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_yxia": {
+    "translation": "下弧",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_yxiaban": {
+    "translation": "下半弧",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_yxiong": {
+    "translation": "Y胸",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_yxiuzi": {
+    "translation": "Y袖子",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_zhi": {
+    "translation": "痣",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_zhihuan": {
+    "translation": "指环",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_zhihuan_yshouwan": {
+    "translation": "指环右手腕",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_zhijia": {
+    "translation": "指甲",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_zhuangshi": {
+    "translation": "装饰",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap1": {
+    "translation": "交换1",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap10": {
+    "translation": "交换10",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap11": {
+    "translation": "交换11",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap12": {
+    "translation": "交换12",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap13": {
+    "translation": "交换13",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap15": {
+    "translation": "交换15",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap2": {
+    "translation": "交换2",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap3": {
+    "translation": "交换3",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap4": {
+    "translation": "交换4",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap5": {
+    "translation": "交换5",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap6": {
+    "translation": "交换6",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap7": {
+    "translation": "交换7",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap8": {
+    "translation": "交换8",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap9": {
+    "translation": "交换9",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swapbangtui": {
+    "translation": "绑腿",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swapbohuan": {
+    "translation": "脖环",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swapdingding": {
+    "translation": "顶部",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swaperduo": {
+    "translation": "耳朵",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swapeye": {
+    "translation": "眼睛",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swapfazhan": {
+    "translation": "发簪",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swapfhdiaosheng": {
+    "translation": "发饰吊绳",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swapfuyoushou": {
+    "translation": "附属右手",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swapgouzaoti": {
+    "translation": "构造体",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swapguashi": {
+    "translation": "挂饰",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swapgugoudiaosheng": {
+    "translation": "钩吊绳",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swaphair": {
+    "translation": "头发",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swaphutui": {
+    "translation": "护腿",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swapjiaoliao": {
+    "translation": "脚饰",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swapjinggun": {
+    "translation": "颈环棍",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swapkey0": {
+    "translation": "按键0",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swapkey1": {
+    "translation": "按键1",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swapkey10": {
+    "translation": "按键10",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swapkey11": {
+    "translation": "按键11",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swapkey12": {
+    "translation": "按键12",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swapkey2": {
+    "translation": "按键2",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swapkey3": {
+    "translation": "按键3",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swapkey4": {
+    "translation": "按键4",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swapkey5": {
+    "translation": "按键5",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swapkey6": {
+    "translation": "按键6",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swapkey7": {
+    "translation": "按键7",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swapkey8": {
+    "translation": "按键8",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swapkey9": {
+    "translation": "按键9",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swaplock": {
+    "translation": "锁定",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swappifeng": {
+    "translation": "披风",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swapshenhen": {
+    "translation": "深痕",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swapshetou": {
+    "translation": "舌头",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swapshouhuan": {
+    "translation": "手环",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swapshufudai": {
+    "translation": "束缚带",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swaptaoxin": {
+    "translation": "桃花芯",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swaptiantianquan": {
+    "translation": "甜甜圈",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swaptietu": {
+    "translation": "贴图",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swaptouhuan": {
+    "translation": "头环",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swapvar_a": {
+    "translation": "丝袜--图案",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lucilla\\洛瑟菈-逆兔（ctrl+alt）by yyzj\\C\\mod.ini",
+    "sources": []
+  },
+  "swapvar_arm_and_back_straps": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\rover\\DISABLED_女漂-星体调制v4.3fix by Alunoop（ctrl+4~90 alt+4~8切换）\\Astral Modulator Rover NSFW Thicc\\mod.ini",
+    "sources": []
+  },
+  "swapvar_armband_and_elbows": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\rover\\DISABLED_女漂-星体调制v4.3fix by Alunoop（ctrl+4~90 alt+4~8切换）\\Astral Modulator Rover NSFW Thicc\\mod.ini",
+    "sources": []
+  },
+  "swapvar_armcloth": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\cartethyia\\DISABLED_卡提希娅-大卡-艾男漂草（567890=【】p切换）\\mod.ini",
+    "sources": []
+  },
+  "swapvar_arms_acc": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\yangyangxuanling\\DISABLED_玄翎 云中之风\\Wind Among the Clouds YangYang NSFW\\mod.ini",
+    "sources": []
+  },
+  "swapvar_bangdaisuolian": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\iuno\\尤诺 兔女郎 3.5\\mod.ini",
+    "sources": []
+  },
+  "swapvar_baoshi": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\shorekeeper\\DISABLED_守岸人 og与兔女郎 NSFW 3.5\\mod.ini",
+    "sources": []
+  },
+  "swapvar_beach_skirt": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\yangyangxuanling\\DISABLED_玄翎 云中之风\\Wind Among the Clouds YangYang NSFW\\mod.ini",
+    "sources": []
+  },
+  "swapvar_beibu": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\aemeath\\DISABLED_爱弥斯-逆兔 by yyzj（ctrl+alt切换） 3.5\\Mech\\mod.ini",
+    "sources": []
+  },
+  "swapvar_beidai": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\cartethyia\\DISABLED_芙露德利斯 兔女郎 3.5\\mod.ini",
+    "sources": []
+  },
+  "swapvar_belt": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\yangyangxuanling\\DISABLED_玄翎-福音战士（5~90zx）by Ceeji\\YangyangXuanling_Evangelion\\mod.ini",
+    "sources": []
+  },
+  "swapvar_belts": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lynae\\DISABLED_琳奈 战斗天使 大师\\BattleAngelLynae_Master\\mod.ini",
+    "sources": []
+  },
+  "swapvar_bikini_bottom": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\yangyangxuanling\\DISABLED_玄翎 云中之风\\Wind Among the Clouds YangYang NSFW\\mod.ini",
+    "sources": []
+  },
+  "swapvar_body": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\cartethyia\\DISABLED_卡提希娅-大卡-艾男漂草（567890=【】p切换）\\mod.ini",
+    "sources": []
+  },
+  "swapvar_body_chain": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lucilla\\DISABLED_洛瑟菈-酒与花v1.5（上下左右7890【】）\\Lucilla-Wine and Petals\\常态上身\\mod.ini",
+    "sources": []
+  },
+  "swapvar_bodychain": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lucilla\\DISABLED_洛瑟菈-酒与花v1.5（上下左右7890【】）\\Lucilla-Wine and Petals\\大招\\mod.ini",
+    "sources": []
+  },
+  "swapvar_bodysuit": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\rover\\DISABLED_女漂-望归full（上下左右0‘。？）by PebbleRox\\Rover-WangGui\\mod.ini",
+    "sources": []
+  },
+  "swapvar_boots": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lumi\\DISABLED_灯灯-舒适（ctrl+上下左右切换）\\mod.ini",
+    "sources": []
+  },
+  "swapvar_bottle": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lynae\\DISABLED_琳奈 战斗天使 大师\\BattleAngelLynae_Master\\mod.ini",
+    "sources": []
+  },
+  "swapvar_breast_chain": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lucilla\\DISABLED_洛瑟菈-酒与花v1.5（上下左右7890【】）\\Lucilla-Wine and Petals\\常态上身\\mod.ini",
+    "sources": []
+  },
+  "swapvar_buttplug": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\rover\\DISABLED_女漂-望归full（上下左右0‘。？）by PebbleRox\\Rover-WangGui\\mod.ini",
+    "sources": []
+  },
+  "swapvar_cape": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lumi\\DISABLED_灯灯-舒适（ctrl+上下左右切换）\\mod.ini",
+    "sources": []
+  },
+  "swapvar_cat_ears": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lynae\\DISABLED_琳奈 战斗天使 大师\\BattleAngelLynae_Master\\mod.ini",
+    "sources": []
+  },
+  "swapvar_chest": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lucilla\\DISABLED_洛瑟菈-酒与花v1.5（上下左右7890【】）\\Lucilla-Wine and Petals\\大招\\mod.ini",
+    "sources": []
+  },
+  "swapvar_chibang": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\galbrena\\DISABLED_嘉贝莉娜 兔女郎 3.5\\mod.ini",
+    "sources": []
+  },
+  "swapvar_choker": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\aemeath\\DISABLED_爱弥斯 星光偶像\\Body\\mod.ini",
+    "sources": []
+  },
+  "swapvar_cloth": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lucilla\\DISABLED_洛瑟菈-酒与花v1.5（上下左右7890【】）\\Lucilla-Wine and Petals\\常态上身\\mod.ini",
+    "sources": []
+  },
+  "swapvar_clothing": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\yangyangxuanling\\DISABLED_玄翎 云中之风\\Wind Among the Clouds YangYang NSFW\\mod.ini",
+    "sources": []
+  },
+  "swapvar_corset": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lynae\\DISABLED_琳奈 战斗天使 大师\\BattleAngelLynae_Master\\mod.ini",
+    "sources": []
+  },
+  "swapvar_datuibangdai": {
+    "translation": "大腿绑带",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lucilla\\洛瑟菈-逆兔（ctrl+alt）by yyzj\\C\\mod.ini",
+    "sources": []
+  },
+  "swapvar_demo": {
+    "translation": "demo样式",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lucilla\\洛瑟菈-逆兔（ctrl+alt）by yyzj\\S1\\mod.ini",
+    "sources": []
+  },
+  "swapvar_dress": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lucilla\\DISABLED_洛瑟菈-酒与花v1.5（上下左右7890【】）\\Lucilla-Wine and Petals\\大招\\mod.ini",
+    "sources": []
+  },
+  "swapvar_earrings": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\aemeath\\DISABLED_爱弥斯 星光偶像\\Body\\mod.ini",
+    "sources": []
+  },
+  "swapvar_erhuan": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\mornye\\莫宁 og和兔女郎 3.5\\mod.ini",
+    "sources": []
+  },
+  "swapvar_erzhui": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lynae\\DISABLED_琳奈 og与兔女郎 3.5\\mod.ini",
+    "sources": []
+  },
+  "swapvar_erzhui_fashi": {
+    "translation": "耳环--发饰",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lucilla\\洛瑟菈-逆兔（ctrl+alt）by yyzj\\C\\mod.ini",
+    "sources": []
+  },
+  "swapvar_erzhuitoushi": {
+    "translation": "耳环--发饰",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lucilla\\洛瑟菈-逆兔（ctrl+alt）by yyzj\\X1\\mod.ini",
+    "sources": []
+  },
+  "swapvar_face_change": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\rover\\DISABLED_女漂-星体调制v4.3fix by Alunoop（ctrl+4~90 alt+4~8切换）\\Astral Modulator Rover NSFW Thicc\\mod.ini",
+    "sources": []
+  },
+  "swapvar_face_mask_and_blindfold": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\rover\\DISABLED_女漂-星体调制v4.3fix by Alunoop（ctrl+4~90 alt+4~8切换）\\Astral Modulator Rover NSFW Thicc\\mod.ini",
+    "sources": []
+  },
+  "swapvar_fashi": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\cartethyia\\DISABLED_卡提希娅 兔女郎 3.5\\mod.ini",
+    "sources": []
+  },
+  "swapvar_fashi_001": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\mornye\\莫宁 og和兔女郎 3.5\\mod.ini",
+    "sources": []
+  },
+  "swapvar_fashi_shouwan": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\shorekeeper\\DISABLED_守岸人 og与兔女郎 NSFW 3.5\\mod.ini",
+    "sources": []
+  },
+  "swapvar_fashi_tuer": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\rebecca\\丽贝卡-逆兔（内附切换）og yyzj- 3.5FixA\\Body\\BodyC.ini",
+    "sources": []
+  },
+  "swapvar_glasses": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\yangyangxuanling\\DISABLED_玄翎 云中之风\\Wind Among the Clouds YangYang NSFW\\mod.ini",
+    "sources": []
+  },
+  "swapvar_glasses_n_aureola": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\aemeath\\DISABLED_爱弥斯 星光偶像\\Body\\mod.ini",
+    "sources": []
+  },
+  "swapvar_gloves": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\aemeath\\DISABLED_爱弥斯 星光偶像\\Body\\mod.ini",
+    "sources": []
+  },
+  "swapvar_guazhui": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\buling\\卜灵 兔女郎 3.5\\mod.ini",
+    "sources": []
+  },
+  "swapvar_hair": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\aemeath\\DISABLED_爱弥斯 星光偶像\\Body\\mod.ini",
+    "sources": []
+  },
+  "swapvar_hair_change": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\rover\\DISABLED_女漂-星体调制v4.3fix by Alunoop（ctrl+4~90 alt+4~8切换）\\Astral Modulator Rover NSFW Thicc\\mod.ini",
+    "sources": []
+  },
+  "swapvar_halo": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lynae\\DISABLED_琳奈 战斗天使 大师\\BattleAngelLynae_Master\\mod.ini",
+    "sources": []
+  },
+  "swapvar_hat_n_acc": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\yangyangxuanling\\DISABLED_玄翎 云中之风\\Wind Among the Clouds YangYang NSFW\\mod.ini",
+    "sources": []
+  },
+  "swapvar_head": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\cartethyia\\DISABLED_卡提希娅-大卡-艾男漂草（567890=【】p切换）\\mod.ini",
+    "sources": []
+  },
+  "swapvar_head_accessories": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\rover\\DISABLED_女漂-星体调制v4.3fix by Alunoop（ctrl+4~90 alt+4~8切换）\\Astral Modulator Rover NSFW Thicc\\mod.ini",
+    "sources": []
+  },
+  "swapvar_headphones": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lynae\\DISABLED_琳奈 战斗天使 大师\\BattleAngelLynae_Master\\mod.ini",
+    "sources": []
+  },
+  "swapvar_heels": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\rover\\DISABLED_女漂-望归full（上下左右0‘。？）by PebbleRox\\Rover-WangGui\\mod.ini",
+    "sources": []
+  },
+  "swapvar_heels_wings": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\yangyangxuanling\\DISABLED_玄翎-福音战士（5~90zx）by Ceeji\\YangyangXuanling_Evangelion\\mod.ini",
+    "sources": []
+  },
+  "swapvar_houyao": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\hiyuki\\绯雪 og与兔女郎 3.5\\mod.ini",
+    "sources": []
+  },
+  "swapvar_houyaozhuangshi": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\denia\\达妮娅-逆兔 by yyzj（ctrl+alt切换）- 3.5FixC\\Body_3\\mod.ini",
+    "sources": []
+  },
+  "swapvar_huawen": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\shorekeeper\\DISABLED_守岸人 og与兔女郎 NSFW 3.5\\mod.ini",
+    "sources": []
+  },
+  "swapvar_hudiejie": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\rover\\Rover Female -yyzj-3.5Fix\\A.ini",
+    "sources": []
+  },
+  "swapvar_huwan": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\cartethyia\\DISABLED_卡提希娅 兔女郎 3.5\\mod.ini",
+    "sources": []
+  },
+  "swapvar_jacket": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lynae\\DISABLED_琳奈 战斗天使 大师\\BattleAngelLynae_Master\\mod.ini",
+    "sources": []
+  },
+  "swapvar_jiake": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lucy\\露西-逆兔 （内附切换）og yyzj- 3.5Fix\\mod.ini",
+    "sources": []
+  },
+  "swapvar_jiao": {
+    "translation": "鞋子",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lucilla\\洛瑟菈-逆兔（ctrl+alt）by yyzj\\X1\\mod.ini",
+    "sources": []
+  },
+  "swapvar_jiaohuan": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\cartethyia\\DISABLED_卡提希娅 兔女郎 3.5\\mod.ini",
+    "sources": []
+  },
+  "swapvar_jiaohuan_tuwei": {
+    "translation": "兔尾--脚环",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lucilla\\洛瑟菈-逆兔（ctrl+alt）by yyzj\\C\\mod.ini",
+    "sources": []
+  },
+  "swapvar_jiaohuan_weiba": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\buling\\卜灵 兔女郎 3.5\\mod.ini",
+    "sources": []
+  },
+  "swapvar_jiaoshenghen": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\iuno\\尤诺 兔女郎 3.5\\mod.ini",
+    "sources": []
+  },
+  "swapvar_jing_hua": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\floro\\DISABLED_弗洛洛 兔女郎\\mod1.ini",
+    "sources": []
+  },
+  "swapvar_leftribbon": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lucilla\\DISABLED_洛瑟菈-酒与花v1.5（上下左右7890【】）\\Lucilla-Wine and Petals\\大招\\mod.ini",
+    "sources": []
+  },
+  "swapvar_leg": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\rover\\DISABLED_女漂-望归full（上下左右0‘。？）by PebbleRox\\Rover-WangGui\\mod.ini",
+    "sources": []
+  },
+  "swapvar_leg_stockings": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\rover\\DISABLED_女漂-星体调制v4.3fix by Alunoop（ctrl+4~90 alt+4~8切换）\\Astral Modulator Rover NSFW Thicc\\mod.ini",
+    "sources": []
+  },
+  "swapvar_lingdai_xiangquan": {
+    "translation": "领带--项圈",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lucilla\\洛瑟菈-逆兔（ctrl+alt）by yyzj\\C\\mod.ini",
+    "sources": []
+  },
+  "swapvar_lingzi_xiangquan": {
+    "translation": "领带--项圈",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lucilla\\洛瑟菈-逆兔（ctrl+alt）by yyzj\\S1\\mod.ini",
+    "sources": []
+  },
+  "swapvar_maozi_toufa": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\buling\\卜灵 兔女郎 3.5\\mod.ini",
+    "sources": []
+  },
+  "swapvar_maozi_tuer": {
+    "translation": "帽子--兔耳",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lucilla\\洛瑟菈-逆兔（ctrl+alt）by yyzj\\C\\mod.ini",
+    "sources": []
+  },
+  "swapvar_naughty_stuff": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lucilla\\DISABLED_洛瑟菈-酒与花v1.5（上下左右7890【】）\\Lucilla-Wine and Petals\\下身\\mod.ini",
+    "sources": []
+  },
+  "swapvar_necklace": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lucilla\\DISABLED_洛瑟菈-酒与花v1.5（上下左右7890【】）\\Lucilla-Wine and Petals\\常态上身\\mod.ini",
+    "sources": []
+  },
+  "swapvar_neiku": {
+    "translation": "内裤",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lucilla\\洛瑟菈-逆兔（ctrl+alt）by yyzj\\C\\mod.ini",
+    "sources": []
+  },
+  "swapvar_panty": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lucilla\\DISABLED_洛瑟菈-酒与花v1.5（上下左右7890【】）\\Lucilla-Wine and Petals\\下身\\mod.ini",
+    "sources": []
+  },
+  "swapvar_piaodai": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\cartethyia\\DISABLED_卡提希娅 兔女郎 3.5\\mod.ini",
+    "sources": []
+  },
+  "swapvar_pifeng": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lupa\\DISABLED_露帕 兔女郎 3.5\\mod.ini",
+    "sources": []
+  },
+  "swapvar_pifeng_shoubi": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\ciaccona\\夏空 兔女郎 3.5\\mod.ini",
+    "sources": []
+  },
+  "swapvar_qianfachangdu": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\hiyuki\\绯雪 og与兔女郎 3.5\\mod.ini",
+    "sources": []
+  },
+  "swapvar_qianfashu": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\chisa\\DISABLED_千咲 og与兔女郎 3.5\\mod.ini",
+    "sources": []
+  },
+  "swapvar_qiantoufa": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lynae\\DISABLED_琳奈 og与兔女郎 3.5\\mod.ini",
+    "sources": []
+  },
+  "swapvar_qunbai": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\galbrena\\DISABLED_嘉贝莉娜 兔女郎 3.5\\mod.ini",
+    "sources": []
+  },
+  "swapvar_qunzi": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\chisa\\DISABLED_千咲 og与兔女郎 3.5\\mod.ini",
+    "sources": []
+  },
+  "swapvar_rightribbon": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lucilla\\DISABLED_洛瑟菈-酒与花v1.5（上下左右7890【】）\\Lucilla-Wine and Petals\\大招\\mod.ini",
+    "sources": []
+  },
+  "swapvar_robe": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\yangyangxuanling\\DISABLED_玄翎 云中之风\\Wind Among the Clouds YangYang NSFW\\mod.ini",
+    "sources": []
+  },
+  "swapvar_ruding": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\mornye\\DISABLED_莫宁 巨乳 V2\\mod.ini",
+    "sources": []
+  },
+  "swapvar_shang": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\shorekeeper\\DISABLED_守岸人 og与兔女郎 NSFW 3.5\\mod.ini",
+    "sources": []
+  },
+  "swapvar_shangban": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\chisa\\DISABLED_千咲 og与兔女郎 3.5\\mod.ini",
+    "sources": []
+  },
+  "swapvar_shangbanbody": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\cartethyia\\DISABLED_卡提希娅 兔女郎 3.5\\mod.ini",
+    "sources": []
+  },
+  "swapvar_shenghen": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\chisa\\DISABLED_千咲 og与兔女郎 3.5\\mod.ini",
+    "sources": []
+  },
+  "swapvar_shenti": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\aemeath\\DISABLED_爱弥斯-逆兔 by yyzj（ctrl+alt切换） 3.5\\Mech\\mod.ini",
+    "sources": []
+  },
+  "swapvar_shipin": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\encore\\DISABLED_安可-校园泳装 by huanjue（alt+P切换）\\校园泳装安可\\mod.ini",
+    "sources": []
+  },
+  "swapvar_shoes": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\yangyangxuanling\\DISABLED_玄翎 云中之风\\Wind Among the Clouds YangYang NSFW\\mod.ini",
+    "sources": []
+  },
+  "swapvar_shorts": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\yangyangxuanling\\DISABLED_玄翎 云中之风\\Wind Among the Clouds YangYang NSFW\\mod.ini",
+    "sources": []
+  },
+  "swapvar_shoubi": {
+    "translation": "手臂--指甲",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lucilla\\洛瑟菈-逆兔（ctrl+alt）by yyzj\\C\\mod.ini",
+    "sources": []
+  },
+  "swapvar_shoulder": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lucilla\\DISABLED_洛瑟菈-酒与花v1.5（上下左右7890【】）\\Lucilla-Wine and Petals\\大招\\mod.ini",
+    "sources": []
+  },
+  "swapvar_shouwan": {
+    "translation": "手腕",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lucilla\\洛瑟菈-逆兔（ctrl+alt）by yyzj\\C\\mod.ini",
+    "sources": []
+  },
+  "swapvar_shouwan_fashi": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lynae\\DISABLED_琳奈 og与兔女郎 3.5\\mod.ini",
+    "sources": []
+  },
+  "swapvar_shouwan_tuer": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lucy\\露西-逆兔 （内附切换）og yyzj- 3.5Fix\\mod.ini",
+    "sources": []
+  },
+  "swapvar_shouwan_xiangquan": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\mornye\\莫宁 og和兔女郎 3.5\\mod.ini",
+    "sources": []
+  },
+  "swapvar_shouwan_xiuzi": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\denia\\达妮娅-逆兔 by yyzj（ctrl+alt切换）- 3.5FixC\\Body_1\\mod.ini",
+    "sources": []
+  },
+  "swapvar_shouzhuo_zhihuan": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lynae\\DISABLED_琳奈 og与兔女郎 3.5\\mod.ini",
+    "sources": []
+  },
+  "swapvar_skirt": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lumi\\DISABLED_灯灯-舒适（ctrl+上下左右切换）\\mod.ini",
+    "sources": []
+  },
+  "swapvar_sleeves": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\yangyangxuanling\\DISABLED_玄翎-福音战士（5~90zx）by Ceeji\\YangyangXuanling_Evangelion\\mod.ini",
+    "sources": []
+  },
+  "swapvar_straps": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lynae\\DISABLED_琳奈 战斗天使 大师\\BattleAngelLynae_Master\\mod.ini",
+    "sources": []
+  },
+  "swapvar_suolian": {
+    "translation": "锁链绑带",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lucilla\\洛瑟菈-逆兔（ctrl+alt）by yyzj\\C\\mod.ini",
+    "sources": []
+  },
+  "swapvar_suolianbangdai": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\chisa\\DISABLED_千咲 og与兔女郎 3.5\\mod.ini",
+    "sources": []
+  },
+  "swapvar_sw": {
+    "translation": "丝袜",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swapvar_sweater": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\rover\\DISABLED_女漂-星体调制v4.3fix by Alunoop（ctrl+4~90 alt+4~8切换）\\Astral Modulator Rover NSFW Thicc\\mod.ini",
+    "sources": []
+  },
+  "swapvar_tacet_mark": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\aemeath\\DISABLED_爱弥斯 星光偶像\\Body\\mod.ini",
+    "sources": []
+  },
+  "swapvar_tail": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lumi\\DISABLED_灯灯-舒适（ctrl+上下左右切换）\\mod.ini",
+    "sources": []
+  },
+  "swapvar_thorns": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\cartethyia\\DISABLED_卡提希娅-大卡-艾男漂草（567890=【】p切换）\\mod.ini",
+    "sources": []
+  },
+  "swapvar_tie": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lynae\\DISABLED_琳奈 战斗天使 大师\\BattleAngelLynae_Master\\mod.ini",
+    "sources": []
+  },
+  "swapvar_toggle_0": {
+    "translation": "toggle样式",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\hiyuki\\DISABLED_绯雪-姓感v1.7（上下左右ctrl+上下）by Vaelun\\Sexy Hiyuki v1.7\\mod.ini",
+    "sources": []
+  },
+  "swapvar_toggle_1": {
+    "translation": "toggle样式",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\hiyuki\\DISABLED_绯雪-姓感v1.7（上下左右ctrl+上下）by Vaelun\\Sexy Hiyuki v1.7\\mod.ini",
+    "sources": []
+  },
+  "swapvar_toggle_10": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lucilla\\DISABLED_Lucilla - Latex Queen1.1\\js\\mod.ini",
+    "sources": []
+  },
+  "swapvar_toggle_11": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lucilla\\DISABLED_Lucilla - Latex Queen1.1\\js\\mod.ini",
+    "sources": []
+  },
+  "swapvar_toggle_12": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\yangyangxuanling\\DISABLED_玄翎-猫猫女仆v1.1（4~90-=[]；’，）by Invalid\\yangyang - Cat Maid v1.1\\mod.ini",
+    "sources": []
+  },
+  "swapvar_toggle_2": {
+    "translation": "toggle样式",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\hiyuki\\DISABLED_绯雪-姓感v1.7（上下左右ctrl+上下）by Vaelun\\Sexy Hiyuki v1.7\\mod.ini",
+    "sources": []
+  },
+  "swapvar_toggle_3": {
+    "translation": "toggle样式",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\hiyuki\\DISABLED_绯雪-姓感v1.7（上下左右ctrl+上下）by Vaelun\\Sexy Hiyuki v1.7\\mod.ini",
+    "sources": []
+  },
+  "swapvar_toggle_4": {
+    "translation": "toggle样式",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\hiyuki\\DISABLED_绯雪-姓感v1.7（上下左右ctrl+上下）by Vaelun\\Sexy Hiyuki v1.7\\mod.ini",
+    "sources": []
+  },
+  "swapvar_toggle_5": {
+    "translation": "toggle样式",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\hiyuki\\DISABLED_绯雪-姓感v1.7（上下左右ctrl+上下）by Vaelun\\Sexy Hiyuki v1.7\\mod.ini",
+    "sources": []
+  },
+  "swapvar_toggle_6": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lucilla\\DISABLED_Lucilla - Latex Queen1.1\\js\\mod.ini",
+    "sources": []
+  },
+  "swapvar_toggle_7": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lucilla\\DISABLED_Lucilla - Latex Queen1.1\\js\\mod.ini",
+    "sources": []
+  },
+  "swapvar_toggle_8": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lucilla\\DISABLED_Lucilla - Latex Queen1.1\\js\\mod.ini",
+    "sources": []
+  },
+  "swapvar_toggle_9": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lucilla\\DISABLED_Lucilla - Latex Queen1.1\\js\\mod.ini",
+    "sources": []
+  },
+  "swapvar_top": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lynae\\DISABLED_琳奈 战斗天使 大师\\BattleAngelLynae_Master\\mod.ini",
+    "sources": []
+  },
+  "swapvar_toubu": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\shorekeeper\\DISABLED_守岸人 og与兔女郎 NSFW 3.5\\mod.ini",
+    "sources": []
+  },
+  "swapvar_toufa": {
+    "translation": "前发长度",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lucilla\\洛瑟菈-逆兔（ctrl+alt）by yyzj\\X1\\mod.ini",
+    "sources": []
+  },
+  "swapvar_toufa_fashi": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\cantarella\\DISABLED_坎特蕾拉 兔女郎 3.5\\mod.ini",
+    "sources": []
+  },
+  "swapvar_toufalingdang": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\buling\\卜灵 兔女郎 3.5\\mod.ini",
+    "sources": []
+  },
+  "swapvar_toumings": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\shorekeeper\\DISABLED_守岸人 og与兔女郎 NSFW 3.5\\mod.ini",
+    "sources": []
+  },
+  "swapvar_toumingx": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\shorekeeper\\DISABLED_守岸人 og与兔女郎 NSFW 3.5\\mod.ini",
+    "sources": []
+  },
+  "swapvar_toushi": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\sigrika\\西格莉卡 兔女郎 3.5\\mod.ini",
+    "sources": []
+  },
+  "swapvar_tuer": {
+    "translation": "帽子--兔耳",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lucilla\\洛瑟菈-逆兔（ctrl+alt）by yyzj\\S2\\mod.ini",
+    "sources": []
+  },
+  "swapvar_tuer_shouwan": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\chisa\\DISABLED_千咲 og与兔女郎 3.5\\mod.ini",
+    "sources": []
+  },
+  "swapvar_tuer_shouwwan": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\floro\\DISABLED_弗洛洛 兔女郎\\mod1.ini",
+    "sources": []
+  },
+  "swapvar_tuer_xiangquan": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\denia\\达妮娅-逆兔 by yyzj（ctrl+alt切换）- 3.5FixC\\Body_1\\mod.ini",
+    "sources": []
+  },
+  "swapvar_tuer_yhou": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\aemeath\\DISABLED_爱弥斯-逆兔 by yyzj（ctrl+alt切换） 3.5\\Aemeath\\mod.ini",
+    "sources": []
+  },
+  "swapvar_tuibu": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\aemeath\\DISABLED_爱弥斯-逆兔 by yyzj（ctrl+alt切换） 3.5\\Mech\\mod.ini",
+    "sources": []
+  },
+  "swapvar_tuizhi": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\denia\\达妮娅-逆兔 by yyzj（ctrl+alt切换）- 3.5FixC\\BodyC.ini",
+    "sources": []
+  },
+  "swapvar_tunbu": {
+    "translation": "臀部大小",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lucilla\\洛瑟菈-逆兔（ctrl+alt）by yyzj\\X1\\mod.ini",
+    "sources": []
+  },
+  "swapvar_tunv": {
+    "translation": "兔女郎服装",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lucilla\\洛瑟菈-逆兔（ctrl+alt）by yyzj\\C\\mod.ini",
+    "sources": []
+  },
+  "swapvar_tunvlang": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\iuno\\尤诺 兔女郎 3.5\\mod.ini",
+    "sources": []
+  },
+  "swapvar_tuwei_jiaohuan": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\rebecca\\丽贝卡-逆兔（内附切换）og yyzj- 3.5FixA\\Body\\BodyC.ini",
+    "sources": []
+  },
+  "swapvar_upper": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\rover\\DISABLED_女漂-望归full（上下左右0‘。？）by PebbleRox\\Rover-WangGui\\mod.ini",
+    "sources": []
+  },
+  "swapvar_waitao": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\galbrena\\DISABLED_嘉贝莉娜 兔女郎 3.5\\mod.ini",
+    "sources": []
+  },
+  "swapvar_weiba": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\floro\\DISABLED_弗洛洛 兔女郎\\mod1.ini",
+    "sources": []
+  },
+  "swapvar_weiba_jiaohuan": {
+    "translation": "兔尾--脚环",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lucilla\\洛瑟菈-逆兔（ctrl+alt）by yyzj\\X1\\mod.ini",
+    "sources": []
+  },
+  "swapvar_wings": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lynae\\DISABLED_琳奈 战斗天使 大师\\BattleAngelLynae_Master\\mod.ini",
+    "sources": []
+  },
+  "swapvar_wings_head": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\yangyangxuanling\\DISABLED_玄翎-福音战士（5~90zx）by Ceeji\\YangyangXuanling_Evangelion\\mod.ini",
+    "sources": []
+  },
+  "swapvar_xeizi": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\cantarella\\DISABLED_坎特蕾拉 兔女郎 3.5\\mod.ini",
+    "sources": []
+  },
+  "swapvar_xia": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\shorekeeper\\DISABLED_守岸人 og与兔女郎 NSFW 3.5\\mod.ini",
+    "sources": []
+  },
+  "swapvar_xiaban": {
+    "translation": "臀部大小",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lucilla\\洛瑟菈-逆兔（ctrl+alt）by yyzj\\C\\mod.ini",
+    "sources": []
+  },
+  "swapvar_xiabanshenti": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\cartethyia\\DISABLED_卡提希娅 兔女郎 3.5\\mod.ini",
+    "sources": []
+  },
+  "swapvar_xiangquan": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\chisa\\DISABLED_千咲 og与兔女郎 3.5\\mod.ini",
+    "sources": []
+  },
+  "swapvar_xiangquan_jiaohuan": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\floro\\DISABLED_弗洛洛 兔女郎\\mod1.ini",
+    "sources": []
+  },
+  "swapvar_xiangquan_tuer": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\suisui\\DISABLED_穗穗  兔女郎\\mod.ini",
+    "sources": []
+  },
+  "swapvar_xiezi": {
+    "translation": "鞋子",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lucilla\\洛瑟菈-逆兔（ctrl+alt）by yyzj\\C\\mod.ini",
+    "sources": []
+  },
+  "swapvar_xiong": {
+    "translation": "胸部",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lucilla\\洛瑟菈-逆兔（ctrl+alt）by yyzj\\S1\\mod.ini",
+    "sources": []
+  },
+  "swapvar_xiongbu": {
+    "translation": "胸部",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lucilla\\洛瑟菈-逆兔（ctrl+alt）by yyzj\\C\\mod.ini",
+    "sources": []
+  },
+  "swapvar_xiongdai": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\cartethyia\\DISABLED_卡提希娅 兔女郎 3.5\\mod.ini",
+    "sources": []
+  },
+  "swapvar_xiongqian": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\denia\\达妮娅-逆兔 by yyzj（ctrl+alt切换）- 3.5FixC\\BodyC.ini",
+    "sources": []
+  },
+  "swapvar_xiongqianxin": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\aemeath\\DISABLED_爱弥斯-逆兔 by yyzj（ctrl+alt切换） 3.5\\Aemeath\\mod.ini",
+    "sources": []
+  },
+  "swapvar_xiuzi": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\rebecca\\丽贝卡-逆兔（内附切换）og yyzj- 3.5FixA\\Body\\BodyS1.ini",
+    "sources": []
+  },
+  "swapvar_xiuzi_shouwan": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\rebecca\\丽贝卡-逆兔（内附切换）og yyzj- 3.5FixA\\Body\\BodyC.ini",
+    "sources": []
+  },
+  "swapvar_yanzhao": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\floro\\DISABLED_弗洛洛 兔女郎\\mod1.ini",
+    "sources": []
+  },
+  "swapvar_yaodai": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lucy\\露西-逆兔 （内附切换）og yyzj- 3.5Fix\\mod.ini",
+    "sources": []
+  },
+  "swapvar_yfashi": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\aemeath\\DISABLED_爱弥斯-逆兔 by yyzj（ctrl+alt切换） 3.5\\Aemeath\\mod.ini",
+    "sources": []
+  },
+  "swapvar_yinmao": {
+    "translation": "阴毛",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lucilla\\洛瑟菈-逆兔（ctrl+alt）by yyzj\\C\\mod.ini",
+    "sources": []
+  },
+  "swapvar_yqunzi": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\aemeath\\DISABLED_爱弥斯-逆兔 by yyzj（ctrl+alt切换） 3.5\\Aemeath\\mod.ini",
+    "sources": []
+  },
+  "swapvar_ys": {
+    "translation": "原上半",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lucilla\\洛瑟菈-逆兔（ctrl+alt）by yyzj\\C\\mod.ini",
+    "sources": []
+  },
+  "swapvar_yshang": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\rebecca\\丽贝卡-逆兔（内附切换）og yyzj- 3.5FixA\\Body\\BodyS1.ini",
+    "sources": []
+  },
+  "swapvar_yshangban": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\ciaccona\\夏空 兔女郎 3.5\\mod.ini",
+    "sources": []
+  },
+  "swapvar_yuanbangdai_shoubi": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\rover\\Rover Female -yyzj-3.5Fix\\A.ini",
+    "sources": []
+  },
+  "swapvar_yuanhuxiong": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\shorekeeper\\DISABLED_守岸人 og与兔女郎 NSFW 3.5\\mod.ini",
+    "sources": []
+  },
+  "swapvar_yuanshangbam": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\buling\\卜灵 兔女郎 3.5\\mod.ini",
+    "sources": []
+  },
+  "swapvar_yuanshangban": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\chisa\\DISABLED_千咲 og与兔女郎 3.5\\mod.ini",
+    "sources": []
+  },
+  "swapvar_yuanshangbanzhuangshi_xiangquan": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\phoebe\\菲比 兔女郎 3.5\\mod.ini",
+    "sources": []
+  },
+  "swapvar_yuanxiaban": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\rover\\Rover Female -yyzj-3.5Fix\\A.ini",
+    "sources": []
+  },
+  "swapvar_yuanxiongbu": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\cantarella\\DISABLED_坎特蕾拉 兔女郎 3.5\\mod.ini",
+    "sources": []
+  },
+  "swapvar_yx": {
+    "translation": "原下半",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lucilla\\洛瑟菈-逆兔（ctrl+alt）by yyzj\\C\\mod.ini",
+    "sources": []
+  },
+  "swapvar_yxia": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\mornye\\莫宁 og和兔女郎 3.5\\mod.ini",
+    "sources": []
+  },
+  "swapvar_yxiaban": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\aemeath\\DISABLED_爱弥斯-逆兔 by yyzj（ctrl+alt切换） 3.5\\Aemeath\\mod.ini",
+    "sources": []
+  },
+  "swapvar_yxiong": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\mornye\\莫宁 og和兔女郎 3.5\\mod.ini",
+    "sources": []
+  },
+  "swapvar_yxiuzi": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\suisui\\DISABLED_穗穗  兔女郎\\mod.ini",
+    "sources": []
+  },
+  "swapvar_zhi": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lynae\\DISABLED_琳奈 og与兔女郎 3.5\\mod.ini",
+    "sources": []
+  },
+  "swapvar_zhihuan": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\chisa\\DISABLED_千咲 og与兔女郎 3.5\\mod.ini",
+    "sources": []
+  },
+  "swapvar_zhihuan_yshouwan": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\mornye\\莫宁 og和兔女郎 3.5\\mod.ini",
+    "sources": []
+  },
+  "swapvar_zhijia": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lupa\\DISABLED_露帕 兔女郎 3.5\\mod.ini",
+    "sources": []
+  },
+  "swapvar_zhuangshi": {
+    "translation": "默认变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\floro\\DISABLED_弗洛洛 兔女郎\\mod2.ini",
+    "sources": []
+  },
+  "swapwenshen": {
+    "translation": "纹身",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swapxiongjia": {
+    "translation": "胸甲",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swapyanzhao": {
+    "translation": "眼罩",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swapyundu": {
+    "translation": "云度",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "switch": {
+    "translation": "切换",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "switch_mouse": {
+    "translation": "切换mouse",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "switch_variant": {
+    "translation": "切换variant",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "switchcol": {
+    "translation": "切换列",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "switchvar": {
+    "translation": "切换变量",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "sword": {
+    "translation": "剑",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "t": {
+    "translation": "t样式",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lucilla\\洛瑟菈-逆兔（ctrl+alt）by yyzj\\C\\mod.ini",
+    "sources": []
+  },
+  "t5": {
+    "translation": "丝袜材质",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lucilla\\洛瑟菈-逆兔（ctrl+alt）by yyzj\\C\\mod.ini",
+    "sources": []
+  },
+  "tacetmark": {
+    "translation": "塔赛特印记",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "tail": {
+    "translation": "===== 切换变量 =====",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\rover\\女漂-小恶魔v3.5整合版（上下左右。？]） og 狩野樱\\DISABLED_女漂-魅魔v3.5整合版 og 狩野樱\\mod.ini",
+    "sources": []
+  },
+  "taoxin": {
+    "translation": "桃花芯",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "tassel": {
+    "translation": "穗",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "temp": "重置",
+  "tenshimode": {
+    "translation": "天使模式",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "terminal": {
+    "translation": "终端",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "texture_override_a": {
+    "translation": "材质overrideA",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "texture_override_c": {
+    "translation": "材质overrideC",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "thigh_band": {
+    "translation": "thigh带子",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "thighribbon": {
+    "translation": "大腿丝带",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "thighstrap": {
+    "translation": "大腿带",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "thorn": {
+    "translation": "荆棘",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "tiantianquan": {
+    "translation": "甜甜圈",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "tie": {
+    "translation": "领结",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "tietu": {
+    "translation": "贴图",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "tixing": {
+    "translation": "体型",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "tm": {
+    "translation": "透明",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "toggle1": {
+    "translation": "开关1",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "tongxue": {
+    "translation": "同学",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "tongxue_skirt": {
+    "translation": "同学裙子",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "tongxueskirt": {
+    "translation": "校服裙",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "top": {
+    "translation": "上衣样式（no_alt VK_UP）",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\phoebe\\DISABLED_菲比-堕落修女-改色（上下左右alt+上下左右9切换）\\페비 타락수녀(색변경)\\mod.ini",
+    "sources": []
+  },
+  "top_ribbons": {
+    "translation": "top丝带",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "torso": {
+    "translation": "躯干",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "toufa": {
+    "translation": "头发",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "toufa_color": {
+    "translation": "头发颜色",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "toufa_color_b": {
+    "translation": "头发颜色B",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "toufa_color_d": {
+    "translation": "头发颜色D",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "toufa_d": {
+    "translation": "头发D",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "touhuan": {
+    "translation": "头环",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "touming": {
+    "translation": "透明",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "trans": {
+    "translation": "变形",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "transf": {
+    "translation": "变形F",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "tui_yan_se": {
+    "translation": "腿部yanse",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "twincolor": {
+    "translation": "双色",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "uid": {
+    "translation": "UID 显示",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "umbrella": {
+    "translation": "雨伞",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "unified": {
+    "translation": "统一",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "up": {
+    "translation": "上侧",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "up_ribbon": {
+    "translation": "上侧ribbon",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "upper": {
+    "translation": "上部",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "uskirt": {
+    "translation": "上裙",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "ustring": {
+    "translation": "上线",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "vail": {
+    "translation": "面纱",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "val": "补充",
+  "value_1": {
+    "translation": "按钮切换变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\phoebe\\手杖-菲比-圣诞2.0 by 晨星（0切换）\\DISABLED_菲比-圣诞-序列019\\按键UI\\按钮16 + 重置、滑块功能.ini",
+    "sources": []
+  },
+  "value_10": {
+    "translation": "按钮切换变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\phoebe\\手杖-菲比-圣诞2.0 by 晨星（0切换）\\DISABLED_菲比-圣诞-序列019\\按键UI\\按钮16 + 重置、滑块功能.ini",
+    "sources": []
+  },
+  "value_11": {
+    "translation": "按钮切换变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\phoebe\\手杖-菲比-圣诞2.0 by 晨星（0切换）\\DISABLED_菲比-圣诞-序列019\\按键UI\\按钮16 + 重置、滑块功能.ini",
+    "sources": []
+  },
+  "value_12": {
+    "translation": "按钮切换变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\phoebe\\手杖-菲比-圣诞2.0 by 晨星（0切换）\\DISABLED_菲比-圣诞-序列019\\按键UI\\按钮16 + 重置、滑块功能.ini",
+    "sources": []
+  },
+  "value_13": {
+    "translation": "按钮切换变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\phoebe\\手杖-菲比-圣诞2.0 by 晨星（0切换）\\DISABLED_菲比-圣诞-序列019\\按键UI\\按钮16 + 重置、滑块功能.ini",
+    "sources": []
+  },
+  "value_14": {
+    "translation": "按钮切换变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\phoebe\\手杖-菲比-圣诞2.0 by 晨星（0切换）\\DISABLED_菲比-圣诞-序列019\\按键UI\\按钮16 + 重置、滑块功能.ini",
+    "sources": []
+  },
+  "value_15": {
+    "translation": "按钮切换变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\phoebe\\手杖-菲比-圣诞2.0 by 晨星（0切换）\\DISABLED_菲比-圣诞-序列019\\按键UI\\按钮16 + 重置、滑块功能.ini",
+    "sources": []
+  },
+  "value_16": {
+    "translation": "按钮切换变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\phoebe\\手杖-菲比-圣诞2.0 by 晨星（0切换）\\DISABLED_菲比-圣诞-序列019\\按键UI\\按钮16 + 重置、滑块功能.ini",
+    "sources": []
+  },
+  "value_17": {
+    "translation": "按钮切换变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\phoebe\\手杖-菲比-圣诞2.0 by 晨星（0切换）\\DISABLED_菲比-圣诞-序列019\\按键UI\\按钮16 + 重置、滑块功能.ini",
+    "sources": []
+  },
+  "value_18": {
+    "translation": "按钮切换变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\phoebe\\手杖-菲比-圣诞2.0 by 晨星（0切换）\\DISABLED_菲比-圣诞-序列019\\按键UI\\按钮16 + 重置、滑块功能.ini",
+    "sources": []
+  },
+  "value_2": {
+    "translation": "按钮切换变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\phoebe\\手杖-菲比-圣诞2.0 by 晨星（0切换）\\DISABLED_菲比-圣诞-序列019\\按键UI\\按钮16 + 重置、滑块功能.ini",
+    "sources": []
+  },
+  "value_3": {
+    "translation": "按钮切换变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\phoebe\\手杖-菲比-圣诞2.0 by 晨星（0切换）\\DISABLED_菲比-圣诞-序列019\\按键UI\\按钮16 + 重置、滑块功能.ini",
+    "sources": []
+  },
+  "value_4": {
+    "translation": "按钮切换变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\phoebe\\手杖-菲比-圣诞2.0 by 晨星（0切换）\\DISABLED_菲比-圣诞-序列019\\按键UI\\按钮16 + 重置、滑块功能.ini",
+    "sources": []
+  },
+  "value_5": {
+    "translation": "按钮切换变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\phoebe\\手杖-菲比-圣诞2.0 by 晨星（0切换）\\DISABLED_菲比-圣诞-序列019\\按键UI\\按钮16 + 重置、滑块功能.ini",
+    "sources": []
+  },
+  "value_6": {
+    "translation": "按钮切换变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\phoebe\\手杖-菲比-圣诞2.0 by 晨星（0切换）\\DISABLED_菲比-圣诞-序列019\\按键UI\\按钮16 + 重置、滑块功能.ini",
+    "sources": []
+  },
+  "value_7": {
+    "translation": "按钮切换变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\phoebe\\手杖-菲比-圣诞2.0 by 晨星（0切换）\\DISABLED_菲比-圣诞-序列019\\按键UI\\按钮16 + 重置、滑块功能.ini",
+    "sources": []
+  },
+  "value_8": {
+    "translation": "按钮切换变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\phoebe\\手杖-菲比-圣诞2.0 by 晨星（0切换）\\DISABLED_菲比-圣诞-序列019\\按键UI\\按钮16 + 重置、滑块功能.ini",
+    "sources": []
+  },
+  "value_9": {
+    "translation": "按钮切换变量",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\phoebe\\手杖-菲比-圣诞2.0 by 晨星（0切换）\\DISABLED_菲比-圣诞-序列019\\按键UI\\按钮16 + 重置、滑块功能.ini",
+    "sources": []
+  },
+  "value_add": {
+    "translation": "数值add",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "value_add_accelerate": {
+    "translation": "数值addaccelerate",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "value_sub": {
+    "translation": "数值sub",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "value_sub_accelerate": {
+    "translation": "数值subaccelerate",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "variant_afa1587c": {
+    "translation": "iant外观特效1587C",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "variant_d14bed8b": {
+    "translation": "iantD14床8B",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "veil": {
+    "translation": "面纱样式（alt VK_DOWN）",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\phoebe\\DISABLED_菲比-堕落修女-改色（上下左右alt+上下左右9切换）\\페비 타락수녀(색변경)\\mod.ini",
+    "sources": []
+  },
+  "vine": {
+    "translation": "藤蔓",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "vk_numpad1": {
+    "translation": "vk小键盘1",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "vk_numpad2": {
+    "translation": "vk小键盘2",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "vk_numpad3": {
+    "translation": "vk小键盘3",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "vk_numpad5": {
+    "translation": "vk小键盘5",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "vk_numpad6": {
+    "translation": "vk小键盘6",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "vk_numpad7": {
+    "translation": "vk小键盘7",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "w": {
+    "translation": "手提包",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lucilla\\洛瑟菈-逆兔（ctrl+alt）by yyzj\\C\\mod.ini",
+    "sources": []
+  },
+  "waist_chain": {
+    "translation": "waist锁链",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "waistdec": {
+    "translation": "腰部装饰",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "wangguan": {
+    "translation": "王冠",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "watch": {
+    "translation": "手表",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "wazi": {
+    "translation": "袜子",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "weapon": {
+    "translation": "武器",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "wei_ba_da_xiao_active": {
+    "translation": "weibadaxiao激活",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "wei_ba_da_xiao_active01": {
+    "translation": "weibadaxiao激活01",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "wei_ba_da_xiao_active02": {
+    "translation": "weibadaxiao激活02",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "wei_ba_da_xiao_active03": {
+    "translation": "weibadaxiao激活03",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "weiba": {
+    "translation": "尾巴",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "wenshen": {
+    "translation": "纹身",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "whip": {
+    "translation": "===== 切换变量 =====",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\rover\\女漂-小恶魔v3.5整合版（上下左右。？]） og 狩野樱\\DISABLED_女漂-魅魔v3.5整合版 og 狩野樱\\mod.ini",
+    "sources": []
+  },
+  "wing": {
+    "translation": "翅膀",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "wings": {
+    "translation": "===== 切换变量 =====",
+    "source": "file_context",
+    "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\rover\\女漂-小恶魔v3.5整合版（上下左右。？]） og 狩野樱\\DISABLED_女漂-魅魔v3.5整合版 og 狩野樱\\mod.ini",
+    "sources": []
+  },
+  "wolf": {
+    "translation": "狼",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "wristband": {
+    "translation": "腕带",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "wrists": {
+    "translation": "手腕",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "xiangshi": {
+    "translation": "相饰",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "xie": {
+    "translation": "鞋",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "xie_zi": {
+    "translation": "鞋zi",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "xiezi": {
+    "translation": "鞋子",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "xiongjia": {
+    "translation": "胸甲",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "xiongkou": {
+    "translation": "胸口",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "yan_jing": {
+    "translation": "yan颈部",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "yanjing_color": {
+    "translation": "yanjing颜色",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "yanjing_color_b": {
+    "translation": "yanjing颜色B",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "yanjing_color_d": {
+    "translation": "yanjing颜色D",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "yanzhao": {
+    "translation": "眼罩",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "yaoshi": {
+    "translation": "钥匙",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "yifu": {
+    "translation": "衣服",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "yifu_color": {
+    "translation": "衣服颜色",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "yifu_color_b": {
+    "translation": "衣服颜色B",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "yifu_color_d": {
+    "translation": "衣服颜色D",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "yifu_d": {
+    "translation": "衣服D",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "yifu_hou_bai": {
+    "translation": "衣服houbai",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "yifu_pi_feng": {
+    "translation": "衣服pifeng",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "yifu_pi_jian": {
+    "translation": "衣服pijian",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "yifu_qian": {
+    "translation": "衣服qian",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "yifu0": {
+    "translation": "衣服0",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "yifu1": {
+    "translation": "衣服1",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "yifulalian": {
+    "translation": "衣服拉链",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "yinwen": {
+    "translation": "印纹",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "yongyi": {
+    "translation": "泳衣",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "yundu": {
+    "translation": "云度",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "ywen": {
+    "translation": "Y纹",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "ywlight": {
+    "translation": "YW光",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "z_back_skirt": {
+    "translation": "zback裙子",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "z_chest_cloth": {
+    "translation": "zchest衣服",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "zhuangjia": {
+    "translation": "装甲",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "zhuangjia0": {
+    "translation": "装甲0",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "zhuangshi": {
+    "translation": "装饰",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  }
+}

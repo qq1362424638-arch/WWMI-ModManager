@@ -1,0 +1,11 @@
+# 依赖
+node_modules/
+
+# 构建产物
+dist/
+out/
+
+# 截图等临时文件
+*.png.bak
+screenshot*.png
+.tmp-electron-user-data/

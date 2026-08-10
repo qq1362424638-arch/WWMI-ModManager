@@ -1,0 +1,84 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' modimg: assetimg: https: data:; style-src 'self' 'unsafe-inline'; script-src 'self'" />
+  <title>鸣潮 Mod 管理器</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- 一级界面：全屏网格目录总览 -->
+  <div id="page-overview" class="page">
+    <header class="overview-header">
+      <div class="overview-toolbar">
+        <input id="search" type="text" placeholder="搜索…" autocomplete="off" />
+        <label class="switch-label" title="启用/停用后自动向游戏发送 F10 重载">
+          <input id="autoF10" type="checkbox" />
+          <span class="switch-ui"></span>
+          <span>自动 F10</span>
+        </label>
+        <button id="btnF10" class="btn btn-ghost">发送 F10</button>
+        <button id="btnAddOverviewSection" class="btn btn-ghost">新建分组</button>
+        <button id="btnUpdateTools" class="btn btn-ghost">更新配置</button>
+        <button id="btnRefresh" class="btn btn-ghost">刷新</button>
+      </div>
+    </header>
+    <div id="overviewGrid" class="overview-grid"></div>
+    <div id="overviewEmpty" class="empty hidden">暂无目录或 Mods 路径未设置。</div>
+    <div id="rootBar" class="root-bar">Mods 目录：<span id="rootPath"></span></div>
+    <div id="overviewLoading" class="loading-mask hidden">
+      <div class="loading-card">
+        <div class="loading-title">正在加载 · 支持键位</div>
+        <div id="overviewLoadingText" class="loading-text">正在扫描 Mod</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 二级界面：目录详情（mod 列表） -->
+  <div id="page-detail" class="page hidden">
+    <header class="detail-header">
+      <div class="detail-header-info">
+        <div id="detailGridImage" class="detail-grid-image"></div>
+        <h1 id="detailTitle">角色名</h1>
+      </div>
+      <div class="detail-search-wrap">
+        <input id="detailSearch" type="text" placeholder="Tab 搜当前页 · 连按 Tab 搜全局 · F2 切换" title="Tab 搜当前页，连按 Tab 搜全局，F2 切换全局" autocomplete="off" />
+        <span id="detailCount" class="detail-count">0/0</span>
+        <button id="detailSearchGlobal" class="detail-global-search" type="button" title="F2 切换全局搜索" aria-pressed="false">全局</button>
+      </div>
+      <div class="detail-header-actions">
+        <div class="view-toggle" role="group" aria-label="Mod display mode">
+          <button id="btnListView" class="view-toggle-btn active" type="button">列表</button>
+          <button id="btnCardView" class="view-toggle-btn" type="button">卡片</button>
+        </div>
+        <button id="btnFlatten" class="btn btn-ghost">平整目录</button>
+        <button id="btnBatchMove" class="btn btn-ghost">批量移入</button>
+        <button id="btnRefreshb" class="btn btn-ghost">刷新</button>
+        <button id="btnBack" class="btn-back" title="Esc 返回">← 返回</button>
+      </div>
+    </header>
+    <div id="toast" class="toast hidden"></div>
+    <div id="detailLoading" class="loading-mask hidden">
+      <div class="loading-card">
+        <div class="loading-title">正在加载</div>
+        <div id="detailLoadingText" class="loading-text">正在刷新目录</div>
+      </div>
+    </div>
+    <div class="detail-body">
+      <!-- 中栏：mod 表格 -->
+      <section class="detail-mods">
+        <div id="detailSearchResults" class="detail-search-results hidden"></div>
+        <div id="modList" class="mod-list"></div>
+        <div id="detailEmpty" class="empty hidden">该目录下暂无 mod。</div>
+      </section>
+      <!-- 右栏：预览图 -->
+      <aside id="detailPreview" class="detail-preview hidden">
+        <div id="previewImg" class="preview-img"></div>
+        <div id="previewName" class="preview-name"></div>
+      </aside>
+    </div>
+  </div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>
