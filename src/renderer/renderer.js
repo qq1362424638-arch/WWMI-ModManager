@@ -26,17 +26,19 @@ let frameworkIsolation = { active: false }
 const busyModRels = new Set()
 const preloadedImages = new Set()
 let previewRenderToken = 0
+let modHoverPreviewEl = null
+let appTooltipEl = null
 let dataLoadInFlight = null
 let dataLoadQueued = false
 let loadingMessage = ''
 let lastDetailTabAt = 0
+const SEARCH_HINT = 'Tab 搜当前页'
 
 const SHORTCUTS = [
   { key: 'Ctrl+C', scope: '二级', desc: '复制所选 mod' },
   { key: 'Ctrl+V', scope: '二级', desc: '粘贴 mod' },
   { key: 'Ctrl+X', scope: '二级', desc: '剪切所选 mod' },
   { key: 'Delete', scope: '全局', desc: '删除当前所选项到回收站' },
-  { key: 'Enter', scope: '一级', desc: '聚焦搜索框' },
   { key: 'Enter', scope: '输入框', desc: '确认当前编辑' },
   { key: 'Esc', scope: '二级', desc: '返回一级界面' },
   { key: 'Esc', scope: '输入框', desc: '取消当前编辑' },
@@ -49,6 +51,8 @@ const SHORTCUTS = [
 ]
 
 const SHORTCUT_KEY_ORDER = ['Tab', 'Tab Tab', 'Enter', 'Esc', 'F2', 'Delete', 'Ctrl+C', 'Ctrl+V', 'Ctrl+X', 'Ctrl+点击', 'Shift+点击']
+const THEME_STORAGE_KEY = 'wwmi-modora-theme'
+const APP_THEMES = new Set(['dark', 'light', 'pink'])
 
 function getSortedShortcuts() {
   const weight = (key) => {
@@ -62,18 +66,60 @@ function getSortedShortcuts() {
   })
 }
 
+function setAppTheme(theme, persist = true) {
+  const nextTheme = APP_THEMES.has(theme) ? theme : 'light'
+  document.body.dataset.theme = nextTheme
+  document.documentElement.dataset.theme = nextTheme
+  dom.themeSwitch?.querySelectorAll('[data-theme]').forEach((button) => {
+    button.classList.toggle('active', button.dataset.theme === nextTheme)
+  })
+  if (persist) localStorage.setItem(THEME_STORAGE_KEY, nextTheme)
+}
+
+function openSettingsModal() {
+  dom.settingsModal?.classList.remove('hidden')
+  refreshSettingsPaths()
+}
+
+function closeSettingsModal() {
+  dom.settingsModal?.classList.add('hidden')
+}
+
+async function refreshSettingsPaths() {
+  try {
+    const [{ root: modsRoot }, { root: wwmiRoot }] = await Promise.all([
+      window.api.getRoot(),
+      window.api.getWwmiRoot(),
+    ])
+    if (dom.settingsModsPath) dom.settingsModsPath.textContent = modsRoot || ''
+    if (dom.settingsWwmiPath) dom.settingsWwmiPath.textContent = wwmiRoot || ''
+  } catch {
+    if (dom.settingsModsPath) dom.settingsModsPath.textContent = ''
+    if (dom.settingsWwmiPath) dom.settingsWwmiPath.textContent = ''
+  }
+}
+
 const dom = {
+  appSettings: $('#btnAppSettings'),
+  settingsModal: $('#settingsModal'),
+  closeSettings: $('#btnCloseSettings'),
+  settingsModsPath: $('#settingsModsPath'),
+  settingsWwmiPath: $('#settingsWwmiPath'),
+  btnChooseModsRoot: $('#btnChooseModsRoot'),
+  btnChooseWwmiRoot: $('#btnChooseWwmiRoot'),
+  themeSwitch: $('#themeSwitch'),
+  btnWindowMinimize: $('#btnWindowMinimize'),
+  btnWindowMaximize: $('#btnWindowMaximize'),
+  btnWindowClose: $('#btnWindowClose'),
   // overview
   overviewPage: $('#page-overview'),
   overviewGrid: $('#overviewGrid'),
   overviewEmpty: $('#overviewEmpty'),
   search: $('#search'),
-  btnF10: $('#btnF10'),
   btnRefresh: $('#btnRefresh'),
-  autoF10: $('#autoF10'),
-  rootPath: $('#rootPath'),
   overviewTitle: $('#overviewTitle'),
   btnUpdateTools: $('#btnUpdateTools'),
+  btnClearDictionary: $('#btnClearDictionary'),
   btnAddOverviewSection: $('#btnAddOverviewSection'),
   // detail
   detailPage: $('#page-detail'),
@@ -94,6 +140,13 @@ const dom = {
   overviewLoadingText: $('#overviewLoadingText'),
   detailLoading: $('#detailLoading'),
   detailLoadingText: $('#detailLoadingText'),
+  updateProgress: $('#updateProgress'),
+  updateProgressText: $('#updateProgressText'),
+  updateProgressCount: $('#updateProgressCount'),
+  updateProgressFill: $('#updateProgressFill'),
+  updateProgressSteps: $('#updateProgressSteps'),
+  frameworkIsolationNotice: $('#frameworkIsolationNotice'),
+  frameworkIsolationNoticeText: $('#frameworkIsolationNoticeText'),
   btnListView: $('#btnListView'),
   btnCardView: $('#btnCardView'),
   btnBatchMove: $('#btnBatchMove'),
@@ -197,33 +250,147 @@ function sortCurrentModsByFavorite() {
 }
 
 function isIsolationBlockedMod(rel) {
-  return !!frameworkIsolation?.active && getClientModOrderKey(rel) !== frameworkIsolation.targetOrderKey
+  return false
 }
 
 function blockIsolationMod(rel) {
-  if (!isIsolationBlockedMod(rel)) return false
-  showToast('框架隔离调试中，其他 mod 暂不可操作', 'err')
-  return true
+  return false
 }
 
 function blockIsolationRels(rels) {
   return (rels || []).some((rel) => blockIsolationMod(rel))
 }
 
+function ensureAppTooltip() {
+  if (appTooltipEl) return appTooltipEl
+  appTooltipEl = document.createElement('div')
+  appTooltipEl.className = 'app-tooltip hidden'
+  document.body.appendChild(appTooltipEl)
+  return appTooltipEl
+}
+
+function getTooltipTarget(target) {
+  return target?.closest?.('[title], [data-tooltip-title]')
+}
+
+function showAppTooltip(target, x, y) {
+  if (!target) return
+  const title = target.getAttribute('title')
+  if (title) {
+    target.dataset.tooltipTitle = title
+    target.removeAttribute('title')
+  }
+  const text = target.dataset.tooltipTitle
+  if (!text) return
+
+  const tooltip = ensureAppTooltip()
+  tooltip.textContent = text
+  tooltip.classList.remove('hidden')
+
+  const gap = 16
+  const pad = 12
+  const rect = tooltip.getBoundingClientRect()
+  let left = x + gap
+  let top = y + gap
+  if (left + rect.width + pad > window.innerWidth) left = x - rect.width - gap
+  if (top + rect.height + pad > window.innerHeight) top = y - rect.height - gap
+  tooltip.style.left = `${Math.max(pad, left)}px`
+  tooltip.style.top = `${Math.max(pad, top)}px`
+}
+
+function hideAppTooltip() {
+  appTooltipEl?.classList.add('hidden')
+}
+
 function applyFrameworkIsolationUi() {
   dom.modList.querySelectorAll('.mod-item').forEach((item) => {
-    const blocked = isIsolationBlockedMod(item.dataset.rel)
-    item.classList.toggle('isolation-blocked', blocked)
+    const rel = item.dataset.rel
+    const focused = !!frameworkIsolation?.active && frameworkIsolation.targetRel === rel
+    item.classList.toggle('framework-isolation-target', focused)
+    item.classList.remove('isolation-blocked')
     item.querySelectorAll('.mod-check, .btn-lock').forEach((el) => {
-      el.disabled = blocked || isModBusy(item.dataset.rel)
+      el.disabled = isModBusy(rel)
     })
   })
+}
+
+function isFrameworkIsolationTarget(rel) {
+  return !!frameworkIsolation?.active && frameworkIsolation.targetRel === rel
+}
+
+function getFrameworkIsolationTargetInfo() {
+  if (!frameworkIsolation?.active) return null
+  const targetKey = frameworkIsolation.targetOrderKey || getClientModOrderKey(frameworkIsolation.targetRel)
+  for (const group of overviewGroups || []) {
+    const mod = (group.mods || []).find((item) => item.rel === frameworkIsolation.targetRel || item.orderKey === targetKey)
+    if (mod) return { group, mod }
+  }
+  return null
+}
+
+function updateFrameworkIsolationNotice() {
+  if (!dom.frameworkIsolationNotice) return
+  const info = getFrameworkIsolationTargetInfo()
+  dom.frameworkIsolationNotice.classList.toggle('hidden', !info)
+  if (!info) return
+  const groupName = info.group.chineseName || info.group.name || info.group.path || '未知目录'
+  const modName = frameworkIsolation.targetName || info.mod.name || info.mod.rel
+  dom.frameworkIsolationNoticeText.textContent = `${groupName} / ${modName}`
+  positionFrameworkIsolationNotice()
+}
+
+function positionFrameworkIsolationNotice() {
+  if (!dom.frameworkIsolationNotice || dom.frameworkIsolationNotice.classList.contains('hidden')) return
+  dom.frameworkIsolationNotice.style.left = ''
+  dom.frameworkIsolationNotice.style.right = ''
+  dom.frameworkIsolationNotice.style.bottom = ''
+  if (!activeGroup) {
+    dom.frameworkIsolationNotice.style.right = '24px'
+    dom.frameworkIsolationNotice.style.bottom = '52px'
+    return
+  }
+  const modPane = dom.modList.closest('.detail-mods')
+  if (!modPane) return
+  const rect = modPane.getBoundingClientRect()
+  const width = dom.frameworkIsolationNotice.offsetWidth || 360
+  dom.frameworkIsolationNotice.style.left = `${Math.max(16, rect.right - width - 24)}px`
+  dom.frameworkIsolationNotice.style.bottom = `${Math.max(24, window.innerHeight - rect.bottom + 24)}px`
+}
+
+function focusModRow(rel) {
+  const item = Array.from(dom.modList.querySelectorAll('.mod-item')).find((el) => el.dataset.rel === rel)
+  if (!item) return false
+  selectedModRels = new Set([rel])
+  lastSelectedRel = rel
+  updateBatchSelection()
+  selectMod(item, rel)
+  item.scrollIntoView({ block: 'center', behavior: 'smooth' })
+  return true
+}
+
+function jumpToFrameworkIsolationTarget() {
+  const info = getFrameworkIsolationTargetInfo()
+  if (!info) {
+    showToast('未找到当前调试项，请刷新后重试', 'err')
+    return
+  }
+  if (!activeGroup || activeGroup.path !== info.group.path) {
+    openDetail(info.group, info.mod.rel)
+  } else {
+    focusModRow(info.mod.rel)
+  }
+}
+
+function blockDisablingFrameworkIsolationTarget(rel, enable) {
+  if (enable || !isFrameworkIsolationTarget(rel)) return false
+  showToast('请先结束当前框架隔离，再停用正在调试的 mod', 'err')
+  return true
 }
 
 // ==================== 一级界面：总纲网格 ====================
 
 const DEFAULT_OVERVIEW_SECTION = '__default'
-const DEFAULT_COVER_SRC = 'default-cover.svg'
+const DEFAULT_COVER_SRC = '../assets/default.png'
 
 function renderOverview() {
   const term = normalizeSearchText(searchTerm)
@@ -242,10 +409,11 @@ function renderOverview() {
     const expanded = !!term ? section.groups.length > 0 : (!section.collapsed && section.groups.length > 0)
     const header = section.showHeader
       ? `<div class="overview-section-header" data-section-id="${escapeAttr(section.id)}" draggable="${section.custom ? 'true' : 'false'}">
-          <button class="section-toggle" data-section-action="toggle">${expanded ? '⌄' : '›'}</button>
+          <button class="section-toggle" data-section-action="toggle" title="${expanded ? '折叠分组' : '展开分组'}">${expanded ? '⌄' : '›'}</button>
           <span class="section-name">${escapeHtml(section.name)}</span>
           <span class="section-count">${section.groups.length}</span>
-          ${section.custom ? '<button class="section-action" data-section-action="rename">重命名</button><button class="section-action" data-section-action="delete">删除</button>' : ''}
+          ${section.custom ? '<button class="section-action" data-section-action="rename" title="重命名当前分组">重命名</button><button class="section-action" data-section-action="delete" title="删除当前分组，目录不会被删除">删除</button>' : ''}
+          <button class="section-action" data-section-action="create-grid" title="在本地新建一级目录，并放到当前分组最后">新建网格</button>
         </div>`
       : ''
     const cards = !expanded
@@ -272,18 +440,36 @@ function renderOverview() {
       overviewContextPath = path
     })
   })
+  bindOverviewImageFallback()
   bindOverviewSectionHeaders()
   setupOverviewDrag(!term)
+}
+
+function bindOverviewImageFallback() {
+  dom.overviewGrid.querySelectorAll('.overview-thumb-image').forEach((img) => {
+    const src = img.getAttribute('src')
+    if (!src) return
+    const probe = new Image()
+    probe.addEventListener('error', () => {
+      const fallback = document.createElement('span')
+      fallback.className = 'default-cover-thumb'
+      fallback.setAttribute('aria-hidden', 'true')
+      img.replaceWith(fallback)
+    }, { once: true })
+    probe.src = src
+  })
 }
 
 function renderOverviewCard(g, canDrag, sectionId) {
   const en = g.mods.filter((m) => !m.disabled).length
   const tot = g.mods.length
   const isCharacterGroup = String(g.path || '').startsWith('character/')
-  const artwork = (tot > 0 || isCharacterGroup) ? (g.artwork || g.avatar || null) : null
-  const thumb = artwork
-    ? `<img src="${escapeAttr(imageSrc(artwork))}" loading="lazy" alt="" />`
-    : `<img class="default-cover" src="${DEFAULT_COVER_SRC}" loading="lazy" alt="" />`
+  const artwork = g.artwork || ((tot > 0 || isCharacterGroup) ? (g.avatar || null) : null)
+  const thumb = isDefaultCoverSrc(artwork)
+    ? `<span class="default-cover-thumb" aria-hidden="true"></span>`
+    : artwork
+    ? renderOverviewThumbImage(imageSrc(artwork))
+    : `<span class="default-cover-thumb" aria-hidden="true"></span>`
   const countText = `<div class="count-badge">${en}/${tot}</div>`
   const displayName = g.chineseName || g.name || g.path || '未命名'
   const artworkClass = ''
@@ -291,10 +477,19 @@ function renderOverviewCard(g, canDrag, sectionId) {
     ? `<div class="count-badge" title="配置：点击后新建本地目录">配置</div>`
     : countText
   const title = g.missing ? '配置：点击后新建本地目录' : ''
-  return `<div class="folder-card ${tot === 0 ? 'empty' : ''} ${artwork ? 'has-artwork' : ''} ${artworkClass} ${g.missing ? 'missing' : ''}" title="${escapeAttr(title)}" data-path="${escapeAttr(g.path)}" data-order-key="${escapeAttr(g.path)}" data-section-id="${escapeAttr(sectionId)}" draggable="${canDrag && !g.missing ? 'true' : 'false'}">
+  return `<div class="folder-card ${tot === 0 ? 'is-empty' : ''} ${artwork ? 'has-artwork' : ''} ${artworkClass} ${g.missing ? 'missing' : ''}" title="${escapeAttr(title)}" data-path="${escapeAttr(g.path)}" data-order-key="${escapeAttr(g.path)}" data-section-id="${escapeAttr(sectionId)}" draggable="${canDrag && !g.missing ? 'true' : 'false'}">
       <div class="thumb">${thumb}${countTextFinal}</div>
       <div class="card-label">${escapeHtml(displayName)}</div>
     </div>`
+}
+
+function isDefaultCoverSrc(src) {
+  return String(src || '').replace(/\\/g, '/').toLowerCase().includes('/assets/default.png')
+}
+
+function renderOverviewThumbImage(src) {
+  const escaped = escapeAttr(src)
+  return `<img class="overview-thumb-image" src="${escaped}" loading="lazy" alt="" />`
 }
 
 function getOverviewRenderSections(filtered, isSearching) {
@@ -360,12 +555,14 @@ function bindOverviewSectionHeaders() {
         e.stopPropagation()
         const action = button.dataset.sectionAction
         const section = overviewSections.find((item) => item.id === sectionId)
+          || (sectionId === DEFAULT_OVERVIEW_SECTION ? { id: DEFAULT_OVERVIEW_SECTION, name: '未分组', items: [] } : null)
         if (action === 'toggle') {
           if (section) section.collapsed = !section.collapsed
           await saveOverviewLayout()
           renderOverview()
         }
         if (action === 'rename' && section) await renameOverviewSection(section)
+        if (action === 'create-grid' && section) await createOverviewGridInSection(section)
         if (action === 'delete' && section) await deleteOverviewSection(section)
       })
     })
@@ -467,11 +664,11 @@ function ensureOverviewMenu() {
   menu.id = 'overviewMenu'
   menu.className = 'batch-menu hidden'
   menu.innerHTML = `
-    <button data-action="open">打开目录</button>
-    <button data-action="configure">显示配置</button>
-    <button data-action="rename">重命名</button>
-    <button data-action="preview">重新设置预览图</button>
-    <button data-action="delete">删除到回收站</button>
+    <button data-action="open" title="在资源管理器中打开该目录">打开目录</button>
+    <button data-action="configure" title="修改一级卡片显示名称和图片">显示配置</button>
+    <button data-action="rename" title="重命名该目录">重命名</button>
+    <button data-action="preview" title="为该目录重新选择预览图">重新设置预览图</button>
+    <button data-action="delete" title="将该目录删除到回收站">删除到回收站</button>
   `
   document.body.appendChild(menu)
   menu.addEventListener('click', async (e) => {
@@ -500,11 +697,19 @@ function ensureOverviewMenu() {
   return menu
 }
 
+function positionFloatingMenu(menu, x, y) {
+  const pad = 8
+  const rect = menu.getBoundingClientRect()
+  const left = Math.max(pad, Math.min(x, window.innerWidth - rect.width - pad))
+  const top = Math.max(pad, Math.min(y, window.innerHeight - rect.height - pad))
+  menu.style.left = `${left}px`
+  menu.style.top = `${top}px`
+}
+
 function showOverviewMenu(x, y) {
   const menu = ensureOverviewMenu()
-  menu.style.left = `${x}px`
-  menu.style.top = `${y}px`
   menu.classList.remove('hidden')
+  positionFloatingMenu(menu, x, y)
 }
 
 function hideOverviewMenu() {
@@ -551,10 +756,10 @@ function configureOverviewMeta(group) {
           <input class="text-dialog-input" data-meta-artwork type="text" value="${escapeAttr(group.customMeta?.artworkPath || '')}" placeholder="未设置则自动匹配或使用默认图" />
         </label>
         <div class="text-dialog-actions">
-          <button class="btn btn-ghost" data-meta-action="choose">选择图片</button>
-          <button class="btn btn-ghost" data-meta-action="clear">清除图片</button>
-          <button class="btn btn-ghost" data-meta-action="cancel">取消</button>
-          <button class="btn btn-primary" data-meta-action="save">保存</button>
+          <button class="btn btn-ghost" data-meta-action="choose" title="从本地选择一张卡片图片">选择图片</button>
+          <button class="btn btn-ghost" data-meta-action="clear" title="移除自定义图片并恢复自动匹配">清除图片</button>
+          <button class="btn btn-ghost" data-meta-action="cancel" title="关闭窗口，不保存修改">取消</button>
+          <button class="btn btn-primary" data-meta-action="save" title="保存显示名称和图片设置">保存</button>
         </div>
       </div>
     `
@@ -609,10 +814,6 @@ async function trashOverviewGroup(group) {
 // ==================== 批量移入 ====================
 
 async function handleBatchMove(targetPath) {
-  if (frameworkIsolation?.active) {
-    showToast('框架隔离调试中，暂不可批量移入', 'err')
-    return
-  }
   if (!targetPath) return
   const src = await window.api.chooseMoveSources()
   if (!src.ok || src.canceled) return
@@ -650,15 +851,9 @@ function openDetail(group, focusRel = null) {
   // 渲染 mod 表
   renderModTable()
   if (focusRel) {
-    const selectedItem = Array.from(dom.modList.querySelectorAll('.mod-item'))
-      .find((item) => item.dataset.rel === focusRel)
-    if (selectedItem) {
-      selectedModRels = new Set([focusRel])
-      lastSelectedRel = focusRel
-      updateBatchSelection()
-      selectMod(selectedItem, focusRel)
-    }
+    focusModRow(focusRel)
   }
+  updateFrameworkIsolationNotice()
 }
 
 function updateDetailHeader(group) {
@@ -672,7 +867,7 @@ function updateDetailHeader(group) {
   img.alt = ''
   img.src = src
   img.addEventListener('error', () => {
-    if (img.src.endsWith(DEFAULT_COVER_SRC)) return
+    if (img.src.endsWith('/assets/default.png') || img.src.endsWith('\\assets\\default.png')) return
     img.src = DEFAULT_COVER_SRC
   }, { once: true })
   dom.detailGridImage.replaceChildren(img)
@@ -712,7 +907,7 @@ function renderModTable() {
     dom.modList.innerHTML = `<div class="empty-mods">
         <div class="empty-icon">📥</div>
         <div>该目录下暂无 mod</div>
-        <button class="btn-import-detail" id="btnBatchMoveEmpty">批量移入</button>
+        <button class="btn-import-detail" id="btnBatchMoveEmpty" title="批量选择文件夹并移入当前目录">批量移入</button>
       </div>`
     dom.detailEmpty.classList.add('hidden')
     const importBtn = dom.modList.querySelector('#btnBatchMoveEmpty')
@@ -725,9 +920,12 @@ function renderModTable() {
   dom.modList.className = `mod-list ${detailViewMode === 'card' ? 'card-view' : 'list-view'}`
 
   const separatorIndex = mods.findIndex((m, index) => m.disabled && index > 0 && !mods[index - 1].disabled)
+  const separatorHtml = separatorIndex >= 0
+    ? `<div class="mod-state-separator ${detailViewMode === 'card' ? 'card-view' : 'list-view'}" aria-hidden="true"></div>`
+    : ''
   dom.modList.innerHTML = mods.map((m, index) => {
     const extraClass = index === separatorIndex ? 'state-separator' : ''
-    return detailViewMode === 'card' ? renderModCard(m, extraClass) : renderModRow(m, extraClass)
+    return `${index === separatorIndex ? separatorHtml : ''}${detailViewMode === 'card' ? renderModCard(m, extraClass) : renderModRow(m, extraClass)}`
   }).join('')
   bindModItems()
   setupModDrag()
@@ -769,7 +967,7 @@ function renderGlobalSearchResults(term) {
           const thumb = image
             ? `<img src="${escapeAttr(imageSrc(image))}" loading="lazy" alt="" />`
             : '<span>网格</span>'
-          return `<button class="global-search-item" data-search-group="${escapeAttr(group.path)}" type="button">
+          return `<button class="global-search-item" data-search-group="${escapeAttr(group.path)}" type="button" title="进入该目录">
               <div class="global-search-thumb">${thumb}</div>
               <div>
                 <div class="global-search-name">${escapeHtml(group.chineseName || group.name || group.path)}</div>
@@ -788,7 +986,7 @@ function renderGlobalSearchResults(term) {
           const thumb = preview
             ? `<img src="${escapeAttr(preview)}" loading="lazy" alt="" />`
             : '<span>MOD</span>'
-          return `<button class="global-search-item" data-search-group="${escapeAttr(group.path)}" data-search-mod="${escapeAttr(mod.rel)}" type="button">
+          return `<button class="global-search-item" data-search-group="${escapeAttr(group.path)}" data-search-mod="${escapeAttr(mod.rel)}" type="button" title="进入该 mod 所在目录并选中它">
               <div class="global-search-thumb">${thumb}</div>
               <div>
                 <div class="global-search-name">${escapeHtml(mod.name)}</div>
@@ -819,13 +1017,13 @@ function renderModRow(m, extraClass = '') {
   const group = displayGroup(m)
   return `<div class="mod-row mod-item ${m.disabled ? 'disabled' : ''} ${extraClass}" data-rel="${escapeAttr(m.rel)}" data-order-key="${escapeAttr(m.orderKey || m.rel)}" data-preview-src="${escapeAttr(previewSrc)}" draggable="true">
       <input type="checkbox" class="mod-check" ${m.disabled ? '' : 'checked'} />
-      <button class="btn-lock ${m.locked ? 'locked' : ''}" title="${m.locked ? '取消锁定配置' : '锁定配置'}">${m.locked ? '🔒' : '🔓'}</button>
+      <button class="btn-lock ${m.locked ? 'locked' : ''}" title="${m.locked ? '取消锁定配置' : '锁定配置'}">${renderLockIcon(m.locked)}</button>
       <div class="mod-thumb">${thumb}</div>
       <div class="mod-info">
-        <div class="mod-name" data-edit-name title="${escapeAttr(m.name)}">${escapeHtml(m.name)}</div>
+        <div class="mod-name" data-edit-name>${escapeHtml(m.name)}</div>
         ${group ? `<div class="mod-group">${escapeHtml(group)}</div>` : ''}
       </div>
-      <button class="btn-favorite ${m.favorite ? 'favorited' : ''}" title="${m.favorite ? '取消收藏' : '收藏'}" aria-pressed="${m.favorite ? 'true' : 'false'}">${m.favorite ? '★' : '☆'}</button>
+      <button class="btn-favorite ${m.favorite ? 'favorited' : ''}" title="${m.favorite ? '取消收藏' : '收藏'}" aria-pressed="${m.favorite ? 'true' : 'false'}">${renderFavoriteIcon(m.favorite)}</button>
     </div>`
 }
 
@@ -840,13 +1038,13 @@ function renderModCard(m, extraClass = '') {
         ${thumb}
         <label class="mod-card-toggle">
           <input type="checkbox" class="mod-check" ${m.disabled ? '' : 'checked'} />
-          <span>${m.disabled ? 'OFF' : 'ON'}</span>
+          <span></span>
         </label>
-        <button class="btn-lock ${m.locked ? 'locked' : ''}" title="${m.locked ? '取消锁定配置' : '锁定配置'}">${m.locked ? '🔒' : '🔓'}</button>
-        <button class="btn-favorite ${m.favorite ? 'favorited' : ''}" title="${m.favorite ? '取消收藏' : '收藏'}" aria-pressed="${m.favorite ? 'true' : 'false'}">${m.favorite ? '★' : '☆'}</button>
+        <button class="btn-lock ${m.locked ? 'locked' : ''}" title="${m.locked ? '取消锁定配置' : '锁定配置'}">${renderLockIcon(m.locked)}</button>
+        <button class="btn-favorite ${m.favorite ? 'favorited' : ''}" title="${m.favorite ? '取消收藏' : '收藏'}" aria-pressed="${m.favorite ? 'true' : 'false'}">${renderFavoriteIcon(m.favorite)}</button>
       </div>
       <div class="mod-card-body">
-        <div class="mod-name" data-edit-name title="${escapeAttr(m.name)}">${escapeHtml(m.name)}</div>
+        <div class="mod-name" data-edit-name>${escapeHtml(m.name)}</div>
         ${group ? `<div class="mod-card-meta">${escapeHtml(group)}</div>` : ''}
       </div>
     </div>`
@@ -859,15 +1057,10 @@ function bindModItems() {
     const lockBtn = item.querySelector('.btn-lock')
     const favoriteBtn = item.querySelector('.btn-favorite')
     const nameEl = item.querySelector('[data-edit-name]')
-    const isolationBlocked = isIsolationBlockedMod(rel)
+    const previewSrc = item.dataset.previewSrc
+    const hoverPreviewEnabled = detailViewMode !== 'card'
     if (isModBusy(rel)) {
       item.classList.add('busy')
-      check.disabled = true
-      lockBtn.disabled = true
-      favoriteBtn.disabled = true
-    }
-    if (isolationBlocked) {
-      item.classList.add('isolation-blocked')
       check.disabled = true
       lockBtn.disabled = true
       favoriteBtn.disabled = true
@@ -882,9 +1075,18 @@ function bindModItems() {
       selectMod(item, rel)
     })
 
+    item.addEventListener('mouseenter', (e) => {
+      if (!hoverPreviewEnabled || !previewSrc) return
+      showModHoverPreview(previewSrc, e.clientX, e.clientY)
+    })
+    item.addEventListener('mousemove', (e) => {
+      if (!hoverPreviewEnabled || !previewSrc || modHoverPreviewEl?.classList.contains('hidden')) return
+      showModHoverPreview(previewSrc, e.clientX, e.clientY)
+    })
+    if (hoverPreviewEnabled) item.addEventListener('mouseleave', hideModHoverPreview)
+
     item.addEventListener('contextmenu', (e) => {
       e.preventDefault()
-      if (blockIsolationMod(rel)) return
       if (blockBusyMod(rel)) return
       contextMenuRel = rel
       if (!selectedModRels.has(rel)) {
@@ -905,9 +1107,8 @@ function bindModItems() {
 
     check.addEventListener('change', async () => {
       const enable = check.checked
-      if (frameworkIsolation?.active) {
-        check.checked = !enable
-        showToast('框架隔离调试中，请先结束隔离再启停 mod', 'err')
+      if (blockDisablingFrameworkIsolationTarget(rel, enable)) {
+        check.checked = true
         return
       }
       if (blockIsolationMod(rel)) {
@@ -1040,12 +1241,12 @@ function ensureBatchMenu() {
   menu.id = 'batchMenu'
   menu.className = 'batch-menu hidden'
   menu.innerHTML = `
-    <button data-action="open">打开目录</button>
-    <button data-action="preview">指定预览图</button>
-    <button data-action="enable">启用所选</button>
-    <button data-action="disable">停用所选</button>
-    <button data-action="move">移动到...</button>
-    <button data-action="delete">删除到回收站</button>
+    <button data-action="open" title="在资源管理器中打开所选 mod 目录">打开目录</button>
+    <button data-action="preview" title="为所选 mod 指定预览图">指定预览图</button>
+    <button data-action="enable" title="启用当前选中的 mod">启用所选</button>
+    <button data-action="disable" title="停用当前选中的 mod">停用所选</button>
+    <button data-action="move" title="将所选 mod 移动到其他目录">移动到...</button>
+    <button data-action="delete" title="将所选 mod 删除到回收站">删除到回收站</button>
   `
   document.body.appendChild(menu)
   menu.addEventListener('click', async (e) => {
@@ -1064,35 +1265,37 @@ function ensureBatchMenu() {
   return menu
 }
 
+function getContextMenuMod() {
+  const rel = contextMenuRel || getSelectedModRels()[0]
+  if (!rel || !activeGroup?.mods) return null
+  return activeGroup.mods.find((mod) => mod.rel === rel) || null
+}
+
 function syncBatchMenu() {
   const menu = ensureBatchMenu()
-  const isolateBtn = menu.querySelector('[data-action="framework-isolate"]')
-  const restoreBtn = menu.querySelector('[data-action="framework-restore"]')
-  if (frameworkIsolation?.active) {
-    if (!restoreBtn) {
-      const btn = document.createElement('button')
-      btn.dataset.action = 'framework-restore'
-      btn.textContent = '结束框架隔离'
-      menu.insertBefore(btn, menu.querySelector('[data-action="move"]'))
-    }
-    if (isolateBtn) isolateBtn.remove()
-  } else {
-    if (!isolateBtn) {
-      const btn = document.createElement('button')
-      btn.dataset.action = 'framework-isolate'
-      btn.textContent = '框架隔离调试此项'
-      menu.insertBefore(btn, menu.querySelector('[data-action="move"]'))
-    }
-    if (restoreBtn) restoreBtn.remove()
+  let frameworkBtn = menu.querySelector('[data-action="framework-isolate"], [data-action="framework-restore"]')
+  const mod = getContextMenuMod()
+  const isTarget = !!frameworkIsolation?.active && mod?.rel === frameworkIsolation.targetRel
+  const isEnabled = !!mod && !mod.disabled
+  const label = frameworkIsolation?.active
+    ? (isTarget ? '结束框架隔离' : '切换到此项调试')
+    : '框架隔离调试此项'
+  const action = frameworkIsolation?.active && isTarget ? 'framework-restore' : 'framework-isolate'
+  if (!frameworkBtn) {
+    frameworkBtn = document.createElement('button')
+    menu.insertBefore(frameworkBtn, menu.querySelector('[data-action="move"]'))
   }
+  frameworkBtn.dataset.action = action
+  frameworkBtn.textContent = label
+  frameworkBtn.disabled = !isEnabled
+  frameworkBtn.title = isEnabled ? label : '请先开启该 mod'
 }
 
 function showBatchMenu(x, y) {
   const menu = ensureBatchMenu()
   syncBatchMenu()
-  menu.style.left = `${x}px`
-  menu.style.top = `${y}px`
   menu.classList.remove('hidden')
+  positionFloatingMenu(menu, x, y)
 }
 
 function hideBatchMenu() {
@@ -1129,35 +1332,42 @@ async function openSelectedModFolder() {
 
 async function startContextFrameworkIsolation() {
   const rel = contextMenuRel || getSelectedModRels()[0]
+  const mod = activeGroup?.mods?.find((item) => item.rel === rel)
   if (!rel || blockBusyMod(rel)) return
-  if (frameworkIsolation?.active) {
-    showToast('请先结束当前框架隔离', 'err')
+  if (mod?.disabled) {
+    showToast('请先开启该 mod，再进行框架隔离', 'err')
+    return
+  }
+  if (frameworkIsolation?.active && frameworkIsolation.targetRel === rel) {
+    showToast('当前已在此项调试中')
     return
   }
   const targetOrderKey = getClientModOrderKey(rel)
-  frameworkIsolation = { active: true, pending: true, targetOrderKey, targetRel: rel }
+  const previous = frameworkIsolation
+    frameworkIsolation = { ...(frameworkIsolation || { active: true }), active: true, pending: true, targetOrderKey, targetRel: rel }
   applyFrameworkIsolationUi()
+  updateFrameworkIsolationNotice()
   hideBatchMenu()
-  showToast('正在进入框架隔离...')
-  setModBusy(rel, true)
+  showToast(frameworkIsolation?.active && previous?.active ? '正在切换框架隔离目标...' : '正在进入框架隔离...')
   try {
     const result = await window.api.startFrameworkIsolation(rel)
     if (!result.ok) {
-      frameworkIsolation = { active: false }
+      frameworkIsolation = previous || { active: false }
       applyFrameworkIsolationUi()
+      updateFrameworkIsolationNotice()
       showToast(result.error || '框架隔离失败', 'err')
       return
     }
     frameworkIsolation = result.state || { active: true }
+    applyFrameworkIsolationUi()
+    updateFrameworkIsolationNotice()
     selectedModRel = rel
-    applyFrameworkIsolationUi()
-    showToast('已进入框架隔离调试，其他 mod 已禁止互动')
+    showToast(previous?.active ? '已切换框架隔离目标' : '已进入框架隔离调试，其他 mod 已禁止互动')
   } catch (err) {
-    frameworkIsolation = { active: false }
+    frameworkIsolation = previous || { active: false }
     applyFrameworkIsolationUi()
+    updateFrameworkIsolationNotice()
     showToast('框架隔离失败：' + err.message, 'err')
-  } finally {
-    setModBusy(rel, false)
   }
 }
 
@@ -1166,6 +1376,7 @@ async function endContextFrameworkIsolation() {
   const previous = frameworkIsolation
   frameworkIsolation = { active: false }
   applyFrameworkIsolationUi()
+  updateFrameworkIsolationNotice()
   hideBatchMenu()
   showToast('正在结束框架隔离...')
   try {
@@ -1173,6 +1384,7 @@ async function endContextFrameworkIsolation() {
     if (!result.ok) {
       frameworkIsolation = previous
       applyFrameworkIsolationUi()
+      updateFrameworkIsolationNotice()
       showToast(result.error || '结束隔离失败', 'err')
       return
     }
@@ -1180,6 +1392,7 @@ async function endContextFrameworkIsolation() {
   } catch (err) {
     frameworkIsolation = previous
     applyFrameworkIsolationUi()
+    updateFrameworkIsolationNotice()
     showToast('结束隔离失败：' + err.message, 'err')
   }
 }
@@ -1239,10 +1452,7 @@ async function trashSelectedMods() {
 async function applySelectedEnabled(enable) {
   const rels = getSelectedModRels()
   if (!rels.length) return
-  if (frameworkIsolation?.active) {
-    showToast('框架隔离调试中，暂不可批量启停', 'err')
-    return
-  }
+  if (rels.some((rel) => blockDisablingFrameworkIsolationTarget(rel, enable))) return
   if (blockIsolationRels(rels)) return
   if (hasBusyMod(rels)) {
     showToast('请等当前操作完成', 'err')
@@ -1309,10 +1519,6 @@ function copyOrCutSelectedMods(mode) {
 
 async function pasteSelectedMods() {
   if (!isDetailVisible() || !activeGroup || !modClipboard?.rels?.length) return
-  if (frameworkIsolation?.active) {
-    showToast('框架隔离调试中，暂不可粘贴 mod', 'err')
-    return
-  }
   if (hasBusyMod(modClipboard.rels)) {
     showToast('请等当前操作完成', 'err')
     return
@@ -1482,6 +1688,40 @@ async function renameOverviewSection(section) {
   renderOverview()
 }
 
+async function createOverviewGridInSection(section) {
+  const name = await askText({
+    title: '新建网格',
+    placeholder: '文件夹名称',
+    confirmText: '创建',
+  })
+  const cleanName = String(name || '').trim()
+  if (!cleanName) return
+  try {
+    const result = await window.api.createOverviewGrid(cleanName)
+    if (!result?.ok) {
+      if (!result?.canceled) showToast(result?.error || '创建网格失败', 'err')
+      return
+    }
+    await loadData({ quiet: true })
+    overviewSections.forEach((item) => {
+      item.items = (item.items || []).filter((path) => path !== result.path)
+    })
+    const current = overviewSections.find((item) => item.id === section.id)
+    if (current) {
+      current.items = [...(current.items || []), result.path]
+    } else {
+      const created = overviewGroups.find((group) => group.path === result.path)
+      overviewGroups = overviewGroups.filter((group) => group.path !== result.path)
+      if (created) overviewGroups.push(created)
+    }
+    await saveOverviewLayout()
+    renderOverview()
+    showToast(`已新建网格：${result.name}`)
+  } catch (err) {
+    showToast('创建网格失败：' + err.message, 'err')
+  }
+}
+
 function askText({ title, value = '', placeholder = '', confirmText = '确定' }) {
   return new Promise((resolve) => {
     const modal = document.createElement('div')
@@ -1491,8 +1731,8 @@ function askText({ title, value = '', placeholder = '', confirmText = '确定' }
         <div class="text-dialog-title">${escapeHtml(title)}</div>
         <input class="text-dialog-input" type="text" value="${escapeAttr(value)}" placeholder="${escapeAttr(placeholder)}" />
         <div class="text-dialog-actions">
-          <button class="btn btn-ghost" data-dialog-action="cancel">取消</button>
-          <button class="btn btn-primary" data-dialog-action="confirm">${escapeHtml(confirmText)}</button>
+          <button class="btn btn-ghost" data-dialog-action="cancel" title="关闭窗口，不保存修改">取消</button>
+          <button class="btn btn-primary" data-dialog-action="confirm" title="确认并提交当前输入">${escapeHtml(confirmText)}</button>
         </div>
       </div>
     `
@@ -1614,6 +1854,7 @@ function selectMod(item, rel) {
   if (!mod) return
 
   dom.detailPreview.classList.remove('hidden')
+  updateFrameworkIsolationNotice()
   const sourceImg = item.querySelector('img')
   const sourcePreviewSrc = sourceImg?.naturalWidth > 0
     ? (sourceImg.currentSrc || sourceImg.src)
@@ -1638,7 +1879,11 @@ function selectMod(item, rel) {
     dom.previewImg.innerHTML = `<div class="no-thumb">无预览图</div>`
   }
   bindPreviewZoom()
+  if (!mod.keyBindingsLoaded && !mod.keyBindingsLoading) {
+    mod.keyBindingsLoading = true
+  }
   renderDetailPanel(mod)
+  loadModKeyBindings(mod, renderToken)
 }
 
 function handlePreviewImageError(event) {
@@ -1681,11 +1926,13 @@ function showImageModal(src) {
 
 function renderDetailPanel(mod) {
   const status = mod.disabled ? '已停用' : '已启用'
-  const keys = Array.isArray(mod.keyBindings) && mod.keyBindings.length
+  const keys = mod.keyBindingsLoading
+    ? `<div class="key-empty">正在读取键位…</div>`
+    : Array.isArray(mod.keyBindings) && mod.keyBindings.length
     ? mod.keyBindings.map((binding, index) => `
         <div class="key-row">
-          <button class="key-value ${binding.locked ? 'locked' : ''}" data-key-index="${index}">${escapeHtml(binding.displayKey || binding.key)}</button>
-          <span class="key-label">${escapeHtml(formatKeyLabel(binding))}</span>
+          <button class="key-value" data-key-index="${index}" title="单击后按下新的按键或组合键">${escapeHtml(binding.displayKey || binding.key)}</button>
+          ${renderKeyLabel(binding)}
         </div>`).join('')
     : `<div class="key-empty">未找到 Key 绑定</div>`
 
@@ -1699,18 +1946,18 @@ function renderDetailPanel(mod) {
         ${mod.locked ? '<span class="state-lock">配置锁定</span>' : ''}
       </div>
       <div class="detail-actions">
-        <button data-detail-action="rename">重命名</button>
-        <button data-detail-action="preview">指定预览图</button>
-        <button data-detail-action="open">打开目录</button>
+        <button data-detail-action="rename" title="重命名当前 mod 目录">重命名</button>
+        <button data-detail-action="preview" title="为当前 mod 指定预览图">指定预览图</button>
+        <button data-detail-action="open" title="在资源管理器中打开当前 mod 目录">打开目录</button>
       </div>
       <div class="detail-actions detail-danger-actions">
-        <button class="danger-action" data-detail-action="translate">键位整理翻译</button>
-        <button class="danger-action" data-detail-action="watch">监听并修改 ini</button>
+        <button class="danger-action" data-detail-action="translate" title="整理并为 Interface.ini 添加中文键位说明">ini键位翻译整理</button>
+        <button class="danger-action" data-detail-action="watch" title="监听 ini 文件并按热键切换参数">ini热键监听修改</button>
       </div>
       <div class="key-section">
         <div class="key-section-header">
           <div class="key-section-title">MOD 的按键绑定</div>
-          <button data-detail-action="keyPopup">弹窗置顶</button>
+          <button data-detail-action="keyPopup" title="打开独立置顶窗口查看按键绑定">弹窗置顶</button>
         </div>
         ${keys}
       </div>
@@ -1719,8 +1966,50 @@ function renderDetailPanel(mod) {
   bindDetailPanel(mod)
 }
 
+async function loadModKeyBindings(mod, renderToken) {
+  if (mod.keyBindingsLoaded) return
+  if (!window.api.getKeyBindings) {
+    mod.keyBindingsLoading = false
+    renderDetailPanel(mod)
+    return
+  }
+  try {
+    const result = await window.api.getKeyBindings(mod.rel)
+    if (renderToken !== previewRenderToken || selectedModRel !== mod.rel) return
+    mod.keyBindingsLoading = false
+    if (result?.ok) {
+      mod.keyBindings = Array.isArray(result.keyBindings) ? result.keyBindings : []
+      mod.keyBindingsLoaded = true
+    } else {
+      showToast(result?.err || '读取键位失败', 'err')
+    }
+    renderDetailPanel(mod)
+  } catch (err) {
+    if (renderToken !== previewRenderToken || selectedModRel !== mod.rel) return
+    mod.keyBindingsLoading = false
+    showToast(err.message || '读取键位失败', 'err')
+    renderDetailPanel(mod)
+  }
+}
+
 function formatKeyLabel(binding) {
   return binding.description || String(binding.section || 'Key').replace(/^Key/i, '')
+}
+
+function formatRawKeyLabel(binding) {
+  return String(binding.rawDescription || '').trim()
+}
+
+function renderKeyLabel(binding) {
+  const label = formatKeyLabel(binding)
+  const raw = formatRawKeyLabel(binding)
+  const showRaw = raw && raw.toLowerCase() !== String(label || '').trim().toLowerCase()
+  return `
+    <span class="key-label-wrap">
+      <span class="key-label">${escapeHtml(label)}</span>
+      ${showRaw ? `<span class="key-original">${escapeHtml(raw)}</span>` : ''}
+    </span>
+  `
 }
 
 function bindDetailPanel(mod) {
@@ -1780,31 +2069,121 @@ function bindDetailPanel(mod) {
       if (blockIsolationMod(mod.rel)) return
       if (blockBusyMod(mod.rel)) return
       const binding = mod.keyBindings[Number(button.dataset.keyIndex)]
-      const nextKey = prompt('修改按键', binding.key)
+      const nextKey = await captureModKey(binding)
       if (!nextKey || nextKey === binding.key) return
       setModBusy(mod.rel, true)
+      button.disabled = true
       try {
         const result = await window.api.setModKey(mod.rel, binding, nextKey)
         if (result.ok) {
           showToast('按键已保存')
-          await loadData({ quiet: true })
+          mod.keyBindingsLoaded = false
+          mod.keyBindingsLoading = true
+          renderDetailPanel(mod)
+          await loadModKeyBindings(mod, previewRenderToken)
         } else {
           showToast('操作失败：' + (result.error || result.err || '未知错误'), 'err')
         }
       } finally {
+        button.disabled = false
         setModBusy(mod.rel, false)
       }
     })
+
   })
+}
+
+function captureModKey(binding) {
+  return new Promise((resolve) => {
+    const modal = document.createElement('div')
+    modal.className = 'key-capture-modal'
+    modal.innerHTML = `
+      <div class="key-capture-dialog" role="dialog" aria-modal="true">
+        <div class="key-capture-title">重设按键</div>
+        <div class="key-capture-current">${escapeHtml(binding.displayKey || binding.key || '未设置')}</div>
+        <div class="key-capture-hint">按下新的按键或组合键，Esc 取消</div>
+      </div>
+    `
+    let finished = false
+    const finish = (value) => {
+      if (finished) return
+      finished = true
+      document.removeEventListener('keydown', onKeyDown, true)
+      modal.remove()
+      resolve(value)
+    }
+    const onKeyDown = (event) => {
+      event.preventDefault()
+      event.stopPropagation()
+      if (event.key === 'Escape') {
+        finish(null)
+        return
+      }
+      const nextKey = eventToModKey(event)
+      if (!nextKey) return
+      finish(nextKey)
+    }
+    modal.addEventListener('click', (event) => {
+      if (event.target === modal) finish(null)
+    })
+    document.body.appendChild(modal)
+    document.addEventListener('keydown', onKeyDown, true)
+  })
+}
+
+function eventToModKey(event) {
+  const base = normalizeEventKey(event)
+  if (!base || ['alt', 'ctrl', 'shift', 'control', 'meta'].includes(base)) return ''
+  const mods = []
+  if (event.ctrlKey) mods.push('ctrl')
+  if (event.altKey) mods.push('alt')
+  if (event.shiftKey) mods.push('shift')
+  return [...new Set(mods), base].join(' ')
+}
+
+function normalizeEventKey(event) {
+  const key = String(event.key || '').trim()
+  const code = String(event.code || '').trim()
+  if (!key) return ''
+  if (/^Key[A-Z]$/.test(code)) return code.slice(3).toLowerCase()
+  if (/^Digit\d$/.test(code)) return code.slice(5)
+  if (/^Numpad\d$/.test(code)) return `numpad${code.slice(6)}`
+  const codeMap = {
+    NumpadAdd: 'numpad+',
+    NumpadSubtract: 'numpad-',
+    NumpadMultiply: 'numpad*',
+    NumpadDivide: 'numpad/',
+    NumpadDecimal: 'numpad.',
+    ArrowUp: 'VK_UP',
+    ArrowDown: 'VK_DOWN',
+    ArrowLeft: 'VK_LEFT',
+    ArrowRight: 'VK_RIGHT',
+    Space: 'VK_SPACE',
+    Enter: 'VK_RETURN',
+    Tab: 'VK_TAB',
+    Backspace: 'VK_BACK',
+    Delete: 'VK_DELETE',
+    Insert: 'VK_INSERT',
+    Home: 'VK_HOME',
+    End: 'VK_END',
+    PageUp: 'VK_PRIOR',
+    PageDown: 'VK_NEXT',
+  }
+  if (codeMap[code]) return codeMap[code]
+  if (/^F\d{1,2}$/i.test(key)) return `VK_${key.toUpperCase()}`
+  if (key.length === 1) return key.toLowerCase()
+  return key.toLowerCase()
 }
 
 function closeDetailPanel() {
   previewRenderToken += 1
+  hideModHoverPreview()
   dom.detailPreview.classList.add('hidden')
   dom.previewImg.innerHTML = ''
   dom.previewName.textContent = ''
   selectedModRel = null
   dom.modList.querySelectorAll('.mod-item.selected').forEach((item) => item.classList.remove('selected'))
+  updateFrameworkIsolationNotice()
 }
 
 function startRename(nameEl, rel) {
@@ -1825,7 +2204,6 @@ function startRename(nameEl, rel) {
     if (done) return
     done = true
     nameEl.textContent = mod.name
-    nameEl.title = mod.name
     setModBusy(rel, false)
   }
 
@@ -1847,7 +2225,6 @@ function startRename(nameEl, rel) {
     } catch (err) {
       showToast('重命名失败：' + err.message, 'err')
       nameEl.textContent = mod.name
-      nameEl.title = mod.name
     } finally {
       setModBusy(rel, false)
     }
@@ -1863,6 +2240,7 @@ function startRename(nameEl, rel) {
 }
 
 function backToOverview() {
+  hideModHoverPreview()
   dom.detailPage.classList.add('hidden')
   dom.overviewPage.classList.remove('hidden')
   activeGroup = null
@@ -1871,6 +2249,7 @@ function backToOverview() {
   lastSelectedRel = null
   dom.detailPreview.classList.add('hidden')
   renderOverview()
+  updateFrameworkIsolationNotice()
 }
 
 // ==================== 批量操作 ====================
@@ -1934,6 +2313,60 @@ function getModPreviewFallbacks(mod) {
     .map((name) => directory + name)
 }
 
+function renderLockIcon(locked) {
+  return locked
+    ? `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 11V8a5 5 0 0 1 10 0v3"/><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M12 14v3"/></svg>`
+    : `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 11V8a5 5 0 0 1 4-4"/><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M12 14v3"/></svg>`
+}
+
+function renderFavoriteIcon(favorited) {
+  return favorited
+    ? `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 17.2 6.9 20l1-5.7L3.7 10l5.8-.8L12 3.9l2.5 5.3 5.8.8-4.2 4.3 1 5.7z"/></svg>`
+    : `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.9 14.5 9.2 20.3 10l-4.2 4.3 1 5.7L12 17.2 6.9 20l1-5.7L3.7 10l5.8-.8z"/></svg>`
+}
+
+function ensureModHoverPreview() {
+  if (modHoverPreviewEl) return modHoverPreviewEl
+  modHoverPreviewEl = document.createElement('div')
+  modHoverPreviewEl.className = 'mod-hover-preview hidden'
+  modHoverPreviewEl.innerHTML = '<img alt="" />'
+  document.body.appendChild(modHoverPreviewEl)
+  return modHoverPreviewEl
+}
+
+function hideModHoverPreview() {
+  modHoverPreviewEl?.classList.add('hidden')
+}
+
+function showModHoverPreview(src, x, y) {
+  if (!src) {
+    hideModHoverPreview()
+    return
+  }
+  const panel = ensureModHoverPreview()
+  const img = panel.querySelector('img')
+  if (img.src !== src) img.src = src
+  panel.classList.remove('hidden')
+
+  const maxW = Math.min(520, Math.max(280, Math.floor(window.innerWidth * 0.32)))
+  const maxH = Math.min(720, Math.max(320, Math.floor(window.innerHeight * 0.72)))
+  panel.style.maxWidth = `${maxW}px`
+  panel.style.maxHeight = `${maxH}px`
+  img.style.maxWidth = `${maxW}px`
+  img.style.maxHeight = `${maxH}px`
+
+  const pad = 24
+  const gap = 40
+  let left = x + gap
+  let top = y - Math.round(maxH * 0.28)
+  if (left + maxW + pad > window.innerWidth) left = x - maxW - gap
+  if (left < pad) left = pad
+  if (top + maxH + pad > window.innerHeight) top = window.innerHeight - maxH - pad
+  if (top < pad) top = pad
+  panel.style.left = `${left}px`
+  panel.style.top = `${top}px`
+}
+
 function preloadModImages(mods) {
   const work = () => {
     for (const mod of mods.slice(0, 36)) {
@@ -1957,6 +2390,61 @@ function showToast(msg, kind = 'ok') {
   toastTimer = setTimeout(() => dom.toast.classList.add('hidden'), 3000)
 }
 
+const UPDATE_CONFIG_STEPS = [
+  { key: 'tools', title: '更新脚本文件', desc: '复制技能脚本与工具文件' },
+  { key: 'characters', title: '同步角色配置', desc: '更新角色名称、头像与缓存配置' },
+  { key: 'refresh', title: '刷新目录数据', desc: '重新扫描 Mods 列表并刷新界面' },
+]
+
+let updateProgressHideTimer = null
+let updateProgressActiveKey = 'tools'
+function setUpdateProgress(activeKey, status = 'running', message = '') {
+  if (!dom.updateProgress) return
+  clearTimeout(updateProgressHideTimer)
+
+  const activeIndex = Math.max(0, UPDATE_CONFIG_STEPS.findIndex((step) => step.key === activeKey))
+  updateProgressActiveKey = UPDATE_CONFIG_STEPS[activeIndex]?.key || 'tools'
+  const completedCount = status === 'done'
+    ? UPDATE_CONFIG_STEPS.length
+    : status === 'error'
+      ? activeIndex
+      : activeIndex
+  const displayCount = Math.min(completedCount + (status === 'running' ? 1 : 0), UPDATE_CONFIG_STEPS.length)
+
+  dom.updateProgress.classList.remove('hidden', 'done', 'error')
+  dom.updateProgress.classList.toggle('done', status === 'done')
+  dom.updateProgress.classList.toggle('error', status === 'error')
+  dom.updateProgressText.textContent = message || UPDATE_CONFIG_STEPS[activeIndex]?.desc || '正在处理'
+  dom.updateProgressCount.textContent = `${displayCount}/${UPDATE_CONFIG_STEPS.length}`
+  dom.updateProgressFill.style.width = `${Math.round((displayCount / UPDATE_CONFIG_STEPS.length) * 100)}%`
+
+  dom.updateProgressSteps.innerHTML = UPDATE_CONFIG_STEPS.map((step, index) => {
+    const stepStatus = status === 'error' && index === activeIndex
+      ? 'error'
+      : status === 'done' || index < activeIndex
+        ? 'done'
+        : index === activeIndex
+          ? 'active'
+          : 'pending'
+    return `
+      <div class="update-progress-step ${stepStatus}" data-key="${escapeAttr(step.key)}">
+        <span class="update-step-mark"></span>
+        <div>
+          <div class="update-step-title">${escapeHtml(step.title)}</div>
+          <div class="update-step-desc">${escapeHtml(step.desc)}</div>
+        </div>
+      </div>
+    `
+  }).join('')
+}
+
+function finishUpdateProgress(status, message) {
+  setUpdateProgress(status === 'error' ? updateProgressActiveKey : 'refresh', status, message)
+  updateProgressHideTimer = setTimeout(() => {
+    dom.updateProgress?.classList.add('hidden')
+  }, status === 'error' ? 5200 : 3200)
+}
+
 // ==================== 数据加载 ====================
 
 async function loadData(options = {}) {
@@ -1978,6 +2466,7 @@ async function loadData(options = {}) {
     overviewSections = Array.isArray(sections) ? sections : []
     frameworkIsolation = isolation || { active: false }
     applyOverviewOrderFromSections()
+    updateFrameworkIsolationNotice()
 
     if (activeGroup) {
       // 在 detail 界面：更新当前 group 数据
@@ -1996,6 +2485,7 @@ async function loadData(options = {}) {
     } else {
       renderOverview()
     }
+    updateFrameworkIsolationNotice()
   } catch (e) {
     showToast('加载失败：' + e.message, 'err')
   } finally {
@@ -2018,6 +2508,8 @@ window.api.onModsChanged(() => {
   loadData({ quiet: true })
 })
 
+window.addEventListener('resize', positionFrameworkIsolationNotice)
+
 // ==================== 事件绑定 ====================
 
 dom.search.addEventListener('input', (e) => {
@@ -2032,11 +2524,11 @@ dom.detailSearchGlobal.addEventListener('click', () => {
   setDetailSearchGlobal(!detailSearchGlobal)
   dom.detailSearch.focus()
 })
+dom.frameworkIsolationNotice?.addEventListener('click', jumpToFrameworkIsolationTarget)
 setDetailSearchGlobal(false, false)
 function setSearchPlaceholder(focused = document.activeElement === dom.search) {
-  dom.search.placeholder = focused
-    ? '搜索…'
-    : '搜索…  Tab/Enter 聚焦 · Del 删除 · Ctrl+C/X/V 复制剪切粘贴'
+  dom.search.placeholder = SEARCH_HINT
+  dom.search.title = SEARCH_HINT
 }
 dom.search.addEventListener('focus', () => setSearchPlaceholder(true))
 dom.search.addEventListener('blur', () => setSearchPlaceholder(false))
@@ -2046,24 +2538,47 @@ dom.btnUpdateTools.addEventListener('click', async () => {
   const originalText = dom.btnUpdateTools.textContent
   dom.btnUpdateTools.disabled = true
   try {
-    dom.btnUpdateTools.textContent = '更新配置 1/3 脚本'
+    setUpdateProgress('tools', 'running', '正在更新脚本文件')
     const tools = await window.api.updateTools()
     if (!tools.ok) {
       showToast(tools.error || '没有找到可更新的技能文件', 'err')
+      finishUpdateProgress('error', tools.error || '没有找到可更新的技能文件')
       return
     }
-    dom.btnUpdateTools.textContent = '更新配置 2/3 角色'
+    setUpdateProgress('characters', 'running', '正在同步角色配置')
     const chars = await window.api.syncCharacters()
-    dom.btnUpdateTools.textContent = '更新配置 3/3 刷新'
+    setUpdateProgress('refresh', 'running', '正在刷新目录数据')
     await loadData({ quiet: true })
     const suffix = tools.missing?.length ? `，缺少 ${tools.missing.join('、')}` : ''
     const avatarText = chars.ok ? `，头像配置 ${chars.count} 项` : `，头像配置沿用缓存 ${chars.count || 0} 项`
     showToast(`配置已更新：脚本 ${tools.copied.length} 个文件${avatarText}${suffix}`, 'ok')
+    finishUpdateProgress('done', `完成：脚本 ${tools.copied.length} 个文件${avatarText}${suffix}`)
   } catch (error) {
     showToast('配置更新失败：' + error.message, 'err')
+    finishUpdateProgress('error', '失败：' + error.message)
   } finally {
     dom.btnUpdateTools.textContent = originalText
     dom.btnUpdateTools.disabled = false
+  }
+})
+
+dom.btnClearDictionary.addEventListener('click', async () => {
+  if (!confirm('确定清空本地翻译词典？\n之后会重新记录新遇到的词条。')) return
+  const originalText = dom.btnClearDictionary.textContent
+  dom.btnClearDictionary.disabled = true
+  dom.btnClearDictionary.textContent = '清空中...'
+  try {
+    const result = await window.api.clearLocalDictionary()
+    if (!result?.ok) {
+      showToast(result?.error || '清空词典失败', 'err')
+      return
+    }
+    showToast(`本地词典已清空：${result.cleared || 0} 个词条`, 'ok')
+  } catch (error) {
+    showToast('清空词典失败：' + error.message, 'err')
+  } finally {
+    dom.btnClearDictionary.textContent = originalText
+    dom.btnClearDictionary.disabled = false
   }
 })
 
@@ -2071,9 +2586,43 @@ document.addEventListener('click', (e) => {
   if (e.target?.id === 'btnAddOverviewSection') addOverviewSection()
 })
 
-dom.autoF10.addEventListener('change', (e) => {
-  window.api.setConfig('autoF10', e.target.checked)
+dom.themeSwitch?.addEventListener('click', (e) => {
+  const button = e.target.closest('[data-theme]')
+  if (!button) return
+  setAppTheme(button.dataset.theme)
 })
+
+dom.appSettings?.addEventListener('click', openSettingsModal)
+dom.closeSettings?.addEventListener('click', closeSettingsModal)
+dom.settingsModal?.addEventListener('click', (e) => {
+  if (e.target === dom.settingsModal) closeSettingsModal()
+})
+dom.btnChooseModsRoot?.addEventListener('click', async () => {
+  if (frameworkIsolation?.active) {
+    showToast('请先结束框架隔离，再切换 Mods 目录', 'err')
+    return
+  }
+  const r = await window.api.chooseRoot()
+  if (r.ok) {
+    await refreshSettingsPaths()
+    showToast('已切换 Mods 目录，正在重扫…')
+    loadData({ quiet: true })
+  }
+})
+dom.btnChooseWwmiRoot?.addEventListener('click', async () => {
+  if (frameworkIsolation?.active) {
+    showToast('请先结束框架隔离，再切换 WWMI 目录', 'err')
+    return
+  }
+  const r = await window.api.chooseWwmiRoot()
+  if (r.ok) {
+    await refreshSettingsPaths()
+    showToast('已设置 WWMI 目录', 'ok')
+  }
+})
+dom.btnWindowMinimize?.addEventListener('click', () => window.api.windowMinimize())
+dom.btnWindowMaximize?.addEventListener('click', () => window.api.windowToggleMaximize())
+dom.btnWindowClose?.addEventListener('click', () => window.api.windowClose())
 
 function setDetailViewMode(mode, persist = true) {
   detailViewMode = mode === 'card' ? 'card' : 'list'
@@ -2098,10 +2647,6 @@ dom.btnBatchMove.addEventListener('click', async () => {
 })
 dom.btnFlatten.addEventListener('click', async () => {
   if (!activeGroup) return
-  if (frameworkIsolation?.active) {
-    showToast('框架隔离调试中，暂不可平整目录', 'err')
-    return
-  }
   if (!confirm(`确认平整当前目录：${activeGroup.path}？`)) return
   showToast('正在平整目录...')
   const result = await window.api.flattenDir(activeGroup.path)
@@ -2115,9 +2660,48 @@ dom.btnFlatten.addEventListener('click', async () => {
 document.addEventListener('click', (e) => {
   if (!e.target.closest('#batchMenu')) hideBatchMenu()
   if (!e.target.closest('#overviewMenu')) hideOverviewMenu()
+  hideAppTooltip()
 })
 
+document.addEventListener('pointerover', (e) => {
+  const target = getTooltipTarget(e.target)
+  if (target) showAppTooltip(target, e.clientX, e.clientY)
+})
+
+document.addEventListener('pointermove', (e) => {
+  const target = getTooltipTarget(e.target)
+  if (target && appTooltipEl && !appTooltipEl.classList.contains('hidden')) {
+    showAppTooltip(target, e.clientX, e.clientY)
+  }
+})
+
+document.addEventListener('pointerout', (e) => {
+  const target = getTooltipTarget(e.target)
+  if (!target) return
+  const nextTarget = e.relatedTarget instanceof Element ? getTooltipTarget(e.relatedTarget) : null
+  if (nextTarget === target) return
+  hideAppTooltip()
+})
+
+window.addEventListener('blur', hideAppTooltip)
+window.addEventListener('scroll', hideAppTooltip, true)
+
+document.addEventListener('focusin', (e) => {
+  const target = getTooltipTarget(e.target)
+  if (!target) return
+  const rect = target.getBoundingClientRect()
+  showAppTooltip(target, rect.left + rect.width / 2, rect.bottom)
+})
+
+document.addEventListener('focusout', hideAppTooltip)
+
 document.addEventListener('keydown', async (e) => {
+  if (e.key === 'Escape' && dom.settingsModal && !dom.settingsModal.classList.contains('hidden')) {
+    e.preventDefault()
+    closeSettingsModal()
+    return
+  }
+
   const editingTarget = isTextEditingTarget(e.target)
   const isDetailSearchTarget = e.target === dom.detailSearch
 
@@ -2148,7 +2732,7 @@ document.addEventListener('keydown', async (e) => {
 
   if (editingTarget) return
 
-  if (isOverviewVisible() && (e.key === 'Tab' || e.key === 'Enter')) {
+  if (isOverviewVisible() && e.key === 'Tab') {
     e.preventDefault()
     dom.search.focus()
     dom.search.select()
@@ -2176,42 +2760,18 @@ document.addEventListener('keydown', async (e) => {
   }
 })
 
-async function sendF10() {
-  const r = await window.api.sendF10()
-  if (r.ok) showToast('已发送 F10 重载', 'ok')
-  else showToast('F10 发送失败：' + (r.err || r.out || '未找到游戏'), 'err')
-}
-dom.btnF10.addEventListener('click', sendF10)
-
 dom.btnRefresh.addEventListener('click', loadData)
 dom.btnRefreshb.addEventListener('click', loadData)
 
 dom.btnBack.addEventListener('click', backToOverview)
 
-dom.rootPath.addEventListener('click', async () => {
-  if (frameworkIsolation?.active) {
-    showToast('请先结束框架隔离，再切换 Mods 目录', 'err')
-    return
-  }
-  const r = await window.api.chooseRoot()
-  if (r.ok) {
-    dom.rootPath.textContent = r.root
-    showToast('已切换 Mods 目录，正在重扫…')
-    loadData({ quiet: true })
-  }
-})
-
 // ==================== 初始化 ====================
 
 async function init() {
+  setAppTheme(localStorage.getItem(THEME_STORAGE_KEY) || 'light', false)
   renderShortcutHelp()
 
-  const { root } = await window.api.getRoot()
-  dom.rootPath.textContent = root
-
-  // 初始化 Auto F10 复选框状态
-  const { value: autoF10State } = await window.api.getConfig('autoF10')
-  dom.autoF10.checked = autoF10State
+  await refreshSettingsPaths()
 
   const { value: savedViewMode } = await window.api.getConfig('detailViewMode')
   setDetailViewMode(savedViewMode === 'card' ? 'card' : 'list', false)

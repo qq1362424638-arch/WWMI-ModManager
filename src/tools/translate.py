@@ -1,17 +1,16 @@
-import re, sys, os, json, urllib.parse, urllib.request
+import re, sys, os, json
 from wwmi_ini_util import sp, VK_MAP, MOD_MAP, NO_MAP, parse_key, normalize_key as _nk
+import translate_dict
+import image_ocr
+import net_translate
 
 # 本地词典路径（与脚本同目录）
 LOCAL_DICT = os.path.join(os.path.dirname(__file__), "local_dict.json")
-SOURCE_PRIORITY = {
-    "image": 30,
-    "file_context": 20,
-    "online_query": 10,
-    "builtin": 0,
-    "untranslated": -10,
-    "legacy": -20,
-}
-IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".bmp"}
+# 词条库路径：单个单词/拼音 → 中文（由用户翻译填充，合并进词库后优先查询）
+WORD_DICT = os.path.join(os.path.dirname(__file__), "word_dict.json")
+# 记录词典路径：每个执行过的英文 key → 中文 + 来源 + 来源路径
+RECORD_DICT = os.path.join(os.path.dirname(__file__), "record_dict.json")
+_word_tokens = None
 
 
 def load_local_dict() -> dict:
@@ -22,171 +21,26 @@ def load_local_dict() -> dict:
         return {}
 
 
-def normalize_dict_entry(value) -> dict:
-    if isinstance(value, dict):
-        entry = {
-            "translation": str(value.get("translation", "") or ""),
-            "source": str(value.get("source", "") or ""),
-            "source_path": str(value.get("source_path", "") or ""),
-            "sources": value.get("sources", []),
-        }
-        if not isinstance(entry["sources"], list):
-            entry["sources"] = []
-        return entry
-    return {
-        "translation": str(value or ""),
-        "source": "legacy" if value else "untranslated",
-        "source_path": "",
-        "sources": [],
-    }
+def load_word_dict() -> dict:
+    global _word_tokens
+    if _word_tokens is None:
+        try:
+            with open(WORD_DICT, "r", encoding="utf-8") as f:
+                _word_tokens = json.load(f)
+        except Exception:
+            _word_tokens = {}
+    return _word_tokens
 
 
-def get_local_translation(var_name: str) -> str:
-    entry = normalize_dict_entry(load_local_dict().get(var_name.lower(), ""))
-    return entry.get("translation", "")
-
-
-def save_local_dict(d: dict):
-    ordered = {k: d[k] for k in sorted(d, key=lambda x: x.lower())}
-    try:
-        with open(LOCAL_DICT, "w", encoding="utf-8") as f:
-            json.dump(ordered, f, ensure_ascii=False, indent=2)
-    except Exception:
-        pass
-
-
-def source_identity(candidate: dict) -> tuple:
-    return (
-        candidate.get("source", ""),
-        candidate.get("source_path", ""),
-        candidate.get("translation", ""),
-    )
-
-
-def save_to_local_dict(var_name: str, chinese: str, source: str = "file_context", source_path: str = ""):
-    update_local_dict(var_name, [{
-        "translation": chinese,
-        "source": source,
-        "source_path": source_path,
-    }])
-
-
-def update_local_dict(var_name: str, candidates: list) -> str:
-    key = var_name.lower()
+def save_to_local_dict(var_name: str, chinese: str):
     d = load_local_dict()
-    entry = normalize_dict_entry(d.get(key, ""))
-    seen = {source_identity(s) for s in entry["sources"] if isinstance(s, dict)}
-
-    for candidate in candidates:
-        candidate = {
-            "translation": str(candidate.get("translation", "") or "").strip(),
-            "source": str(candidate.get("source", "") or "untranslated"),
-            "source_path": str(candidate.get("source_path", "") or ""),
-        }
-        ident = source_identity(candidate)
-        if ident not in seen:
-            entry["sources"].append(candidate)
-            seen.add(ident)
-
-        current_rank = SOURCE_PRIORITY.get(entry.get("source", ""), -99)
-        candidate_rank = SOURCE_PRIORITY.get(candidate["source"], -99)
-        current_text = entry.get("translation", "")
-        candidate_text = candidate.get("translation", "")
-        if candidate_text and (not current_text or candidate_rank > current_rank):
-            entry["translation"] = candidate_text
-            entry["source"] = candidate["source"]
-            entry["source_path"] = candidate["source_path"]
-
-    if not entry.get("source"):
-        entry["source"] = "untranslated"
-    d[key] = entry
-    save_local_dict(d)
-    return entry.get("translation", "")
-
-
-def iter_context_dirs(filepath: str) -> list:
-    base = os.path.dirname(filepath)
-    dirs = []
-    for d in (base, os.path.dirname(base)):
-        if d and d != os.path.dirname(d) and d not in dirs:
-            dirs.append(d)
-    return dirs
-
-
-def extract_chinese(text: str) -> str:
-    m = re.search(r"[\u4e00-\u9fff][\u4e00-\u9fffA-Za-z0-9 _+\-（）()【】]*", text or "")
-    return m.group(0).strip(" _-") if m else ""
-
-
-def scan_image_sidecar(image_path: str, var_name: str) -> str:
-    key = var_name.lower()
-    for sidecar in (image_path + ".json", os.path.splitext(image_path)[0] + ".json"):
-        if not os.path.isfile(sidecar):
-            continue
+    if var_name not in d:
+        d[var_name] = chinese
         try:
-            data = json.load(open(sidecar, "r", encoding="utf-8"))
+            with open(LOCAL_DICT, "w", encoding="utf-8") as f:
+                json.dump(d, f, ensure_ascii=False, indent=2)
         except Exception:
-            continue
-        maps = data.get("mappings", data) if isinstance(data, dict) else {}
-        if isinstance(maps, dict):
-            value = maps.get(key) or maps.get(var_name)
-            if isinstance(value, dict):
-                value = value.get("translation") or value.get("chinese")
-            if value:
-                return str(value).strip()
-    return ""
-
-
-def scan_image_ocr(image_path: str, var_name: str) -> str:
-    try:
-        import pytesseract
-        from PIL import Image
-    except Exception:
-        return ""
-    try:
-        text = pytesseract.image_to_string(Image.open(image_path), lang="chi_sim+eng")
-    except Exception:
-        return ""
-    pattern = re.escape(var_name)
-    m = re.search(pattern + r"\s*[:：=\-]\s*([^\r\n]+)", text, re.IGNORECASE)
-    return extract_chinese(m.group(1)) if m else ""
-
-
-def scan_image_translation(filepath: str, var_name: str) -> tuple:
-    key = var_name.lower()
-    for d in iter_context_dirs(filepath):
-        try:
-            names = os.listdir(d)
-        except Exception:
-            continue
-        for fn in names:
-            image_path = os.path.join(d, fn)
-            stem, ext = os.path.splitext(fn)
-            if ext.lower() not in IMAGE_EXTS:
-                continue
-            chinese = scan_image_sidecar(image_path, key)
-            if not chinese and key in stem.lower():
-                chinese = extract_chinese(stem)
-            if not chinese:
-                chinese = scan_image_ocr(image_path, key)
-            if chinese:
-                return (chinese, image_path)
-    return ("", "")
-
-
-def query_online_translation(var_name: str) -> str:
-    query = urllib.parse.urlencode({
-        "q": var_name,
-        "langpair": "en|zh-CN",
-    })
-    url = "https://api.mymemory.translated.net/get?" + query
-    try:
-        with urllib.request.urlopen(url, timeout=5) as resp:
-            data = json.loads(resp.read().decode("utf-8", "ignore"))
-        text = data.get("responseData", {}).get("translatedText", "")
-        return text.strip() if extract_chinese(text) else ""
-    except Exception:
-        return ""
+            pass
 
 
 # ── 拼音/常见变量名 → 中文释义 ──
@@ -200,6 +54,7 @@ PINYIN_MAP = {
     "erzhui": "耳坠", "fashi": "发饰",
     "jiaohuan": "脚环", "tuwei": "腿围",
     "suolian": "锁链", "xiaban": "下摆",
+    "yuan": "圆",
     "lingzi": "领子",
     "yousi": "油丝", "youguang": "油光",
     "siwa": "丝袜", "dingziku": "丁字裤",
@@ -274,10 +129,12 @@ VAR_GLOSSARY = {
     "headacc": "头饰样式", "headwear": "头饰样式", "hat": "帽子样式",
     "glasses": "眼镜样式", "eyepatch": "眼罩",
     "choker": "项圈样式", "necklace": "项链样式", "collar": "项圈样式",
+    "diaodai": "吊带样式",
     "earring": "耳环样式", "earrings": "耳环样式",
     "anklet": "脚链样式", "bracelet": "手链样式", "ring": "戒指样式",
     "belt": "腰带样式", "charm": "挂饰样式", "mask": "面具样式",
-    "top": "上衣样式", "bra": "胸罩样式", "shirt": "衬衫样式",
+    "top": "上衣样式", "front": "前侧样式", "back": "背部样式",
+    "makeup": "妆容样式", "bra": "胸罩样式", "shirt": "衬衫样式",
     "blouse": "上衣样式", "jacket": "外套样式", "coat": "外套样式",
     "cloak": "披风样式", "cape": "披风样式", "sweater": "毛衣样式",
     "vest": "背心样式", "corset": "束腰样式",
@@ -317,7 +174,7 @@ VAR_GLOSSARY = {
     "youguangsiwa": "油光丝袜样式", "zhuangrong": "妆容样式", "jiaohuan": "脚环样式",
     "toushi": "透视样式", "toufa": "头发样式", "yanjing": "眼镜样式",
     "texiao": "特效样式", "siwa": "丝袜样式", "qunbai": "裙摆样式",
-    "xiezi": "鞋子样式", "bozi": "脖子样式", "xiuzi": "袖子样式",
+    "xiezi": "鞋子样式", "waitao": "外套样式", "qunzi": "裙子样式", "bozi": "脖子样式", "xiuzi": "袖子样式",
     "xiongxing": "胸型样式", "hudiejie": "蝴蝶结样式", "fashi": "发饰样式",
     "mianju": "面具样式", "lian": "脸型样式", "meimao": "眉毛样式",
     "jie": "戒指样式", "xianglian": "项链样式", "erhuan": "耳环样式",
@@ -349,7 +206,8 @@ FALLBACK = {
     "waist": "腰部", "hip": "臀部", "butt": "臀部", "leg": "腿",
     "thigh": "大腿", "knee": "膝盖", "calf": "小腿", "foot": "脚",
     "ankle": "脚踝", "wrist": "手腕",
-    "top": "上衣", "bottom": "下装", "pantie": "内裤", "bra": "胸罩",
+    "top": "上衣", "front": "前侧", "bottom": "下装", "pantie": "内裤", "bra": "胸罩",
+    "waitao": "外套", "qunzi": "裙子", "siwa": "丝袜", "yanjing": "眼镜", "xiongxing": "胸型", "diaodai": "吊带",
     "shirt": "衬衫", "blouse": "上衣", "jacket": "外套", "coat": "外套",
     "vest": "背心", "sweater": "毛衣", "hoodie": "连帽衫",
     "dress": "连衣裙", "skirt": "裙子", "pants": "裤子", "short": "短裤",
@@ -366,7 +224,7 @@ FALLBACK = {
     "shine": "光泽", "gloss": "光泽", "wet": "湿润", "sweat": "汗液",
     "oily": "油光", "pube": "阴毛", "nipple": "乳头",
     "penis": "阴茎", "vagina": "阴道", "anus": "肛门",
-    "size": "大小", "color": "颜色", "style": "样式", "type": "类型",
+    "makeup": "妆容", "size": "大小", "color": "颜色", "style": "样式", "type": "类型",
     "mode": "模式", "tex": "纹理", "skin": "皮肤",
     "alpha": "透明度", "detail": "细节",
 }
@@ -375,7 +233,7 @@ FALLBACK = {
 def split_var(name: str) -> list:
     """将变量名拆分为有意义的小写词条"""
     # 去除常见前缀
-    for prefix in ["swapvar_", "var_", "tex_"]:
+    for prefix in ["swapvar_", "swap_", "var_", "tex_"]:
         if name.startswith(prefix):
             name = name[len(prefix):]
             break
@@ -384,17 +242,18 @@ def split_var(name: str) -> list:
 
 def guess_chinese(var_name: str) -> str:
     v = var_name.lower()
-
-    # 0. 本地词典优先
-    local = get_local_translation(v)
-    if local:
-        return local
+    for prefix in ["swapvar_", "swap_", "var_", "tex_"]:
+        if v.startswith(prefix):
+            v = v[len(prefix):]
+            break
 
     # 1. 精确匹配
     if v in VAR_GLOSSARY:
         return VAR_GLOSSARY[v]
     if v in PINYIN_MAP:
         return PINYIN_MAP[v] + "样式"
+    if v in FALLBACK:
+        return FALLBACK[v] + "样式"
 
     # 2. 拆分匹配
     words = split_var(v)
@@ -403,9 +262,12 @@ def guess_chinese(var_name: str) -> str:
 
     cn_parts = []
     unknown = []
+    wd = load_word_dict()
     for w in words:
         wl = w.lower()
-        if wl in PINYIN_MAP:
+        if wl in wd:
+            cn_parts.append(wd[wl])
+        elif wl in PINYIN_MAP:
             cn_parts.append(PINYIN_MAP[wl])
         elif wl in VAR_GLOSSARY:
             cn_parts.append(VAR_GLOSSARY[wl])
@@ -598,9 +460,11 @@ def normalize_readme_key(raw: str) -> str:
 
 
 def scan_readme(filepath: str) -> tuple:
-    """扫描目录及父目录下的 readme/说明 文件，返回 (var→cn, key→cn) 两个映射"""
+    """扫描目录及父目录下的 readme/说明 文件，返回 (var→cn, key→cn, var→src文件, key→src文件) 四种映射"""
     var_map = {}
     key_map = {}
+    var_src = {}
+    key_src = {}
     candidates = []
     base = os.path.dirname(filepath)
     # 当前目录 + 父目录
@@ -627,7 +491,10 @@ def scan_readme(filepath: str) -> tuple:
                 content = f.read()
             # $var : / = 中文
             for m in re.finditer(r'[＄$](\w+)\s*[:：=]\s*([^\n\r]+)', content):
-                var_map[m.group(1).lower()] = m.group(2).strip()
+                key = m.group(1).lower()
+                if key not in var_map:
+                    var_map[key] = m.group(2).strip()
+                    var_src[key] = fp
             # "key" description  (both Chinese and ASCII quotes)
             # 只保留第一条匹配（中文说明在前），跳过后续重复
             for m in re.finditer(r'[\u201c"]([^"\u201d]+)[\u201d"]\s*([^\n\r]+)', content):
@@ -637,59 +504,54 @@ def scan_readme(filepath: str) -> tuple:
                     nk = normalize_readme_key(key_raw)
                     if nk and nk not in key_map:
                         key_map[nk] = desc
+                        key_src[nk] = fp
         except Exception:
             pass
-    return (var_map, key_map)
-
-
-def resolve_dict_translation(filepath: str, var_name: str, binding: str, readme_var: dict, readme_key: dict) -> str:
-    candidates = []
-
-    image_chinese, image_path = scan_image_translation(filepath, var_name)
-    candidates.append({
-        "translation": image_chinese,
-        "source": "image",
-        "source_path": image_path,
-    })
-
-    context_chinese = readme_var.get(var_name, "") or readme_key.get(binding, "")
-    candidates.append({
-        "translation": context_chinese,
-        "source": "file_context",
-        "source_path": filepath,
-    })
-
-    online_chinese = ""
-    if not image_chinese and not context_chinese:
-        online_chinese = query_online_translation(var_name)
-        candidates.append({
-            "translation": online_chinese,
-            "source": "online_query",
-            "source_path": "https://api.mymemory.translated.net/get",
-        })
-
-    chosen = update_local_dict(var_name, candidates)
-    if chosen:
-        return chosen
-
-    builtin = guess_chinese(var_name)
-    update_local_dict(var_name, [{
-        "translation": builtin,
-        "source": "builtin" if builtin else "untranslated",
-        "source_path": __file__ if builtin else filepath,
-    }])
-    return builtin
+    return (var_map, key_map, var_src, key_src)
 
 
 def process_file(filepath: str) -> int:
     if not os.path.isfile(filepath):
         sp(f"[ERR] 文件不存在 - {os.path.basename(filepath)}")
         return -1
-    readme_var, readme_key = scan_readme(filepath)
+    readme_var, readme_key, readme_var_src, readme_key_src = scan_readme(filepath)
 
     with open(filepath, "r", encoding="utf-8") as f:
         lines = f.readlines()
     key_map, key_to_var = scan_key_sections(lines)
+
+    # 记录词典：加载并合并旧 local_dict 遗留词条
+    rec = translate_dict.load()
+    translate_dict.seed_from(rec, load_local_dict(), LOCAL_DICT)
+
+    # 图片来源（最高优先级）：扫描本文件目录下的图片映射
+    img_map = image_ocr.build_image_map(os.path.dirname(filepath))
+
+    def image_cb(key: str):
+        res = img_map.get(key.lower())
+        return (res[0], res[1]) if res else None
+
+    def file_cb(key: str, binding: str):
+        # 1) ini 说明文件里的 变量名 释义
+        if key in readme_var:
+            return (readme_var[key], readme_var_src.get(key, ""))
+        # 2) ini 说明文件里的 快捷键 释义
+        if binding and binding in readme_key:
+            return (readme_key[binding], readme_key_src.get(binding, ""))
+        # 3) 本地词典（用户手动维护的历史翻译，属文件上下文）
+        if key in load_local_dict():
+            return (load_local_dict()[key], LOCAL_DICT)
+        # 4) 词库/拆分直译（word_dict.json + 内置 MAP，属文件上下文）
+        # 排除完全没翻译成功的兜底回显（v+"样式"），避免污染词典
+        cn = guess_chinese(key)
+        if cn and cn != key.lower() + "样式":
+            return (cn, WORD_DICT)
+        return None
+
+    def online_cb(key: str):
+        cn = net_translate.translate(key)
+        # 网查来源没有"文件路径"，用固定标记表示来源
+        return (cn, "web") if cn else None
 
     blocks = []
     removed = set()
@@ -702,20 +564,29 @@ def process_file(filepath: str) -> int:
         var_name = m.group(2).lower()
 
         binding, values = key_map.get(var_name, ("", ""))
-        chinese = resolve_dict_translation(filepath, var_name, binding, readme_var, readme_key)
+        # 无论翻译成败都记录该 key（后续由 resolve 按来源优先级决定取值）
+        cn, src, src_path = translate_dict.resolve(
+            rec, var_name,
+            image_cb,
+            lambda k, b=binding: file_cb(k, b),
+            online_cb,
+        )
+        rec[var_name] = translate_dict.entry(cn, src, src_path)
 
         # 无论能否翻译，先清理旧注释
         if i > 0 and EXISTING_COMMENT.match(lines[i - 1].rstrip()):
             removed.add(i - 1)
 
-        if not chinese:
+        if not cn:
             # 旧注释已清理掉，保留原 persist 行（不添加中文注释）
             continue
 
-        new_comment = make_comment(chinese, binding, values)
+        new_comment = make_comment(cn, binding, values)
 
         blocks.append((var_name, line, new_comment, binding, values))
         removed.add(i)
+
+    translate_dict.save(rec)
 
     if not blocks:
         sp(f"[--] 无待翻译行或已全部注释 -> {os.path.basename(filepath)}")
@@ -754,6 +625,12 @@ def main():
         sp("用法: python translate.py <file1> [file2 ...]")
         sp("示例: python translate.py D:\\path\\to\\Interface.ini")
         sys.exit(1)
+    # 迁移旧 local_dict 到记录词典（幂等，只在记录词典缺词条时补）
+    legacy = load_local_dict()
+    if legacy:
+        seed = translate_dict.load()
+        translate_dict.seed_from(seed, legacy, LOCAL_DICT)
+        translate_dict.save(seed)
     for fp in args:
         process_file(fp)
 

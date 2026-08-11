@@ -1,41 +1,45 @@
-# ---------- 向鸣潮游戏窗口发送 F10 重载热键 ----------
-# 找不到游戏进程/窗口时退出码 1；成功时输出 OK
-# F10 会被 WWI 捕获用于 reload_fixes（见 d3dx.ini）
-
 $ErrorActionPreference = 'Stop'
 
-# 查找游戏进程（鸣潮客户端）
 $proc = Get-Process -Name 'Client-Win64-Shipping' -ErrorAction SilentlyContinue
 if (-not $proc) {
-    Write-Output '未找到游戏进程 Client-Win64-Shipping'
+    Write-Output 'Game process not found: Client-Win64-Shipping'
     exit 1
 }
 
-# 取主窗口句柄（可能同一进程有多个实例，取第一个有窗口的）
 $hwnd = $proc | Where-Object { $_.MainWindowHandle -ne 0 } | Select-Object -First 1
 if (-not $hwnd) {
-    Write-Output '找到游戏进程但无可见窗口'
+    Write-Output 'Game process found, but no visible main window'
     exit 1
 }
 $h = $hwnd.MainWindowHandle
 
-# 通过 user32 发送按键（keybd_event），F10 = 0x79
 Add-Type -TypeDefinition @'
 using System;
 using System.Runtime.InteropServices;
 public static class Native {
     [DllImport("user32.dll")]
-    public static extern bool SetForegroundWindow(IntPtr hWnd);
-    [DllImport("user32.dll")]
-    public static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
+    public static extern bool PostMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
 }
 '@
 
-# 激发游戏窗口，确保按键被游戏捕获
-[Native]::SetForegroundWindow($h) | Out-Null
-Start-Sleep -Milliseconds 50
+function Make-LParam([int]$scanCode, [bool]$keyUp, [bool]$sysKey) {
+    $value = 1 -bor ($scanCode -shl 16)
+    if ($sysKey) { $value = $value -bor (1 -shl 29) }
+    if ($keyUp) { $value = $value -bor (1 -shl 30) -bor (1 -shl 31) }
+    return [IntPtr]$value
+}
 
-# 按下再抬起 F10
-[Native]::keybd_event(0x79, 0, 0, [UIntPtr]::Zero)     # KEYEVENTF_KEYDOWN
-[Native]::keybd_event(0x79, 0, 2, [UIntPtr]::Zero)     # KEYEVENTF_KEYUP
-Write-Output 'F10 sent'
+function Post-Key([int]$msg, [int]$vk, [int]$scanCode, [bool]$keyUp, [bool]$sysKey) {
+    [Native]::PostMessage($h, $msg, [IntPtr]$vk, (Make-LParam $scanCode $keyUp $sysKey)) | Out-Null
+}
+
+# Background post Ctrl+Alt+F10 for wipe_user_config.
+Post-Key 0x0100 0x10 0x2A $true  $false
+Post-Key 0x0100 0x11 0x1D $false $false
+Post-Key 0x0104 0x12 0x38 $false $true
+Post-Key 0x0104 0x79 0x44 $false $true
+Post-Key 0x0105 0x79 0x44 $true  $true
+Post-Key 0x0105 0x12 0x38 $true  $true
+Post-Key 0x0101 0x11 0x1D $true  $false
+
+Write-Output 'Load mod hotkey posted'

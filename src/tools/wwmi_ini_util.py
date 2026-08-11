@@ -390,6 +390,5 @@ def cycle_value(var_name: str, filepath: str, all_bindings: list) -> str:
 
         return new_val
 
-
 def queue_cycle(var_name: str, filepath: str, all_bindings: list) -> str:
     return cycle_value(var_name, filepath, all_bindings)

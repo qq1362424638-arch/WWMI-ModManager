@@ -1,6 +1,6 @@
 ﻿// ---------- WWMI Mod 绠＄悊鍣細涓昏繘绋?----------
 // 鑱岃矗锛氬垱寤轰富绐楀彛銆佹壂鎻?Mods 鐩綍銆佸鐞嗗惎鐢?鍋滅敤锛圖ISABLED_ 鍓嶇紑锛夈€?//       鐩戝惉鐩綍鍙樺寲銆佸悜娓告垙鍙戦€?F10 閲嶈浇鐑敭銆佹彁渚涙湰鍦板浘鐗囧崗璁€?// 閫傜敤鐜锛歐indows 10/11 x64锛岄福娼?WWMI mod 绠＄悊銆?
-const { app, BrowserWindow, ipcMain, dialog, protocol, net, shell, screen } = require('electron')
+const { app, BrowserWindow, ipcMain, dialog, protocol, net, shell, screen, nativeImage } = require('electron')
 const fs = require('fs')
 const path = require('path')
 const fsp = require('fs/promises')
@@ -11,7 +11,13 @@ const { getChineseName } = require('./character-map')
 
 // Mods 鏍圭洰褰曪紙WWMI 閫氳繃 d3dx.ini 鐨?include_recursive = Mods 鎵弿瀹冿級
 const DEFAULT_MODS_ROOT = 'D:\\0Temp\\mingchao\\WWMI\\Mods'
+const DEFAULT_WWMI_ROOT = path.dirname(DEFAULT_MODS_ROOT)
 const CONFIG_FILE = path.join(app.getPath('userData'), 'config.json')
+const PROJECT_ASSETS_ROOT = path.join(__dirname, '..', 'assets')
+const DEFAULT_COVER_FILE = path.join(PROJECT_ASSETS_ROOT, 'default.png')
+const CHARACTER_AVATAR_DIR = path.join(PROJECT_ASSETS_ROOT, 'character-avatars')
+const OVERVIEW_IMAGE_DIR = path.join(PROJECT_ASSETS_ROOT, 'overview-images')
+const USER_CHARACTER_AVATAR_DIR = path.join(app.getPath('userData'), 'character-avatars')
 const TOOLS_DIR = path.join(__dirname, '..', 'tools')
 const FLATTEN_SCRIPT = path.join(TOOLS_DIR, 'flatten.ps1')
 const TRANSLATE_SCRIPT = path.join(TOOLS_DIR, 'translate.py')
@@ -41,9 +47,47 @@ const DICT_SOURCE_PRIORITY = {
   untranslated: -10,
   legacy: -20,
 }
+const INVALID_KEY_DESCRIPTION_LABELS = new Set([
+  '默认变量',
+  '默认配置',
+  '默认切换',
+  '变量',
+  '配置',
+  '按键',
+  '切换变量',
+])
+const ONLINE_TRANSLATION_SOURCE = 'https://api.mymemory.translated.net/get'
+const AMBIGUOUS_ONLINE_TRANSLATIONS = {
+  arm: '手臂；武器',
+  arms: '手臂；武器',
+  back: '背部',
+  base: '基础；底座',
+  cap: '帽子；上限',
+  chest: '胸部；箱子',
+  clip: '夹子；裁剪',
+  coat: '外套；涂层',
+  cross: '十字；交叉',
+  face: '脸；表面',
+  hand: '手；指针',
+  head: '头部；顶部',
+  heel: '脚跟；高跟',
+  left: '左侧；剩余',
+  mask: '面具；遮罩',
+  right: '右侧；正确',
+  ring: '戒指；环',
+  scale: '缩放；比例',
+  skin: '皮肤；外观',
+  tail: '尾巴；末端',
+  top: '上衣',
+  wing: '翅膀；侧翼',
+}
 
 // 鍋滅敤鍓嶇紑甯搁噺锛屼笌 d3dx.ini 涓?exclude_recursive = DISABLED* 淇濇寔涓€鑷?
 const DISABLED_PREFIX = 'DISABLED_'
+
+function isDisabledDirName(name) {
+  return String(name || '').toLowerCase().startsWith(DISABLED_PREFIX.toLowerCase())
+}
 
 // 闇€瑕佹帓闄ょ殑鐩綍锛堥殣钘忕洰褰曘€侀潪mod鐩綍銆佺郴缁熺洰褰曪級
 const EXCLUDED_DIRS = new Set([
@@ -71,10 +115,18 @@ const MODORA_OFFICIAL_CHARACTER_ASSETS = {
     names: ['Suisui', 'suisui', '穗穗'],
   },
 }
+const CHARACTER_AVATAR_ALIASES = {
+  Phrolova: ['Floro', 'floro', '弗洛洛'],
+  'Luuk Herssen': ['Luuk', 'luukherssen', '陆·赫斯', '陆赫斯'],
+}
+const PLACEHOLDER_ASSET_KEYS = new Set(['qingxiao', 'staytuned'])
 const ASSET_ROOTS = [
   path.join(JASM_WUWA_ROOT, 'Images'),
   JASM_ASSETS_ROOT,
   MODORA_RENDERER_ROOT,
+  CHARACTER_AVATAR_DIR,
+  OVERVIEW_IMAGE_DIR,
+  USER_CHARACTER_AVATAR_DIR,
 ]
 
 let wuwaCharacterAssets = null
@@ -82,6 +134,169 @@ let wuwaCharacterAssets = null
 // Encore API 瑙掕壊鏁版嵁缂撳瓨
 let characterAvatarCache = {} // { englishName: avatarUrl }
 let characterDataLoaded = false
+let defaultCoverHash = null
+
+function getFileHash(filePath) {
+  try {
+    return crypto.createHash('sha256').update(fs.readFileSync(filePath)).digest('hex')
+  } catch {
+    return null
+  }
+}
+
+function isDefaultCoverFile(filePath) {
+  if (!defaultCoverHash) defaultCoverHash = getFileHash(DEFAULT_COVER_FILE)
+  const candidate = getFileHash(filePath)
+  return !!defaultCoverHash && candidate === defaultCoverHash
+}
+
+function getLocalImageSize(filePath) {
+  try {
+    const buffer = fs.readFileSync(filePath)
+    if (buffer.length >= 24 && buffer.slice(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) {
+      return { width: buffer.readUInt32BE(16), height: buffer.readUInt32BE(20) }
+    }
+    if (buffer.length >= 12 && buffer.slice(0, 4).toString('ascii') === 'RIFF' && buffer.slice(8, 12).toString('ascii') === 'WEBP') {
+      return getWebpSize(buffer)
+    }
+    if (buffer.length >= 4 && buffer[0] === 0xff && buffer[1] === 0xd8) {
+      return getJpegSize(buffer)
+    }
+    const image = nativeImage.createFromPath(filePath)
+    const size = image.getSize()
+    return size.width > 0 && size.height > 0 ? size : null
+  } catch {
+    return null
+  }
+}
+
+function getWebpSize(buffer) {
+  const type = buffer.slice(12, 16).toString('ascii')
+  if (type === 'VP8X' && buffer.length >= 30) {
+    return {
+      width: 1 + buffer.readUIntLE(24, 3),
+      height: 1 + buffer.readUIntLE(27, 3),
+    }
+  }
+  if (type === 'VP8L' && buffer.length >= 25) {
+    const bits = buffer.readUInt32LE(21)
+    return {
+      width: 1 + (bits & 0x3fff),
+      height: 1 + ((bits >> 14) & 0x3fff),
+    }
+  }
+  if (type === 'VP8 ' && buffer.length >= 30) {
+    return {
+      width: buffer.readUInt16LE(26) & 0x3fff,
+      height: buffer.readUInt16LE(28) & 0x3fff,
+    }
+  }
+  return null
+}
+
+function getJpegSize(buffer) {
+  let offset = 2
+  while (offset + 9 < buffer.length) {
+    if (buffer[offset] !== 0xff) return null
+    const marker = buffer[offset + 1]
+    const length = buffer.readUInt16BE(offset + 2)
+    if (length < 2) return null
+    if ((marker >= 0xc0 && marker <= 0xc3) || (marker >= 0xc5 && marker <= 0xc7) || (marker >= 0xc9 && marker <= 0xcb) || (marker >= 0xcd && marker <= 0xcf)) {
+      return { width: buffer.readUInt16BE(offset + 7), height: buffer.readUInt16BE(offset + 5) }
+    }
+    offset += 2 + length
+  }
+  return null
+}
+
+function isLikelyAvatarFile(filePath) {
+  const size = getLocalImageSize(filePath)
+  if (!size) return false
+  const ratio = size.width / size.height
+  return ratio >= 0.72 && ratio <= 1.38
+}
+
+function isLikelyAvatarUrl(url) {
+  const filePath = assetImageUrlToPath(url)
+  return !filePath || isLikelyAvatarFile(filePath)
+}
+
+function safeAvatarFileBase(name) {
+  return normalizeAssetKey(name) || crypto.createHash('sha1').update(String(name || '')).digest('hex').slice(0, 12)
+}
+
+function getAvatarCacheNames(item) {
+  const name = String(item?.Name || '').trim()
+  if (!name) return []
+  const names = [name, name.replace(/\s+/g, ''), ...(CHARACTER_AVATAR_ALIASES[name] || [])]
+  return Array.from(new Set(names.filter(Boolean)))
+}
+
+function getExtensionFromContentType(contentType) {
+  const type = String(contentType || '').toLowerCase()
+  if (type.includes('png')) return '.png'
+  if (type.includes('jpeg') || type.includes('jpg')) return '.jpg'
+  if (type.includes('webp')) return '.webp'
+  if (type.includes('gif')) return '.gif'
+  return ''
+}
+
+function getImageExtensionFromPath(filePath, fallback = '.webp') {
+  const ext = path.extname(String(filePath || '').split(/[?#]/)[0]).toLowerCase()
+  return ['.png', '.jpg', '.jpeg', '.webp', '.gif'].includes(ext) ? ext : fallback
+}
+
+function assetImageUrlToPath(url) {
+  try {
+    const parsed = new URL(url)
+    if (parsed.protocol !== 'assetimg:') return null
+    let p = decodeURIComponent(parsed.pathname.replace(/^\//, ''))
+    p = p.replace(/\\+/g, '/').replace(/\//g, path.sep)
+    return path.resolve(p)
+  } catch {
+    return null
+  }
+}
+
+function getReferenceCharacterImagePath(dirName) {
+  return assetImageUrlToPath(getReferenceCharacterImage(dirName))
+}
+
+async function getWritableCharacterAvatarDir() {
+  try {
+    await fsp.mkdir(CHARACTER_AVATAR_DIR, { recursive: true })
+    const probe = path.join(CHARACTER_AVATAR_DIR, `.write-test-${process.pid}-${Date.now()}`)
+    await fsp.writeFile(probe, '')
+    await fsp.rm(probe, { force: true })
+    return CHARACTER_AVATAR_DIR
+  } catch {
+    await fsp.mkdir(USER_CHARACTER_AVATAR_DIR, { recursive: true })
+    return USER_CHARACTER_AVATAR_DIR
+  }
+}
+
+async function copyCharacterAvatar(sourcePath, cacheKey) {
+  if (!imageFileExists(sourcePath)) return null
+  if (!isLikelyAvatarFile(sourcePath)) return null
+  const avatarDir = await getWritableCharacterAvatarDir()
+  const ext = getImageExtensionFromPath(sourcePath, '.png')
+  const dest = path.join(avatarDir, `${safeAvatarFileBase(cacheKey)}${ext}`)
+  await fsp.copyFile(sourcePath, dest)
+  return toAssetImageUrl(dest)
+}
+
+async function downloadCharacterAvatar(url, cacheKey) {
+  if (!url) return null
+  const response = await fetch(url)
+  if (!response.ok) throw new Error(`avatar download failed: ${response.status}`)
+  const contentType = response.headers.get('content-type')
+  const ext = getExtensionFromContentType(contentType) || getImageExtensionFromPath(url, '.webp')
+  const avatarDir = await getWritableCharacterAvatarDir()
+  const dest = path.join(avatarDir, `${safeAvatarFileBase(cacheKey)}${ext}`)
+  const buffer = Buffer.from(await response.arrayBuffer())
+  await fsp.writeFile(dest, buffer)
+  return toAssetImageUrl(dest)
+}
 
 // 浠?Encore API 鑾峰彇瑙掕壊澶村儚
 async function fetchCharacterAvatars(force = false) {
@@ -94,16 +309,37 @@ async function fetchCharacterAvatars(force = false) {
     const response = await fetch('https://api-v2.encore.moe/api/en/character?v=Beta')
     if (!response.ok) throw new Error(`API request failed: ${response.status}`)
     const data = await response.json()
+    let localCount = 0
+    let remoteCount = 0
     for (const item of data.roleList) {
-      // 鐢ㄨ嫳鏂囧悕浣滀负key锛屽瓨鍌ㄥご鍍廢RL
-      characterAvatarCache[item.Name] = item.RoleHeadIcon
-      // 涔熷瓨鍌ㄥ幓鎺夌┖鏍肩殑鐗堟湰锛堝 "Xiangli Yao" 鈫?"XiangliYao"锛?
-      const noSpace = item.Name.replace(/\s+/g, '')
-      characterAvatarCache[noSpace] = item.RoleHeadIcon
+      const names = getAvatarCacheNames(item)
+      if (!names.length) continue
+      if (names.some((name) => PLACEHOLDER_ASSET_KEYS.has(normalizeAssetKey(name)))) continue
+      let avatarUrl = null
+      const localPath = names.map(getReferenceCharacterImagePath).find(Boolean)
+      if (localPath) {
+        try {
+          avatarUrl = await copyCharacterAvatar(localPath, names[0])
+          if (avatarUrl) localCount++
+        } catch (error) {
+          console.error('复制本地角色头像失败:', item.Name, error.message)
+        }
+      }
+      if (!avatarUrl && item.RoleHeadIcon) {
+        try {
+          avatarUrl = await downloadCharacterAvatar(item.RoleHeadIcon, names[0])
+          if (avatarUrl) remoteCount++
+        } catch (error) {
+          console.error('下载远程角色头像失败:', item.Name, error.message)
+          avatarUrl = item.RoleHeadIcon
+        }
+      }
+      if (!avatarUrl) continue
+      for (const name of names) characterAvatarCache[name] = avatarUrl
     }
     characterDataLoaded = true
     saveConfig()
-    return { ok: true, count: Object.keys(characterAvatarCache).length }
+    return { ok: true, count: Object.keys(characterAvatarCache).length, local: localCount, remote: remoteCount }
   } catch (e) {
     console.error('鑾峰彇瑙掕壊澶村儚澶辫触:', e.message)
     return { ok: Object.keys(characterAvatarCache).length > 0, count: Object.keys(characterAvatarCache).length, error: e.message }
@@ -112,19 +348,20 @@ async function fetchCharacterAvatars(force = false) {
 
 // 鑾峰彇瑙掕壊澶村儚URL
 function getCharacterAvatar(dirName) {
+  if (PLACEHOLDER_ASSET_KEYS.has(normalizeAssetKey(dirName))) return null
   // 鐩存帴鍖归厤
-  if (characterAvatarCache[dirName]) return characterAvatarCache[dirName]
+  if (characterAvatarCache[dirName] && isLikelyAvatarUrl(characterAvatarCache[dirName])) return characterAvatarCache[dirName]
   // 蹇界暐澶у皬鍐?
   const lower = dirName.toLowerCase()
   for (const [key, url] of Object.entries(characterAvatarCache)) {
-    if (key.toLowerCase() === lower) return url
+    if (key.toLowerCase() === lower && isLikelyAvatarUrl(url)) return url
   }
   // 鍘绘帀 DISABLED_ 鍓嶇紑鍐嶈瘯
   let clean = dirName
   while (clean.startsWith('DISABLED_')) clean = clean.slice('DISABLED_'.length)
-  if (characterAvatarCache[clean]) return characterAvatarCache[clean]
+  if (characterAvatarCache[clean] && isLikelyAvatarUrl(characterAvatarCache[clean])) return characterAvatarCache[clean]
   for (const [key, url] of Object.entries(characterAvatarCache)) {
-    if (key.toLowerCase() === clean.toLowerCase()) return url
+    if (key.toLowerCase() === clean.toLowerCase() && isLikelyAvatarUrl(url)) return url
   }
   return null
 }
@@ -147,7 +384,13 @@ function toModImageUrl(filePath) {
 function toProtocolImageUrl(scheme, filePath) {
   const normalized = path.resolve(filePath).replace(/\\/g, '/')
   const encoded = normalized.split('/').map(encodeURIComponent).join('/')
-  return `${scheme}://local/${encoded}`
+  let version = ''
+  try {
+    version = `?v=${Math.trunc(fs.statSync(filePath).mtimeMs)}`
+  } catch {
+    version = ''
+  }
+  return `${scheme}://local/${encoded}${version}`
 }
 
 function imageFileExists(filePath) {
@@ -189,11 +432,15 @@ function findLocalCoverSync(dir) {
     return null
   }
   const found = findPriorityPreviewFile(files, false)
-  return found ? toModImageUrl(path.join(dir, found)) : null
+  if (!found) return null
+  const imagePath = path.join(dir, found)
+  return isDefaultCoverFile(imagePath) ? toAssetImageUrl(DEFAULT_COVER_FILE) : toModImageUrl(imagePath)
 }
 
 function addCharacterAsset(index, key, imagePath) {
   const normalized = normalizeAssetKey(key)
+  if (PLACEHOLDER_ASSET_KEYS.has(normalized)) return
+  if (!isLikelyAvatarFile(imagePath)) return
   if (normalized && imageFileExists(imagePath) && !index.has(normalized)) {
     index.set(normalized, toAssetImageUrl(imagePath))
   }
@@ -240,6 +487,9 @@ function loadWuwaCharacterAssets() {
     path.join(JASM_WUWA_ROOT, 'characters.json'),
     path.join(JASM_WUWA_ROOT, 'Languages', 'zh-cn', 'characters.json'),
   ]
+
+  addImageBasenames(index, CHARACTER_AVATAR_DIR)
+  addImageBasenames(index, USER_CHARACTER_AVATAR_DIR)
 
   for (const file of files) {
     try {
@@ -299,30 +549,44 @@ function getReferenceCategoryImage(dirName) {
   if (!kind) return null
   const candidates = {
     weapon: [
+      path.join(OVERVIEW_IMAGE_DIR, 'weapons', 'Weapons.webp'),
+      path.join(OVERVIEW_IMAGE_DIR, 'weapons', 'weapon-category.png'),
       path.join(MODORA_ICONS_DIR, 'weapon-category.png'),
       path.join(JASM_WUWA_CHARACTER_DIR, 'Weapons.webp'),
       path.join(JASM_ASSETS_ROOT, 'Weapon_Icon.png'),
     ],
     interface: [
+      path.join(OVERVIEW_IMAGE_DIR, 'interface', 'interface-category.png'),
       path.join(MODORA_ICONS_DIR, 'interface-category.png'),
     ],
     echo: [
+      path.join(OVERVIEW_IMAGE_DIR, 'echoes', 'role-mod.png'),
+      path.join(OVERVIEW_IMAGE_DIR, 'echoes', 'Others.png'),
       path.join(MODORA_ICONS_DIR, 'role-mod.png'),
       path.join(JASM_WUWA_CHARACTER_DIR, 'Others.png'),
     ],
     npc: [
+      path.join(OVERVIEW_IMAGE_DIR, 'npc', 'NPC_Icon.png'),
+      path.join(OVERVIEW_IMAGE_DIR, 'npc', 'other-mod.png'),
       path.join(JASM_ASSETS_ROOT, 'NPC_Icon.png'),
       path.join(MODORA_ICONS_DIR, 'other-mod.png'),
     ],
     glider: [
+      path.join(OVERVIEW_IMAGE_DIR, 'gliders', 'Gliders.webp'),
+      path.join(OVERVIEW_IMAGE_DIR, 'gliders', 'other-mod.png'),
       path.join(JASM_WUWA_CHARACTER_DIR, 'Gliders.webp'),
       path.join(MODORA_ICONS_DIR, 'other-mod.png'),
     ],
     utility: [
+      path.join(OVERVIEW_IMAGE_DIR, 'mod', 'utility-category.webp'),
+      path.join(OVERVIEW_IMAGE_DIR, 'mod', 'role-mod.png'),
       path.join(MODORA_ICONS_DIR, 'utility-category.webp'),
       path.join(MODORA_ICONS_DIR, 'role-mod.png'),
     ],
     other: [
+      path.join(OVERVIEW_IMAGE_DIR, 'others', 'Character_Others.png'),
+      path.join(OVERVIEW_IMAGE_DIR, 'others', 'Others.png'),
+      path.join(OVERVIEW_IMAGE_DIR, 'others', 'other-mod.png'),
       path.join(JASM_WUWA_CHARACTER_DIR, 'Character_Others.png'),
       path.join(JASM_WUWA_CHARACTER_DIR, 'Others.png'),
       path.join(MODORA_ICONS_DIR, 'other-mod.png'),
@@ -339,6 +603,8 @@ function getReferenceCharacterDirs() {
   }
   for (const [key, avatar] of Object.entries(characterAvatarCache)) {
     const dirName = normalizeAssetKey(key)
+    if (PLACEHOLDER_ASSET_KEYS.has(dirName)) continue
+    if (!isLikelyAvatarUrl(avatar)) continue
     if (!/^[a-z][a-z0-9]*$/i.test(dirName)) continue
     if (!result.has(dirName)) result.set(dirName, avatar)
   }
@@ -346,7 +612,7 @@ function getReferenceCharacterDirs() {
 }
 
 let MODS_ROOT = DEFAULT_MODS_ROOT
-let autoF10 = false
+let WWMI_ROOT = DEFAULT_WWMI_ROOT
 let detailViewMode = 'list'
 let sortOrder = { overview: [], overviewSections: [], mods: {} }
 let overviewMeta = {}
@@ -370,7 +636,7 @@ function loadConfig() {
   try {
     const raw = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'))
     if (raw.modsRoot) MODS_ROOT = raw.modsRoot
-    if (typeof raw.autoF10 === 'boolean') autoF10 = raw.autoF10
+    if (raw.wwmiRoot) WWMI_ROOT = raw.wwmiRoot
     if (raw.detailViewMode === 'list' || raw.detailViewMode === 'card') detailViewMode = raw.detailViewMode
     if (raw.characterAvatarCache && typeof raw.characterAvatarCache === 'object') {
       characterAvatarCache = raw.characterAvatarCache
@@ -395,7 +661,7 @@ function loadConfig() {
 function saveConfig() {
   try {
     fs.mkdirSync(path.dirname(CONFIG_FILE), { recursive: true })
-    fs.writeFileSync(CONFIG_FILE, JSON.stringify({ modsRoot: MODS_ROOT, autoF10, detailViewMode, sortOrder, overviewMeta, favoriteMods, characterAvatarCache, frameworkIsolationSession }, null, 2), 'utf8')
+    fs.writeFileSync(CONFIG_FILE, JSON.stringify({ modsRoot: MODS_ROOT, wwmiRoot: WWMI_ROOT, detailViewMode, sortOrder, overviewMeta, favoriteMods, characterAvatarCache, frameworkIsolationSession }, null, 2), 'utf8')
   } catch (e) {
     console.error('淇濆瓨閰嶇疆澶辫触', e)
   }
@@ -522,7 +788,7 @@ async function scanCategory(categoryName) {
     const dirs = entries.filter((e) => e.isDirectory()).map((e) => e.name)
 
     if (files.some(isIni)) {
-      result.push(makeModEntry(categoryName, dir, groupPath, files))
+      result.push(await makeModEntry(categoryName, dir, groupPath, files))
       return
     }
 
@@ -535,9 +801,9 @@ async function scanCategory(categoryName) {
       if (found > 0) {
         result.length = before
         if (files.some(isIni)) {
-          result.push(makeModEntry(categoryName, dir, groupPath, files))
+          result.push(await makeModEntry(categoryName, dir, groupPath, files))
         } else {
-          result.push({ ...makeModEntry(categoryName, dir, groupPath, files), wrap: true })
+          result.push({ ...await makeModEntry(categoryName, dir, groupPath, files), wrap: true })
         }
       }
       return
@@ -558,7 +824,7 @@ async function scanCategory(categoryName) {
   )
 }
 
-function makeModEntry(categoryName, dir, groupPath, files) {
+async function makeModEntry(categoryName, dir, groupPath, files) {
   const name = path.basename(dir)
   const rel = path.relative(MODS_ROOT, dir)
   const orderKey = stripDisabledRel(rel)
@@ -567,10 +833,11 @@ function makeModEntry(categoryName, dir, groupPath, files) {
     name: stripDisabled(name),
     rawName: name,
     orderKey,
-    disabled: name.startsWith(DISABLED_PREFIX),
+    disabled: isDisabledDirName(name),
     locked: isModLocked(dir),
     favorite: favoriteMods.includes(orderKey),
-    keyBindings: getModKeyBindings(dir),
+    keyBindings: [],
+    keyBindingsLoaded: false,
     category: categoryName,
     group: groupPath || null,
     preview: findPreviewSync(dir),
@@ -590,7 +857,7 @@ function findPreviewSync(dir) {
 
 function stripDisabled(name) {
   let n = name
-  while (n.startsWith(DISABLED_PREFIX)) n = n.slice(DISABLED_PREFIX.length)
+  while (isDisabledDirName(n)) n = n.slice(DISABLED_PREFIX.length)
   return n
 }
 
@@ -667,7 +934,7 @@ function isModLocked(dir) {
   return commented > 0 && active === 0
 }
 
-function getModKeyBindings(dir) {
+async function getModKeyBindings(dir) {
   const bindings = []
   for (const file of walkIniFiles(dir)) {
     let text = ''
@@ -700,14 +967,20 @@ function getModKeyBindings(dir) {
       const varMatch = /^\$(\w+)\s*=/.exec(line.trim())
       if (varMatch && isUsefulKeyHint(varMatch[1])) {
         hintName = varMatch[1]
-        if (lastBinding) lastBinding.description = persistComments.get(hintName.toLowerCase()) || describeKeySection(hintName)
+        if (lastBinding) {
+          lastBinding.rawDescription = stripKeySyntaxWords(hintName)
+          lastBinding.description = await describeKeySection(hintName)
+        }
       }
       const runMatch = /^run\s*=\s*CommandList(\w+)/i.exec(line.trim())
       if (runMatch && !hintName) {
         const commandHint = commandListHints.get(runMatch[1].toLowerCase()) || runMatch[1]
         if (!isUsefulKeyHint(commandHint)) continue
         hintName = commandHint
-        if (lastBinding) lastBinding.description = persistComments.get(hintName.toLowerCase()) || describeKeySection(hintName)
+        if (lastBinding) {
+          lastBinding.rawDescription = stripKeySyntaxWords(hintName)
+          lastBinding.description = await describeKeySection(hintName)
+        }
       }
       const match = /^(\s*;+\s*)?key\s*=\s*(.+)$/i.exec(line)
       if (match) {
@@ -717,7 +990,8 @@ function getModKeyBindings(dir) {
           section,
           key: keyValue,
           displayKey: cleanDisplayKey(keyValue),
-          description: persistComments.get(String(hintName || '').toLowerCase()) || describeKeySection(hintName || section),
+          rawDescription: stripKeySyntaxWords(hintName || section),
+          description: await describeKeySection(hintName || section),
           locked: !!match[1],
         }
         bindings.push(lastBinding)
@@ -800,8 +1074,9 @@ function mergeDictionaryFile(source, target) {
   for (const [rawKey, value] of Object.entries(sourceDict)) {
     const key = normalizeKeyHintName(rawKey)
     if (!key) continue
+    const entry = normalizeDictionaryEntry(value)
     const before = JSON.stringify(targetDict[key])
-    targetDict[key] = mergeDictionaryEntry(targetDict[key], value)
+    targetDict[key] = mergeDictionaryEntry(targetDict[key], entry)
     if (JSON.stringify(targetDict[key]) !== before) changed++
   }
   if (changed) saveJsonDictionary(target, targetDict)
@@ -812,7 +1087,7 @@ function updateLocalDictionary(key, translation, source = 'builtin', sourcePath 
   const normalizedKey = normalizeKeyHintName(key)
   if (!String(translation || '').trim()) return false
   const cleaned = cleanKeyDescription(translation)
-  if (!normalizedKey || !cleaned || !/[\u4e00-\u9fff]/.test(cleaned)) return false
+  if (!normalizedKey || !isValidKeyDescription(cleaned)) return false
   const dict = loadJsonDictionary(LOCAL_DICT_FILE)
   const before = JSON.stringify(dict[normalizedKey])
   dict[normalizedKey] = mergeDictionaryEntry(dict[normalizedKey], makeDictionaryEntry(cleaned, source, sourcePath))
@@ -822,12 +1097,49 @@ function updateLocalDictionary(key, translation, source = 'builtin', sourcePath 
   return true
 }
 
+function recordUntranslatedDictionaryKey(key, text = '', sourcePath = '') {
+  const normalizedKey = normalizeKeyHintName(key)
+  const value = String(text || key || '').trim()
+  if (!normalizedKey || !value || /[\u4e00-\u9fff]/.test(value)) return false
+  const dict = loadJsonDictionary(LOCAL_DICT_FILE)
+  const current = normalizeDictionaryEntry(dict[normalizedKey])
+  if (current.translation && current.source !== 'untranslated') return false
+  const before = JSON.stringify(dict[normalizedKey])
+  dict[normalizedKey] = {
+    translation: value,
+    source: 'untranslated',
+    source_path: sourcePath,
+    sources: current.sources || [],
+  }
+  if (JSON.stringify(dict[normalizedKey]) === before) return false
+  saveJsonDictionary(LOCAL_DICT_FILE, dict)
+  keyHintDictionaryCache = null
+  return true
+}
+
 function getDictionaryText(dictionary, key) {
   const entry = dictionary?.[key]
   if (!entry) return ''
-  if (typeof entry === 'string') return entry
+  if (typeof entry === 'string') return isValidKeyDescription(entry) ? entry : ''
   if (entry && typeof entry === 'object') {
-    return String(entry.translation || entry.chinese || entry.text || '')
+    if (entry.source === 'untranslated') return ''
+    const text = String(entry.translation || entry.chinese || entry.text || '')
+    return isValidKeyDescription(text) ? text : ''
+  }
+  return ''
+}
+
+function getDictionaryTextWithVariants(dictionary, key) {
+  const normalized = String(key || '').toLowerCase()
+  const variants = [normalized]
+  const stripped = normalized.replace(/^(swapvar|swap|toggle|var)_+/i, '')
+  if (stripped && stripped !== normalized) variants.push(stripped)
+  if (normalized.endsWith('ies')) variants.push(`${normalized.slice(0, -3)}y`)
+  if (normalized.endsWith('s')) variants.push(normalized.slice(0, -1))
+  else variants.push(`${normalized}s`)
+  for (const variant of variants) {
+    const text = getDictionaryText(dictionary, variant)
+    if (text) return text
   }
   return ''
 }
@@ -874,6 +1186,15 @@ function cleanKeyDescription(text) {
   return value === '切换' ? value : value.replace(/切换$/u, '')
 }
 
+function isValidKeyDescription(text) {
+  const value = String(text || '').trim()
+  if (!value || !/[\u4e00-\u9fff]/.test(value)) return false
+  const compact = value.replace(/\s+/g, '')
+  if (INVALID_KEY_DESCRIPTION_LABELS.has(compact)) return false
+  if (compact.startsWith('默认变量') || compact.startsWith('默认配置')) return false
+  return compact.length <= 40
+}
+
 function translateKnownEnglishDescription(text) {
   const normalized = String(text || '')
     .trim()
@@ -881,12 +1202,64 @@ function translateKnownEnglishDescription(text) {
     .replace(/[_-]+/g, ' ')
     .replace(/\s+/g, ' ')
   const phraseMap = {
+    'mouse clicked': '鼠标点击',
     'swap vars aka toggles defaults': '默认变量切换',
     'swap vars toggles defaults': '默认变量切换',
     'swap variables defaults': '默认变量切换',
     'toggles defaults': '默认切换',
   }
   return phraseMap[normalized] || ''
+}
+
+function extractChineseText(text) {
+  const match = /[\u4e00-\u9fff][\u4e00-\u9fffA-Za-z0-9 _+\-；;，,、()（）【】]*/.exec(text || '')
+  return match ? match[0].trim().replace(/[;；,，、\s]+$/u, '') : ''
+}
+
+function compactOnlineTranslation(key, text) {
+  const normalized = normalizeKeyHintName(key)
+  if (AMBIGUOUS_ONLINE_TRANSLATIONS[normalized]) return AMBIGUOUS_ONLINE_TRANSLATIONS[normalized]
+  const cleaned = String(text || '').trim()
+  if (!cleaned) return ''
+  const parts = cleaned.split(/[;；/，,、]+/u)
+  const result = []
+  for (const part of parts) {
+    const chinese = extractChineseText(part)
+    if (chinese && !result.includes(chinese)) result.push(chinese)
+    if (result.length >= 3) break
+  }
+  return result.join('；')
+}
+
+const onlineTranslationCache = new Map()
+
+async function queryOnlineTranslation(key) {
+  const normalized = normalizeKeyHintName(key)
+  if (!normalized) return ''
+  if (onlineTranslationCache.has(normalized)) return onlineTranslationCache.get(normalized)
+  if (AMBIGUOUS_ONLINE_TRANSLATIONS[normalized]) {
+    const value = AMBIGUOUS_ONLINE_TRANSLATIONS[normalized]
+    onlineTranslationCache.set(normalized, value)
+    updateLocalDictionary(normalized, value, 'online_query', ONLINE_TRANSLATION_SOURCE)
+    return value
+  }
+  const query = new URLSearchParams({ q: normalized.replace(/_/g, ' '), langpair: 'en|zh-CN' })
+  let value = ''
+  try {
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), 5000)
+    const response = await fetch(`${ONLINE_TRANSLATION_SOURCE}?${query.toString()}`, { signal: controller.signal })
+    clearTimeout(timer)
+    if (response.ok) {
+      const data = await response.json()
+      value = compactOnlineTranslation(normalized, data?.responseData?.translatedText || '')
+    }
+  } catch {
+    value = ''
+  }
+  onlineTranslationCache.set(normalized, value)
+  updateLocalDictionary(normalized, value, 'online_query', ONLINE_TRANSLATION_SOURCE)
+  return value
 }
 
 function cleanDisplayKey(key) {
@@ -1010,7 +1383,8 @@ function cleanIniCommentDescription(comment) {
   text = text.replace(/[（(]\s*[-\d,\s]+\s*[）)]\s*$/u, '').trim()
   text = text.replace(/\s+/g, ' ')
   text = translateKnownEnglishDescription(text) || text
-  return cleanKeyDescription(text)
+  const cleaned = cleanKeyDescription(text)
+  return isValidKeyDescription(cleaned) ? cleaned : ''
 }
 
 function getPersistComments(lines, file = '') {
@@ -1058,16 +1432,21 @@ function getCommandListHints(lines) {
   return hints
 }
 
-function describeKeySection(section) {
+async function describeKeySection(section) {
   const original = String(section || 'Key')
   const lookup = normalizeKeyHintName(original)
+  const rememberUntranslated = (text = raw) => {
+    const value = String(text || '').trim()
+    recordUntranslatedDictionaryKey(lookup, value)
+    return value || original
+  }
   const remember = (text, source = 'builtin') => {
     const cleaned = cleanKeyDescription(text)
     updateLocalDictionary(lookup, cleaned, source)
     return cleaned
   }
   const { local, words } = getKeyHintDictionaries()
-  const localLookup = getDictionaryText(local, lookup)
+  const localLookup = getDictionaryTextWithVariants(local, lookup)
   if (localLookup) return cleanKeyDescription(localLookup)
 
   const raw = stripKeySyntaxWords(original)
@@ -1078,7 +1457,7 @@ function describeKeySection(section) {
   if (/[\u4e00-\u9fff]/.test(raw) && !/[a-z0-9]/i.test(raw)) return remember(raw, 'file_context')
   const alphaNumeric = /^([a-z]+)(\d+)$/i.exec(normalized)
   if (alphaNumeric) {
-    const baseText = describeKeySection(alphaNumeric[1]).replace(/切换$/u, '')
+    const baseText = (await describeKeySection(alphaNumeric[1])).replace(/切换$/u, '')
     if (/[\u4e00-\u9fff]/.test(baseText)) return remember(`${baseText}${alphaNumeric[2]}`)
   }
   const exact = {
@@ -1086,6 +1465,8 @@ function describeKeySection(section) {
     color: '颜色切换', colour: '颜色切换', bow: '蝴蝶结切换',
     hairpin: '发夹切换', suspender: '吊带切换', wings: '翅膀切换', tail: '尾巴切换',
     whip: '鞭子切换', outfit: '服装切换', clothes: '服装切换', dress: '裙装切换', skirt: '裙子切换',
+    jacket: '外套切换', jackets: '外套切换', coat: '外套切换', coats: '外套切换',
+    boot: '靴子切换', boots: '靴子切换', chest: '胸部装饰切换',
     cloth: '衣服切换', shoe: '鞋子切换', shoes: '鞋子切换', ear: '耳朵切换', ears: '耳朵切换',
     eye: '眼睛切换', eyes: '眼睛切换', body: '身体切换', face: '脸部切换', hair: '头发切换',
     weapon: '武器切换', effect: '特效切换', tm: '透明切换', help: '帮助切换',
@@ -1093,18 +1474,23 @@ function describeKeySection(section) {
     uid: 'UID 显示切换', map: '地图显示切换',
   }
   if (exact[normalized]) return remember(exact[normalized])
-  const localNormalized = getDictionaryText(local, normalized)
+  const localNormalized = getDictionaryTextWithVariants(local, normalized)
   if (localNormalized) return cleanKeyDescription(localNormalized)
-  const wordsNormalized = getDictionaryText(words, normalized)
+  const wordsNormalized = getDictionaryTextWithVariants(words, normalized)
   if (wordsNormalized) return remember(wordsNormalized)
   const wordMap = {
     swap: '', swapvar: '', toggle: '', var: '',
     color: '颜色', colour: '颜色', bow: '蝴蝶结', hairpin: '发夹', suspender: '吊带',
     wings: '翅膀', wing: '翅膀', tail: '尾巴', whip: '鞭子', outfit: '服装', clothes: '服装',
+    jacket: '外套', jackets: '外套', coat: '外套', coats: '外套', boot: '靴子', boots: '靴子', chest: '胸部装饰',
+    crown: '皇冠', tiara: '头冠', earring: '耳环', earrings: '耳环', makeup: '妆容', front: '前侧', back: '背部', top: '上衣',
     cloth: '衣服', shoe: '鞋子', shoes: '鞋子', ear: '耳朵', ears: '耳朵', eye: '眼睛', eyes: '眼睛',
     dress: '裙装', skirt: '裙子', body: '身体', face: '脸部', hair: '头发', weapon: '武器', effect: '特效',
-    uid: 'UID', map: '地图', tuifa: '腿法', toufa: '头发', xiongbu: '胸部', tunbu: '臀部',
+    uid: 'UID', map: '地图', tuifa: '腿法', toufa: '头发', fashi: '发饰', xiongbu: '胸部', tunbu: '臀部',
     shoubi: '手臂', shouwan: '手腕', jiao: '鞋子', xiezi: '鞋子', maozi: '帽子', weiba: '尾巴',
+    waitao: '外套', yanjing: '眼镜', xiongxing: '胸型', qunzi: '裙子', siwa: '丝袜', diaodai: '吊带',
+    erzhui: '耳坠', tuer: '兔耳', tuwei: '腿围', jiaohuan: '脚环', xiaban: '下摆',
+    yuangxiongbu: '圆胸部', yuan: '圆',
     lingdai: '领带', xiangquan: '项圈', suolian: '锁链', yinmao: '阴毛', neiku: '内裤', toubu: '头部',
     tm: '透明', help: '帮助', check: '检查', hold: '长按', a: 'A', b: 'B', c: 'C', d: 'D',
   }
@@ -1115,12 +1501,22 @@ function describeKeySection(section) {
     .filter(Boolean)
   const hasToggleWord = parts.some((part) => ['swap', 'swapvar', 'toggle'].includes(part))
   const translated = parts
-    .map((part) => wordMap[part] || getDictionaryText(words, part) || getDictionaryText(local, part) || part)
+    .map((part) => wordMap[part] || getDictionaryTextWithVariants(words, part) || getDictionaryTextWithVariants(local, part) || part)
     .filter((part) => !['swapvar', 'swap', 'toggle', 'var'].includes(String(part).toLowerCase()))
     .filter(Boolean)
     .join('')
   if (!translated) return '切换'
-  if (!/[\u4e00-\u9fff]/.test(translated) && !hasToggleWord) return raw
+  if (!/[\u4e00-\u9fff]/.test(translated) && !hasToggleWord) {
+    const online = await queryOnlineTranslation(normalized)
+    if (online) return cleanKeyDescription(online)
+    recordUntranslatedDictionaryKey(lookup, raw)
+    for (const part of parts) {
+      if (!wordMap[part] && !getDictionaryTextWithVariants(words, part) && !getDictionaryTextWithVariants(local, part)) {
+        recordUntranslatedDictionaryKey(part, part)
+      }
+    }
+    return rememberUntranslated(raw)
+  }
   return remember(translated)
 }
 
@@ -1169,20 +1565,22 @@ async function buildOverviewGroups() {
   const groups = (await Promise.all(entries.map(async (entry) => {
     if (!entry.isDirectory()) return []
     if (entry.name.startsWith('.')) return []
+    if (isDisabledDirName(entry.name)) return []
 
     const dirPath = path.join(root, entry.name)
 
     if (entry.name === SPECIAL_EXPAND_DIR) {
       const subEntries = await fsp.readdir(dirPath, { withFileTypes: true })
-      const visibleSubEntries = subEntries.filter((subEntry) => subEntry.isDirectory() && !subEntry.name.startsWith('.'))
-      const existingCharacterDirs = new Set(visibleSubEntries.map((subEntry) => normalizeAssetKey(subEntry.name)))
+      const characterDirs = subEntries.filter((subEntry) => subEntry.isDirectory() && !subEntry.name.startsWith('.'))
+      const visibleSubEntries = characterDirs.filter((subEntry) => !isDisabledDirName(subEntry.name))
+      const existingCharacterDirs = new Set(characterDirs.map((subEntry) => normalizeAssetKey(subEntry.name)))
       const subGroups = await Promise.all(visibleSubEntries.map(async (subEntry) => {
         const mods = await scanCategory(path.join(entry.name, subEntry.name))
         const groupDir = path.join(dirPath, subEntry.name)
         const manualPreview = findLocalCoverSync(groupDir)
         const artwork = getReferenceCharacterImage(subEntry.name)
         const avatar = getCharacterAvatar(subEntry.name)
-        const cover = mods.length > 0 ? (manualPreview || avatar || artwork) : artwork
+        const cover = manualPreview || artwork || (mods.length > 0 ? avatar : null)
         return {
           name: subEntry.name,
           chineseName: getChineseName(subEntry.name),
@@ -1220,7 +1618,7 @@ async function buildOverviewGroups() {
       chineseName: getChineseName(entry.name),
       path: entry.name,
       mods,
-      artwork: mods.length > 0 ? (manualPreview || artwork) : artwork,
+      artwork: manualPreview || artwork,
       avatar: null,
       preview: mods[0]?.preview || null,
       isEmpty: mods.length === 0,
@@ -1409,7 +1807,7 @@ async function renameMod(rel, nextName, groupPath) {
   const cleanName = normalizeModDisplayName(nextName)
   if (!cleanName) throw new Error('Invalid name')
 
-  const finalName = currentName.startsWith(DISABLED_PREFIX) ? DISABLED_PREFIX + cleanName : cleanName
+  const finalName = isDisabledDirName(currentName) ? DISABLED_PREFIX + cleanName : cleanName
   const finalPath = path.join(parent, finalName)
   if (path.resolve(finalPath) === path.resolve(target)) {
     return { ok: true, rel, name: cleanName, orderKey: stripDisabledRel(rel) }
@@ -1564,7 +1962,7 @@ async function setOverviewPreview(groupPath) {
   if (!isInsideRoot(path.resolve(target), path.resolve(MODS_ROOT))) throw new Error('Invalid path')
   const res = await dialog.showOpenDialog(mainWindow, {
     title: '选择预览图',
-    defaultPath: target,
+    defaultPath: PROJECT_ASSETS_ROOT,
     properties: ['openFile'],
     filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'webp'] }],
   })
@@ -1631,6 +2029,30 @@ async function createOverviewDir(groupPath) {
   await fsp.mkdir(target, { recursive: true })
   const rel = path.relative(MODS_ROOT, target).replace(/\\/g, '/')
   return { ok: true, path: rel, name: dirName }
+}
+
+async function createOverviewGrid(name) {
+  if (isDisabledDirName(name)) return { ok: false, error: '网格目录不能以 DISABLED_ 开头' }
+  const cleanName = normalizeModDisplayName(name)
+  if (!cleanName) return { ok: false, error: '文件夹名称无效' }
+  const res = await dialog.showOpenDialog(mainWindow, {
+    title: `选择要创建 ${cleanName} 的父目录`,
+    properties: ['openDirectory', 'createDirectory'],
+    defaultPath: MODS_ROOT,
+  })
+  if (res.canceled || !res.filePaths[0]) return { ok: false, canceled: true }
+  const parent = path.resolve(res.filePaths[0])
+  if (!isInsideRoot(parent, path.resolve(MODS_ROOT))) return { ok: false, error: '只能在 Mods 目录内新建网格' }
+  const parentRel = path.relative(MODS_ROOT, parent).replace(/\\/g, '/')
+  if (parentRel && parentRel !== SPECIAL_EXPAND_DIR) {
+    return { ok: false, error: '只有 Mods 根目录或 character 目录下会生成一级网格' }
+  }
+  const target = path.join(parent, cleanName)
+  if (!isInsideRoot(path.resolve(target), path.resolve(MODS_ROOT))) return { ok: false, error: 'Invalid path' }
+  if (fs.existsSync(target)) return { ok: false, error: '目录已存在' }
+  await fsp.mkdir(target, { recursive: true })
+  const rel = path.relative(MODS_ROOT, target).replace(/\\/g, '/')
+  return { ok: true, path: rel, name: cleanName }
 }
 
 function runFlatten(targetRel) {
@@ -1797,6 +2219,13 @@ function updateToolFiles() {
   return { ok: copied.length > 0, copied, missing }
 }
 
+function clearLocalDictionary() {
+  const current = loadJsonDictionary(LOCAL_DICT_FILE)
+  saveJsonDictionary(LOCAL_DICT_FILE, {})
+  keyHintDictionaryCache = null
+  return { ok: true, cleared: Object.keys(current).length }
+}
+
 function findInterfaceIni(target) {
   const files = walkIniFiles(target)
   return files.find((file) => path.basename(file).toLowerCase() === 'interface.ini') || files[0] || null
@@ -1904,8 +2333,9 @@ async function pasteMods(rels, targetGroupPath, mode) {
 
 function findD3dxIniPath() {
   const candidates = [
+    path.join(WWMI_ROOT, 'd3dx.ini'),
     path.join(path.dirname(MODS_ROOT), 'd3dx.ini'),
-    path.join(path.dirname(DEFAULT_MODS_ROOT), 'd3dx.ini'),
+    path.join(DEFAULT_WWMI_ROOT, 'd3dx.ini'),
   ]
   const seen = new Set()
   for (const candidate of candidates) {
@@ -1970,20 +2400,14 @@ function getFrameworkIsolationState() {
 }
 
 async function startFrameworkIsolation(rel) {
-  if (frameworkIsolationSession) return { ok: false, error: '已有隔离调试会话，请先结束当前隔离' }
   const groupPath = getModGroupPath(rel)
   const mods = await scanCategory(groupPath)
   const targetKey = stripDisabledRel(rel)
   let target = mods.find((mod) => mod.orderKey === targetKey)
   if (!target) return { ok: false, error: '未找到目标 Mod，请刷新后重试' }
 
-  let targetDir = path.join(MODS_ROOT, target.rel)
-  if (target.disabled) {
-    targetDir = await toggleDisabled(target.rel, true)
-    await pinToggledMod(target.rel, true)
-    const enabledRel = path.relative(MODS_ROOT, targetDir)
-    target = { ...target, rel: enabledRel, disabled: false }
-  }
+  if (target.disabled) return { ok: false, error: '请先开启该 mod，再进行框架隔离' }
+  const targetDir = path.join(MODS_ROOT, target.rel)
 
   const d3dxPath = findD3dxIniPath()
   if (!d3dxPath) return { ok: false, error: '未找到可改写的 d3dx.ini，无法使用框架侧隔离' }
@@ -1993,20 +2417,35 @@ async function startFrameworkIsolation(rel) {
   const range = getIncludeSectionRange(lines)
   if (!range) return { ok: false, error: 'd3dx.ini 中未找到 [Include] 段' }
 
-  const originalIncludeBlock = lines.slice(range.start, range.end).join('\n')
+  const currentIncludeBlock = lines.slice(range.start, range.end).join('\n')
   const targetIncludePath = path.relative(d3dxDir, targetDir).replace(/\//g, '\\')
+  const session = frameworkIsolationSession
+  const originalIncludeBlock = session?.originalIncludeBlock || currentIncludeBlock
   const nextBlock = makeIsolatedIncludeBlock(originalIncludeBlock, targetIncludePath)
   const nextText = replaceIncludeBlock(originalText, nextBlock)
-  await fsp.copyFile(d3dxPath, `${d3dxPath}.isolation.bak`)
-  await fsp.writeFile(d3dxPath, nextText, 'utf8')
 
-  frameworkIsolationSession = {
-    d3dxPath,
-    originalIncludeBlock,
-    targetOrderKey: target.orderKey,
-    targetRel: target.rel,
-    targetName: target.name,
-    targetIncludePath,
+  if (!session) {
+    await fsp.copyFile(d3dxPath, `${d3dxPath}.isolation.bak`)
+    await fsp.writeFile(d3dxPath, nextText, 'utf8')
+    frameworkIsolationSession = {
+      d3dxPath,
+      originalIncludeBlock,
+      targetOrderKey: target.orderKey,
+      targetRel: target.rel,
+      targetName: target.name,
+      targetIncludePath,
+    }
+  } else {
+    if (session.d3dxPath !== d3dxPath) return { ok: false, error: '当前隔离会话对应的 d3dx.ini 已变化，请先结束后重试' }
+    if (session.targetOrderKey === target.orderKey) return { ok: true, state: getFrameworkIsolationState() }
+    await fsp.writeFile(d3dxPath, nextText, 'utf8')
+    frameworkIsolationSession = {
+      ...session,
+      targetOrderKey: target.orderKey,
+      targetRel: target.rel,
+      targetName: target.name,
+      targetIncludePath,
+    }
   }
   saveConfig()
   scheduleRescan()
@@ -2060,12 +2499,12 @@ function registerIpc() {
   ipcMain.handle('mods:refresh', async () => buildModData())
   ipcMain.handle('tools:update', () => updateToolFiles())
   ipcMain.handle('tools:syncCharacters', () => fetchCharacterAvatars(true))
+  ipcMain.handle('tools:clearLocalDictionary', () => clearLocalDictionary())
   ipcMain.handle('mods:toggle', async (_e, rel, enable) => {
     return withModOperationLock(rel, async () => {
       await toggleDisabled(rel, enable)
       await pinToggledMod(rel, enable)
       scheduleRescan()
-      if (autoF10) sendF10()
       return { ok: true }
     })
   })
@@ -2098,9 +2537,11 @@ function registerIpc() {
     return result
   })
   ipcMain.handle('overview:chooseArtwork', async () => {
+    fs.mkdirSync(OVERVIEW_IMAGE_DIR, { recursive: true })
     const res = await dialog.showOpenDialog(mainWindow, {
       properties: ['openFile'],
       title: '选择一级卡片图片',
+      defaultPath: OVERVIEW_IMAGE_DIR,
       filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif'] }],
     })
     if (res.canceled || !res.filePaths[0]) return { ok: false, canceled: true }
@@ -2126,6 +2567,11 @@ function registerIpc() {
   })
   ipcMain.handle('overview:createDir', async (_e, groupPath) => {
     const result = await createOverviewDir(groupPath)
+    scheduleRescan()
+    return result
+  })
+  ipcMain.handle('overview:createGrid', async (_e, name) => {
+    const result = await createOverviewGrid(name)
     scheduleRescan()
     return result
   })
@@ -2227,7 +2673,6 @@ function registerIpc() {
     return withModOperationLocks(affected.map((m) => m.rel), async () => {
       for (const m of affected) await toggleDisabled(m.rel, enable)
       scheduleRescan()
-      if (autoF10) sendF10()
       return { ok: true, count: affected.length }
     })
   })
@@ -2238,11 +2683,9 @@ function registerIpc() {
     return withModOperationLocks(affected.map((m) => m.rel), async () => {
       for (const m of affected) await toggleDisabled(m.rel, enable)
       scheduleRescan()
-      if (autoF10) sendF10()
       return { ok: true, count: affected.length }
     })
   })
-  ipcMain.handle('game:sendF10', async () => sendF10())
   ipcMain.handle('mods:openFolder', (_e, rel) => {
     const target = path.join(MODS_ROOT, rel)
     if (!isInsideRoot(path.resolve(target), path.resolve(MODS_ROOT)) || !fs.existsSync(target)) {
@@ -2266,8 +2709,21 @@ function registerIpc() {
     return { ok: false }
   })
   ipcMain.handle('mods:getRoot', () => ({ root: MODS_ROOT }))
+  ipcMain.handle('wwmi:chooseRoot', async () => {
+    const res = await dialog.showOpenDialog(mainWindow, {
+      properties: ['openDirectory'],
+      title: '选择 WWMI 目录（包含 d3dx.ini）',
+      defaultPath: WWMI_ROOT,
+    })
+    if (!res.canceled && res.filePaths[0]) {
+      WWMI_ROOT = res.filePaths[0]
+      saveConfig()
+      return { ok: true, root: WWMI_ROOT }
+    }
+    return { ok: false }
+  })
+  ipcMain.handle('wwmi:getRoot', () => ({ root: WWMI_ROOT }))
   ipcMain.handle('config:set', (_e, key, value) => {
-    if (key === 'autoF10') { autoF10 = !!value; saveConfig() }
     if (key === 'detailViewMode') {
       detailViewMode = value === 'card' ? 'card' : 'list'
       saveConfig()
@@ -2275,7 +2731,6 @@ function registerIpc() {
     return { ok: true }
   })
   ipcMain.handle('config:get', (_e, key) => {
-    if (key === 'autoF10') return { value: autoF10 }
     if (key === 'detailViewMode') return { value: detailViewMode }
     return { value: null }
   })
@@ -2301,6 +2756,15 @@ function registerIpc() {
   })
   ipcMain.handle('overview:getGroups', async () => {
     return buildOverviewGroups()
+  })
+  ipcMain.handle('mods:getKeyBindings', async (_e, rel) => {
+    const target = path.join(MODS_ROOT, rel)
+    if (!isInsideRoot(path.resolve(target), path.resolve(MODS_ROOT))) return { ok: false, err: 'Invalid target' }
+    try {
+      return { ok: true, keyBindings: await getModKeyBindings(target) }
+    } catch (err) {
+      return { ok: false, err: err.message }
+    }
   })
   // 閫夋嫨婧愭枃浠跺す锛堝鍏ユ椂浣跨敤锛?
   ipcMain.handle('overview:chooseSource', async () => {
@@ -2336,6 +2800,20 @@ function registerIpc() {
       return { ok: false, error: err.message }
     }
   })
+  ipcMain.handle('window:minimize', (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender)
+    if (win && !win.isDestroyed()) win.minimize()
+  })
+  ipcMain.handle('window:toggleMaximize', (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender)
+    if (!win || win.isDestroyed()) return
+    if (win.isMaximized()) win.unmaximize()
+    else win.maximize()
+  })
+  ipcMain.handle('window:close', (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender)
+    if (win && !win.isDestroyed()) win.close()
+  })
 }
 
 function ensureRootExists() {
@@ -2352,8 +2830,9 @@ function createWindow() {
     height: 800,
     minWidth: 900,
     minHeight: 600,
-    backgroundColor: '#191919',
+    backgroundColor: '#edf0f3',
     title: '鸣潮 Mod 管理器',
+    frame: false,
     autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, '..', 'preload', 'preload.js'),
@@ -2392,11 +2871,16 @@ function positionPopupLeftCenter(win, width, height) {
 function showKeyPopupWindow(payload) {
   const bindings = sortKeyBindings(Array.isArray(payload?.keyBindings) ? payload.keyBindings : [])
   const rows = bindings.length
-    ? bindings.map((binding) => `
+    ? bindings.map((binding) => {
+      const desc = cleanPopupText(binding.description || '')
+      const raw = cleanPopupText(binding.rawDescription || '')
+      const showRaw = raw && raw.toLowerCase() !== desc.toLowerCase()
+      return `
       <div class="row">
         <div class="key">${escapeHtmlText(cleanPopupText(binding.displayKey || binding.key))}</div>
-        <div class="desc">${escapeHtmlText(cleanPopupText(binding.description || ''))}</div>
-      </div>`).join('')
+        <div class="desc"><span class="desc-main">${escapeHtmlText(desc)}</span>${showRaw ? `<span class="raw">${escapeHtmlText(raw)}</span>` : ''}</div>
+      </div>`
+    }).join('')
     : '<div class="empty">未找到 Key 绑定</div>'
   const title = escapeHtmlText(cleanPopupText(payload?.name || 'MOD'))
   const measureText = (value) => Array.from(String(value || '')).reduce((width, char) => (
@@ -2408,7 +2892,7 @@ function showKeyPopupWindow(payload) {
   ), 0)))
   const descWidth = bindings.reduce((width, binding) => Math.max(
     width,
-    measureText(cleanPopupText(binding.description)) + 12,
+    measureText(cleanPopupText(binding.description)) + measureText(cleanPopupText(binding.rawDescription)) + 34,
   ), 0)
   const contentWidth = keyColumnWidth + descWidth + 40
   const popupWidth = Math.min(1600, Math.max(440, contentWidth + 160))
@@ -2424,7 +2908,9 @@ body{-webkit-app-region:drag}
 .body{flex:1;overflow:auto;padding:10px 14px;-webkit-app-region:no-drag}
 .row{display:grid;grid-template-columns:${keyColumnWidth}px max-content;column-gap:calc(18px * var(--content-scale));align-items:center;padding:calc(6px * var(--content-scale)) 0;border-bottom:2px solid #7cff00;font-size:calc(15px * var(--content-scale));font-weight:700;line-height:1.2;white-space:nowrap;text-shadow:1px 0 0 #000,-1px 0 0 #000,0 1px 0 #000,0 -1px 0 #000}
 .key{padding:2px;text-align:left;color:#fff;overflow:hidden;text-overflow:ellipsis}
-.desc{color:#fff;letter-spacing:0}
+.desc{color:#fff;letter-spacing:0;display:flex;align-items:center;gap:8px}
+.desc-main{overflow:hidden;text-overflow:ellipsis}
+.raw{color:rgba(255,255,255,.62);border:1px solid rgba(124,255,0,.38);background:rgba(124,255,0,.10);padding:1px 6px;font-size:.78em;text-shadow:none}
 .empty{padding:20px;font-weight:700;text-shadow:1px 0 0 #000,-1px 0 0 #000,0 1px 0 #000,0 -1px 0 #000}
 ::-webkit-scrollbar{width:10px}::-webkit-scrollbar-thumb{background:#7cff00}
 </style></head><body>

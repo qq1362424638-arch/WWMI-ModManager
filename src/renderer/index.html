@@ -7,25 +7,41 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
+  <header class="app-titlebar">
+    <div class="app-brand">
+      <button id="btnAppSettings" class="app-logo-button" type="button" title="设置">
+        <span class="app-logo-star">☆</span>
+      </button>
+      <div class="app-brand-name">
+        <span>Mod</span>
+        <span>Manager</span>
+      </div>
+    </div>
+    <div class="app-window-area">
+      <div id="themeSwitch" class="theme-switch" role="group" aria-label="主题切换">
+        <button class="theme-switch-btn" type="button" data-theme="dark"><span></span>深色</button>
+        <button class="theme-switch-btn active" type="button" data-theme="light"><span></span>浅色</button>
+        <button class="theme-switch-btn" type="button" data-theme="pink"><span></span>粉色</button>
+      </div>
+      <button id="btnWindowMinimize" class="window-control" type="button" title="最小化">─</button>
+      <button id="btnWindowMaximize" class="window-control" type="button" title="最大化">□</button>
+      <button id="btnWindowClose" class="window-control close-control" type="button" title="关闭">×</button>
+    </div>
+  </header>
   <!-- 一级界面：全屏网格目录总览 -->
   <div id="page-overview" class="page">
     <header class="overview-header">
       <div class="overview-toolbar">
-        <input id="search" type="text" placeholder="搜索…" autocomplete="off" />
-        <label class="switch-label" title="启用/停用后自动向游戏发送 F10 重载">
-          <input id="autoF10" type="checkbox" />
-          <span class="switch-ui"></span>
-          <span>自动 F10</span>
-        </label>
-        <button id="btnF10" class="btn btn-ghost">发送 F10</button>
-        <button id="btnAddOverviewSection" class="btn btn-ghost">新建分组</button>
-        <button id="btnUpdateTools" class="btn btn-ghost">更新配置</button>
-        <button id="btnRefresh" class="btn btn-ghost">刷新</button>
+        <div class="search-shell overview-search-shell">
+          <input id="search" class="search-field" type="text" placeholder="Tab 搜当前页" title="Tab 搜当前页" autocomplete="off" />
+        </div>
+        <button id="btnAddOverviewSection" class="btn btn-ghost" title="新建一级目录分组">新建分组</button>
+        <button id="btnUpdateTools" class="btn btn-ghost" title="更新脚本、角色名称、头像与缓存配置">更新配置</button>
+        <button id="btnRefresh" class="btn btn-ghost" title="重新扫描 Mods 列表并刷新界面">刷新</button>
       </div>
     </header>
     <div id="overviewGrid" class="overview-grid"></div>
     <div id="overviewEmpty" class="empty hidden">暂无目录或 Mods 路径未设置。</div>
-    <div id="rootBar" class="root-bar">Mods 目录：<span id="rootPath"></span></div>
     <div id="overviewLoading" class="loading-mask hidden">
       <div class="loading-card">
         <div class="loading-title">正在加载 · 支持键位</div>
@@ -42,22 +58,23 @@
         <h1 id="detailTitle">角色名</h1>
       </div>
       <div class="detail-search-wrap">
-        <input id="detailSearch" type="text" placeholder="Tab 搜当前页 · 连按 Tab 搜全局 · F2 切换" title="Tab 搜当前页，连按 Tab 搜全局，F2 切换全局" autocomplete="off" />
+        <div class="search-shell detail-search-shell">
+          <input id="detailSearch" class="search-field" type="text" placeholder="Tab 搜当前页 · 连按 Tab 搜全局 · F2 切换" title="Tab 搜当前页，连按 Tab 搜全局，F2 切换全局" autocomplete="off" />
+        </div>
         <span id="detailCount" class="detail-count">0/0</span>
         <button id="detailSearchGlobal" class="detail-global-search" type="button" title="F2 切换全局搜索" aria-pressed="false">全局</button>
       </div>
       <div class="detail-header-actions">
         <div class="view-toggle" role="group" aria-label="Mod display mode">
-          <button id="btnListView" class="view-toggle-btn active" type="button">列表</button>
-          <button id="btnCardView" class="view-toggle-btn" type="button">卡片</button>
+          <button id="btnListView" class="view-toggle-btn active" type="button" title="以列表形式显示 mod">列表</button>
+          <button id="btnCardView" class="view-toggle-btn" type="button" title="以卡片形式显示 mod">卡片</button>
         </div>
-        <button id="btnFlatten" class="btn btn-ghost">平整目录</button>
-        <button id="btnBatchMove" class="btn btn-ghost">批量移入</button>
-        <button id="btnRefreshb" class="btn btn-ghost">刷新</button>
-        <button id="btnBack" class="btn-back" title="Esc 返回">← 返回</button>
+        <button id="btnFlatten" class="btn btn-ghost" title="将当前目录内嵌套的 mod 平整到同一级">平整目录</button>
+        <button id="btnBatchMove" class="btn btn-ghost" title="批量选择文件夹并移入当前目录">批量移入</button>
+        <button id="btnRefreshb" class="btn btn-ghost" title="重新扫描当前目录并刷新界面">刷新</button>
+        <button id="btnBack" class="btn-back" title="返回一级界面，快捷键 Esc">← 返回</button>
       </div>
     </header>
-    <div id="toast" class="toast hidden"></div>
     <div id="detailLoading" class="loading-mask hidden">
       <div class="loading-card">
         <div class="loading-title">正在加载</div>
@@ -78,6 +95,71 @@
       </aside>
     </div>
   </div>
+
+  <div id="toast" class="toast hidden"></div>
+  <div id="settingsModal" class="settings-modal hidden" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+    <div class="settings-dialog">
+      <div class="settings-dialog-head">
+        <div>
+          <div id="settingsTitle" class="settings-dialog-title">设置</div>
+          <div class="settings-dialog-subtitle">路径与维护</div>
+        </div>
+        <button id="btnCloseSettings" class="settings-close" type="button" title="关闭">×</button>
+      </div>
+      <div class="settings-body">
+        <div class="settings-field">
+          <div class="settings-field-head">
+            <div>
+              <div class="settings-label">Mods 目录</div>
+              <div id="settingsModsPath" class="settings-path"></div>
+            </div>
+            <button id="btnChooseModsRoot" class="btn btn-ghost" type="button">更改</button>
+          </div>
+        </div>
+        <div class="settings-field">
+          <div class="settings-field-head">
+            <div>
+              <div class="settings-label">WWMI 目录</div>
+              <div id="settingsWwmiPath" class="settings-path"></div>
+            </div>
+            <button id="btnChooseWwmiRoot" class="btn btn-ghost" type="button">更改</button>
+          </div>
+        </div>
+        <div class="settings-field settings-danger-field">
+          <div class="settings-field-head">
+            <div>
+              <div class="settings-label">本地翻译词典</div>
+              <div class="settings-path">清空后会重新记录新遇到的词条</div>
+            </div>
+            <button id="btnClearDictionary" class="btn btn-ghost" type="button">清空词典</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="updateProgress" class="update-progress hidden" role="status" aria-live="polite">
+    <div class="update-progress-head">
+      <div>
+        <div class="update-progress-title">更新配置</div>
+        <div id="updateProgressText" class="update-progress-text">准备开始</div>
+      </div>
+      <div id="updateProgressCount" class="update-progress-count">0/3</div>
+    </div>
+    <div class="update-progress-bar">
+      <div id="updateProgressFill" class="update-progress-fill"></div>
+    </div>
+    <div id="updateProgressSteps" class="update-progress-steps"></div>
+  </div>
+  <button id="frameworkIsolationNotice" class="framework-isolation-notice hidden" type="button" title="点击跳转到正在调试的 mod">
+    <div class="framework-isolation-notice-head">
+      <div>
+        <div class="framework-isolation-notice-title">框架隔离调试中</div>
+        <div id="frameworkIsolationNoticeText" class="framework-isolation-notice-text">点击跳转到调试项</div>
+      </div>
+      <div class="framework-isolation-notice-action">跳转</div>
+    </div>
+    <div class="framework-isolation-notice-bar"></div>
+  </button>
 
   <script src="renderer.js"></script>
 </body>
