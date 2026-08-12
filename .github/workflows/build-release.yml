@@ -29,6 +29,13 @@ jobs:
       - name: Build installer
         shell: pwsh
         run: |
+          npm run dist:win:dir 2>&1 | Tee-Object -FilePath electron-builder-dir.log
+          if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+          }
+
+          Compress-Archive -Path dist/win-unpacked/* -DestinationPath dist/WWMI-ModManager-0.1.0-win-x64.zip -Force
+
           npm run dist:win 2>&1 | Tee-Object -FilePath electron-builder.log
           if ($LASTEXITCODE -ne 0) {
             exit $LASTEXITCODE
@@ -45,10 +52,12 @@ jobs:
           }
 
       - name: Upload workflow artifact
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: WWMI-ModManager-Windows
           path: |
+            dist/WWMI-ModManager-*-win-x64.zip
             dist/WWMI-ModManager-Setup-*-x64.exe
             dist/WWMI-ModManager-Setup-*-x64.exe.blockmap
 
@@ -59,6 +68,7 @@ jobs:
           name: WWMI-ModManager-debug
           path: |
             electron-builder.log
+            electron-builder-dir.log
             dist/builder-debug.yml
             dist/**/*.log
 
@@ -70,6 +80,7 @@ jobs:
           TAG_NAME: ${{ github.event.release.tag_name }}
         run: |
           gh release upload "$TAG_NAME" \
+            dist/WWMI-ModManager-*-win-x64.zip \
             dist/WWMI-ModManager-Setup-*-x64.exe \
             dist/WWMI-ModManager-Setup-*-x64.exe.blockmap \
             --clobber
