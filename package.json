@@ -1,32 +1,50 @@
 {
   "name": "wwmi-mod-manager",
   "version": "0.1.0",
-  "description": "鸣潮 WWMI Mod 管理器 - 基础版",
+  "description": "WWMI Mod Manager",
   "main": "src/main/main.js",
   "scripts": {
     "start": "electron .",
-    "dist": "electron-builder --win dir && powershell -ExecutionPolicy Bypass -File build/build-launcher.ps1",
-    "dist:win": "electron-builder --win dir && powershell -ExecutionPolicy Bypass -File build/build-launcher.ps1"
+    "dist": "npm run dist:win",
+    "dist:win": "electron-builder --win nsis",
+    "dist:win:dir": "electron-builder --win dir",
+    "release:win": "powershell -NoProfile -ExecutionPolicy Bypass -File build/release-win.ps1"
   },
   "author": "",
   "license": "MIT",
   "build": {
     "appId": "com.wwmi.modmanager",
-    "productName": "鸣潮 Mod 管理器",
+    "productName": "WWMI Mod Manager",
+    "executableName": "WWMI-ModManager",
     "directories": {
       "output": "dist"
     },
+    "artifactName": "WWMI-ModManager-Setup-${version}-${arch}.${ext}",
+    "asar": false,
     "files": [
       "src/**/*"
     ],
     "win": {
       "target": [
         {
-          "target": "dir",
-          "arch": ["x64"]
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
         }
       ],
-      "icon": "build/icon.ico"
+      "icon": "build/icon.ico",
+      "publisherName": "WWMI Mod Manager"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowElevation": true,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "WWMI Mod Manager",
+      "uninstallDisplayName": "WWMI Mod Manager"
     }
   },
   "devDependencies": {

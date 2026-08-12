@@ -1,0 +1,53 @@
+name: Build Windows Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build installer
+        run: npm run dist:win
+        env:
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: WWMI-ModManager-Windows
+          path: |
+            dist/WWMI-ModManager-Setup-*-x64.exe
+            dist/WWMI-ModManager-Setup-*-x64.exe.blockmap
+
+      - name: Upload assets to GitHub Release
+        if: github.event_name == 'release'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG_NAME: ${{ github.event.release.tag_name }}
+        run: |
+          gh release upload "$TAG_NAME" \
+            dist/WWMI-ModManager-Setup-*-x64.exe \
+            dist/WWMI-ModManager-Setup-*-x64.exe.blockmap \
+            --clobber
