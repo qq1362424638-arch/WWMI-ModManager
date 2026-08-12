@@ -26,6 +26,12 @@ const WATCHER_SCRIPT = path.join(TOOLS_DIR, 'watcher.py')
 const INI_UTIL_SCRIPT = path.join(TOOLS_DIR, 'wwmi_ini_util.py')
 const LOCAL_DICT_FILE = path.join(TOOLS_DIR, 'local_dict.json')
 const WORD_DICT_FILE = path.join(TOOLS_DIR, 'word_dict.json')
+function unpackedPath(filePath) {
+  return app.isPackaged ? filePath.replace('app.asar', 'app.asar.unpacked') : filePath
+}
+function toolPath(name) {
+  return unpackedPath(path.join(TOOLS_DIR, name))
+}
 const TOOL_UPDATE_FILES = [
   { name: 'flatten.ps1', sourceDirs: ['wwmi-flatten'] },
   { name: 'watcher.py', sourceDirs: ['wwmi-watcher', 'wwmi-translate'] },
@@ -2084,7 +2090,7 @@ async function createOverviewGrid(name) {
 function runFlatten(targetRel) {
   return new Promise((resolve) => {
     const target = path.join(MODS_ROOT, targetRel)
-    const child = spawn('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', FLATTEN_SCRIPT, '-TargetDir', target], { windowsHide: true })
+    const child = spawn('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', unpackedPath(FLATTEN_SCRIPT), '-TargetDir', target], { windowsHide: true })
     let out = '', err = ''
     child.stdout.on('data', (d) => (out += d))
     child.stderr.on('data', (d) => (err += d))
@@ -2112,17 +2118,19 @@ function findPythonRunner() {
 }
 
 function ensurePythonToolCompatibility() {
-  if (!fs.existsSync(INI_UTIL_SCRIPT)) return
-  const text = fs.readFileSync(INI_UTIL_SCRIPT, 'utf8')
+  const iniUtilScript = unpackedPath(INI_UTIL_SCRIPT)
+  if (!fs.existsSync(iniUtilScript)) return
+  const text = fs.readFileSync(iniUtilScript, 'utf8')
   if (!/def\s+cycle_value\s*\(/.test(text) || /def\s+queue_cycle\s*\(/.test(text)) return
   fs.writeFileSync(
-    INI_UTIL_SCRIPT,
+    iniUtilScript,
     `${text.trimEnd()}\n\ndef queue_cycle(var_name: str, filepath: str, all_bindings: list) -> str:\n    return cycle_value(var_name, filepath, all_bindings)\n`,
     'utf8',
   )
 }
 
 function writePythonRunner(script, target, runner, requireAdmin = false) {
+  script = unpackedPath(script)
   const scriptDir = path.dirname(script)
   const prefix = runner.prefix.map(quoteCmdArg).join(' ')
   const pythonArgs = [quoteCmdArg(runner.exe), prefix, '-u', quoteCmdArg(script), quoteCmdArg(target)]
@@ -2178,10 +2186,11 @@ function runPythonScript(script, targets) {
   const runner = findPythonRunner()
   if (!runner) return Promise.resolve({ ok: false, err: '未找到 Python，请先安装 Python 3' })
 
-  const args = [...runner.prefix, '-u', script, ...normalizeOrderList(targets)]
+  const runnableScript = unpackedPath(script)
+  const args = [...runner.prefix, '-u', runnableScript, ...normalizeOrderList(targets)]
   return new Promise((resolve) => {
     const child = spawn(runner.exe, args, {
-      cwd: path.dirname(script),
+      cwd: path.dirname(runnableScript),
       windowsHide: true,
       env: { ...process.env, PYTHONUTF8: '1', PYTHONIOENCODING: 'utf-8' },
     })
@@ -2223,7 +2232,7 @@ function updateToolFiles() {
       .filter((candidate) => fs.existsSync(candidate))
       .sort((a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs)
     const source = candidates[0]
-    const target = path.join(TOOLS_DIR, file.name)
+    const target = toolPath(file.name)
     if (!source) {
       missing.push(file.name)
       continue
@@ -2234,7 +2243,7 @@ function updateToolFiles() {
         copied.push(`${file.name}:${changed}`)
         continue
       }
-      fs.copyFileSync(source, target)
+      fs.copyFileSync(source, toolPath(file.name))
       copied.push(file.name)
     } catch (error) {
       return { ok: false, copied, missing, error: `${file.name}: ${error.message}` }
@@ -2507,7 +2516,7 @@ async function trashMods(rels) {
 
 function sendF10() {
   return new Promise((resolve) => {
-    const script = path.join(__dirname, 'send-f10.ps1')
+    const script = unpackedPath(path.join(__dirname, 'send-f10.ps1'))
     const child = spawn('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', script], { windowsHide: true })
     let out = '', err = ''
     child.stdout.on('data', (d) => (out += d))

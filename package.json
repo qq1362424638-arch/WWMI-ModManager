@@ -20,7 +20,11 @@
       "output": "dist"
     },
     "artifactName": "WWMI-ModManager-Setup-${version}-${arch}.${ext}",
-    "asar": false,
+    "asar": true,
+    "asarUnpack": [
+      "src/tools/**/*",
+      "src/main/*.ps1"
+    ],
     "files": [
       "src/**/*"
     ],
