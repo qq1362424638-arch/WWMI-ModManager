@@ -26,7 +26,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build installer
+      - name: Build Windows zip
         shell: pwsh
         run: |
           npm run dist:win:dir 2>&1 | Tee-Object -FilePath electron-builder-dir.log
@@ -36,6 +36,11 @@ jobs:
 
           Compress-Archive -Path dist/win-unpacked/* -DestinationPath dist/WWMI-ModManager-0.1.0-win-x64.zip -Force
 
+      - name: Build NSIS installer
+        id: nsis
+        continue-on-error: true
+        shell: pwsh
+        run: |
           npm run dist:win 2>&1 | Tee-Object -FilePath electron-builder.log
           if ($LASTEXITCODE -ne 0) {
             exit $LASTEXITCODE
@@ -43,8 +48,8 @@ jobs:
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: false
 
-      - name: List dist on failure
-        if: failure()
+      - name: List dist
+        if: always()
         shell: pwsh
         run: |
           if (Test-Path dist) {
@@ -62,7 +67,7 @@ jobs:
             dist/WWMI-ModManager-Setup-*-x64.exe.blockmap
 
       - name: Upload debug artifact
-        if: failure()
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: WWMI-ModManager-debug
@@ -74,13 +79,17 @@ jobs:
 
       - name: Upload assets to GitHub Release
         if: github.event_name == 'release'
-        shell: bash
+        shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
           TAG_NAME: ${{ github.event.release.tag_name }}
         run: |
-          gh release upload "$TAG_NAME" \
-            dist/WWMI-ModManager-*-win-x64.zip \
-            dist/WWMI-ModManager-Setup-*-x64.exe \
-            dist/WWMI-ModManager-Setup-*-x64.exe.blockmap \
-            --clobber
+          $files = @(
+            Get-ChildItem dist/WWMI-ModManager-*-win-x64.zip -ErrorAction SilentlyContinue
+            Get-ChildItem dist/WWMI-ModManager-Setup-*-x64.exe -ErrorAction SilentlyContinue
+            Get-ChildItem dist/WWMI-ModManager-Setup-*-x64.exe.blockmap -ErrorAction SilentlyContinue
+          )
+          if (-not $files) {
+            throw 'No release assets were generated.'
+          }
+          gh release upload $env:TAG_NAME @($files.FullName) --clobber
