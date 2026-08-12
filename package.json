@@ -5,8 +5,8 @@
   "main": "src/main/main.js",
   "scripts": {
     "start": "electron .",
-    "dist": "electron-builder",
-    "dist:win": "electron-builder --win"
+    "dist": "electron-builder --win dir && powershell -ExecutionPolicy Bypass -File build/build-launcher.ps1",
+    "dist:win": "electron-builder --win dir && powershell -ExecutionPolicy Bypass -File build/build-launcher.ps1"
   },
   "author": "",
   "license": "MIT",
@@ -22,17 +22,11 @@
     "win": {
       "target": [
         {
-          "target": "nsis",
+          "target": "dir",
           "arch": ["x64"]
         }
       ],
       "icon": "build/icon.ico"
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "installerIcon": "build/icon.ico",
-      "uninstallerIcon": "build/icon.ico"
     }
   },
   "devDependencies": {

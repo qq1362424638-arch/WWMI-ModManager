@@ -1269,7 +1269,7 @@ body {
   width: 100%;
   min-width: 0;
   height: 32px;
-  padding: 0 108px 0 10px;
+  padding: 0 112px 0 10px;
   border: 1px solid var(--border);
   border-radius: 8px;
   color: var(--text);
@@ -1285,7 +1285,7 @@ body {
 }
 .detail-count {
   position: absolute;
-  right: 60px;
+  right: 62px;
   top: 50%;
   transform: translateY(-50%);
   color: var(--text-dim);
@@ -1294,35 +1294,39 @@ body {
 }
 .detail-global-search {
   position: absolute;
-  right: 3px;
-  top: 3px;
-  height: 24px;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 3;
+  width: 52px;
+  height: 28px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 0 10px;
-  border: 1px solid var(--floating-border);
-  border-radius: 6px;
-  background: var(--bg-elevated);
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--overview-card-bg);
   color: var(--text);
   cursor: pointer;
   font-size: 12px;
   font-weight: 600;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.48);
   transition: background 0.16s, border-color 0.16s, color 0.16s, transform 0.08s, box-shadow 0.16s;
 }
 .detail-global-search:hover {
   border-color: var(--accent);
   background: var(--control-hover-bg);
+  box-shadow: var(--control-hover-shadow);
 }
 .detail-global-search:active {
-  transform: translateY(1px);
+  transform: translateY(calc(-50% + 1px));
 }
 .detail-global-search.active {
   background: var(--primary-bg);
   border-color: var(--accent);
   color: var(--primary-text);
-  box-shadow: 0 8px 20px var(--accent-weak);
+  box-shadow: 0 0 0 1px var(--accent-weak), 0 8px 20px var(--accent-weak);
 }
 .detail-header-actions {
   margin-left: auto;

@@ -434,10 +434,7 @@ function renderOverview() {
     card.addEventListener('contextmenu', (e) => {
       e.preventDefault()
       overviewContextPath = path
-      showOverviewMenu(e.clientX, e.clientY)
-    })
-    card.addEventListener('mouseenter', () => {
-      overviewContextPath = path
+      showOverviewMenu(e.clientX, e.clientY, path)
     })
   })
   bindOverviewImageFallback()
@@ -464,7 +461,10 @@ function renderOverviewCard(g, canDrag, sectionId) {
   const en = g.mods.filter((m) => !m.disabled).length
   const tot = g.mods.length
   const isCharacterGroup = String(g.path || '').startsWith('character/')
-  const artwork = g.artwork || ((tot > 0 || isCharacterGroup) ? (g.avatar || null) : null)
+  const hasCustomArtwork = !!g.customMeta?.artworkPath
+  const artwork = isCharacterGroup
+    ? (g.artwork || g.avatar || g.preview || null)
+    : ((hasCustomArtwork || g.hasManualCover) ? g.artwork : (g.preview || g.artwork || g.avatar || null))
   const thumb = isDefaultCoverSrc(artwork)
     ? `<span class="default-cover-thumb" aria-hidden="true"></span>`
     : artwork
@@ -673,8 +673,9 @@ function ensureOverviewMenu() {
   document.body.appendChild(menu)
   menu.addEventListener('click', async (e) => {
     const action = e.target?.dataset?.action
-    if (!action || !overviewContextPath) return
-    const group = overviewGroups.find((item) => item.path === overviewContextPath)
+    const group = getOverviewContextGroup(menu)
+    if (!action || !group) return
+    hideOverviewMenu()
     try {
       if (frameworkIsolation?.active && action !== 'open') {
         showToast('框架隔离调试中，暂不可修改目录', 'err')
@@ -682,7 +683,7 @@ function ensureOverviewMenu() {
       }
       if (action === 'open') {
         if (group?.missing) await openOverviewGroup(group)
-        else await window.api.openOverviewFolder(overviewContextPath)
+        else await window.api.openOverviewFolder(group.path)
       }
       if (action === 'configure') await configureOverviewMeta(group)
       if (action === 'rename') await renameOverviewGroup(group)
@@ -690,9 +691,7 @@ function ensureOverviewMenu() {
       if (action === 'delete') await trashOverviewGroup(group)
     } catch (error) {
       showToast('操作失败：' + error.message, 'err')
-    } finally {
-      hideOverviewMenu()
-    }
+    } finally {}
   })
   return menu
 }
@@ -706,8 +705,9 @@ function positionFloatingMenu(menu, x, y) {
   menu.style.top = `${top}px`
 }
 
-function showOverviewMenu(x, y) {
+function showOverviewMenu(x, y, path) {
   const menu = ensureOverviewMenu()
+  if (path) menu.dataset.path = path
   menu.classList.remove('hidden')
   positionFloatingMenu(menu, x, y)
 }
@@ -715,14 +715,25 @@ function showOverviewMenu(x, y) {
 function hideOverviewMenu() {
   const menu = document.querySelector('#overviewMenu')
   if (menu) menu.classList.add('hidden')
+  if (menu) delete menu.dataset.path
   overviewContextPath = null
+}
+
+function getOverviewContextGroup(menu = document.querySelector('#overviewMenu')) {
+  const path = menu?.dataset?.path || overviewContextPath
+  if (!path) return null
+  return overviewGroups.find((item) => item.path === path) || null
 }
 
 async function renameOverviewGroup(group) {
   if (!group) return
   const currentName = group.name
   const label = group.chineseName && group.chineseName !== group.name ? `（显示：${group.chineseName}）` : ''
-  const nextName = prompt(`重命名实际目录名${label}`, currentName)
+  const nextName = await askText({
+    title: `重命名实际目录名${label}`,
+    value: currentName,
+    confirmText: '重命名',
+  })
   if (!nextName || nextName.trim() === currentName) return
   const result = await window.api.renameOverview(group.path, nextName.trim())
   if (!result.ok) throw new Error(result.error || 'rename failed')
@@ -1493,7 +1504,7 @@ function isDetailVisible() {
 }
 
 async function deleteOverviewSelection() {
-  const group = overviewGroups.find((item) => item.path === overviewContextPath)
+  const group = getOverviewContextGroup()
   if (!group) {
     showToast('请先右键选择要删除的一级目录', 'err')
     return

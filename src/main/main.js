@@ -14,6 +14,7 @@ const DEFAULT_MODS_ROOT = 'D:\\0Temp\\mingchao\\WWMI\\Mods'
 const DEFAULT_WWMI_ROOT = path.dirname(DEFAULT_MODS_ROOT)
 const CONFIG_FILE = path.join(app.getPath('userData'), 'config.json')
 const PROJECT_ASSETS_ROOT = path.join(__dirname, '..', 'assets')
+const APP_ICON_FILE = path.join(PROJECT_ASSETS_ROOT, 'app-icon.png')
 const DEFAULT_COVER_FILE = path.join(PROJECT_ASSETS_ROOT, 'default.png')
 const CHARACTER_AVATAR_DIR = path.join(PROJECT_ASSETS_ROOT, 'character-avatars')
 const OVERVIEW_IMAGE_DIR = path.join(PROJECT_ASSETS_ROOT, 'overview-images')
@@ -110,10 +111,6 @@ const MODORA_OFFICIAL_CHARACTER_ASSETS = {
     file: '10001.png',
     names: ['Yangyang Xuanling', 'YangyangXuanling', 'yangyangxuanling', '秧秧·玄翎', '秧秧玄翎'],
   },
-  suisui: {
-    file: '10039.jpg',
-    names: ['Suisui', 'suisui', '穗穗'],
-  },
 }
 const CHARACTER_AVATAR_ALIASES = {
   Phrolova: ['Floro', 'floro', '弗洛洛'],
@@ -130,6 +127,12 @@ const ASSET_ROOTS = [
 ]
 
 let wuwaCharacterAssets = null
+const CHARACTER_CANONICAL_KEYS = {
+  luuk: 'luukherssen',
+  luukherssen: 'luukherssen',
+  floro: 'phrolova',
+  phrolova: 'phrolova',
+}
 
 // Encore API 瑙掕壊鏁版嵁缂撳瓨
 let characterAvatarCache = {} // { englishName: avatarUrl }
@@ -367,10 +370,21 @@ function getCharacterAvatar(dirName) {
 }
 
 function normalizeAssetKey(value) {
-  return stripDisabled(String(value || ''))
+  const normalized = stripDisabled(String(value || ''))
     .normalize('NFKC')
     .toLowerCase()
     .replace(/[\s_\-./\\()[\]{}'"`，。！？、：；（）【】]+/g, '')
+  return CHARACTER_CANONICAL_KEYS[normalized] || normalized
+}
+
+function preferCharacterDir(candidate, current) {
+  if (!current) return candidate
+  const candidateName = candidate.name
+  const currentName = current.name
+  const candidateHasChineseName = getChineseName(candidateName) !== candidateName
+  const currentHasChineseName = getChineseName(currentName) !== currentName
+  if (candidateHasChineseName !== currentHasChineseName) return candidateHasChineseName ? candidate : current
+  return candidateName.localeCompare(currentName, 'zh') > 0 ? candidate : current
 }
 
 function toAssetImageUrl(filePath) {
@@ -777,7 +791,7 @@ async function scanCategory(categoryName) {
   const result = []
   const isIni = (f) => /\.ini$/i.test(f) && !/\.bak$/i.test(f) && !/\.BAK$/i.test(f)
 
-  async function collect(dir, groupPath) {
+  async function collect(dir, groupPath, isCategoryRoot = false) {
     let entries
     try {
       entries = await fsp.readdir(dir, { withFileTypes: true })
@@ -794,7 +808,7 @@ async function scanCategory(categoryName) {
 
     const hasShell = files.some((f) => f.toLowerCase().startsWith('.jasm_modconfig')) ||
       files.some((f) => /^preview\.(png|jpe?g|webp)$/i.test(f) || /^\.JASM_Cover\.(png|jpe?g|webp)$/.test(f))
-    if (hasShell) {
+    if (hasShell && !isCategoryRoot) {
       const before = result.length
       for (const d of dirs) await collect(path.join(dir, d), groupPath)
       const found = result.length - before
@@ -814,7 +828,7 @@ async function scanCategory(categoryName) {
     }
   }
 
-  await collect(root, '')
+  await collect(root, '', true)
   return sortByPinnedOrder(
     result,
     sortOrder.mods[normalizeOrderKey(categoryName)],
@@ -1573,8 +1587,14 @@ async function buildOverviewGroups() {
       const subEntries = await fsp.readdir(dirPath, { withFileTypes: true })
       const characterDirs = subEntries.filter((subEntry) => subEntry.isDirectory() && !subEntry.name.startsWith('.'))
       const visibleSubEntries = characterDirs.filter((subEntry) => !isDisabledDirName(subEntry.name))
+      const visibleSubEntryMap = new Map()
+      for (const subEntry of visibleSubEntries) {
+        const key = normalizeAssetKey(subEntry.name)
+        visibleSubEntryMap.set(key, preferCharacterDir(subEntry, visibleSubEntryMap.get(key)))
+      }
+      const uniqueVisibleSubEntries = Array.from(visibleSubEntryMap.values())
       const existingCharacterDirs = new Set(characterDirs.map((subEntry) => normalizeAssetKey(subEntry.name)))
-      const subGroups = await Promise.all(visibleSubEntries.map(async (subEntry) => {
+      const subGroups = await Promise.all(uniqueVisibleSubEntries.map(async (subEntry) => {
         const mods = await scanCategory(path.join(entry.name, subEntry.name))
         const groupDir = path.join(dirPath, subEntry.name)
         const manualPreview = findLocalCoverSync(groupDir)
@@ -1587,6 +1607,7 @@ async function buildOverviewGroups() {
           path: `${entry.name}/${subEntry.name}`,
           mods,
           artwork: cover || null,
+          hasManualCover: !!manualPreview,
           avatar: avatar || null,
           preview: mods[0]?.preview || null,
           isEmpty: mods.length === 0,
@@ -1601,6 +1622,7 @@ async function buildOverviewGroups() {
           path: `${entry.name}/${dirName}`,
           mods: [],
           artwork: artwork || null,
+          hasManualCover: false,
           avatar: avatar || null,
           preview: null,
           isEmpty: true,
@@ -1619,6 +1641,7 @@ async function buildOverviewGroups() {
       path: entry.name,
       mods,
       artwork: manualPreview || artwork,
+      hasManualCover: !!manualPreview,
       avatar: null,
       preview: mods[0]?.preview || null,
       isEmpty: mods.length === 0,
@@ -1958,8 +1981,6 @@ async function setModPreview(rel) {
 }
 
 async function setOverviewPreview(groupPath) {
-  const target = path.join(MODS_ROOT, groupPath)
-  if (!isInsideRoot(path.resolve(target), path.resolve(MODS_ROOT))) throw new Error('Invalid path')
   const res = await dialog.showOpenDialog(mainWindow, {
     title: '选择预览图',
     defaultPath: PROJECT_ASSETS_ROOT,
@@ -1970,10 +1991,15 @@ async function setOverviewPreview(groupPath) {
   const source = path.resolve(res.filePaths[0])
   const ext = path.extname(source).toLowerCase()
   if (!PREVIEW_EXTS.includes(ext)) throw new Error('不支持的图片格式')
-  const dest = path.join(target, `.JASM_Cover${ext}`)
-
-  await promotePreviewImage(target, source, dest, ext)
-  return { ok: true, preview: toModImageUrl(dest) }
+  const key = normalizeOrderKey(groupPath)
+  if (!key) throw new Error('Invalid path')
+  const current = overviewMeta[key] || {}
+  overviewMeta[key] = {
+    displayName: current.displayName || '',
+    artworkPath: source,
+  }
+  saveConfig()
+  return { ok: true, preview: toAssetImageUrl(source) }
 }
 
 function openOverviewFolder(groupPath) {
@@ -2832,6 +2858,7 @@ function createWindow() {
     minHeight: 600,
     backgroundColor: '#edf0f3',
     title: '鸣潮 Mod 管理器',
+    icon: APP_ICON_FILE,
     frame: false,
     autoHideMenuBar: true,
     webPreferences: {
@@ -2962,6 +2989,7 @@ requestAnimationFrame(() => {
     alwaysOnTop: true,
     skipTaskbar: false,
     backgroundColor: '#00000000',
+    icon: APP_ICON_FILE,
     webPreferences: {
       preload: path.join(__dirname, '..', 'preload', 'preload.js'),
       contextIsolation: true,
@@ -2997,6 +3025,7 @@ function isInsideRoot(target, root) {
 }
 
 app.whenReady().then(() => {
+  app.setAppUserModelId('com.wwmi.modmanager')
   loadConfig()
   ensureRootExists()
   protocol.handle('modimg', (req) => {

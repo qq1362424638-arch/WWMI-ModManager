@@ -1,4 +1,10 @@
 {
+  "0": {
+    "translation": "0",
+    "source": "untranslated",
+    "source_path": "",
+    "sources": []
+  },
   "1": {
     "translation": "1",
     "source": "untranslated",
@@ -83,6 +89,30 @@
     "source_path": "",
     "sources": []
   },
+  "15": {
+    "translation": "15",
+    "source": "untranslated",
+    "source_path": "",
+    "sources": []
+  },
+  "16": {
+    "translation": "16",
+    "source": "untranslated",
+    "source_path": "",
+    "sources": []
+  },
+  "17": {
+    "translation": "17",
+    "source": "untranslated",
+    "source_path": "",
+    "sources": []
+  },
+  "75": {
+    "translation": "75",
+    "source": "untranslated",
+    "source_path": "",
+    "sources": []
+  },
   "acc": {
     "translation": "配件组",
     "source": "builtin",
@@ -125,6 +155,18 @@
     "source_path": "",
     "sources": []
   },
+  "bandage": {
+    "translation": "绷带",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "bianti": {
+    "translation": "整体变体",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
   "body": {
     "translation": "身体纹理（no_alt VK_DOWN）",
     "source": "file_context",
@@ -155,6 +197,12 @@
     "source_path": "",
     "sources": []
   },
+  "bondage": {
+    "translation": "束缚",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
   "boobsize": {
     "translation": "（0,1） 胸部大小",
     "source": "file_context",
@@ -176,6 +224,12 @@
   "bra": {
     "translation": "Bra",
     "source": "untranslated",
+    "source_path": "",
+    "sources": []
+  },
+  "branches": {
+    "translation": "枝条",
+    "source": "builtin",
     "source_path": "",
     "sources": []
   },
@@ -347,6 +401,12 @@
     "source_path": "",
     "sources": []
   },
+  "costume_mods": {
+    "translation": "costume mods",
+    "source": "untranslated",
+    "source_path": "",
+    "sources": []
+  },
   "cross": {
     "translation": "十字架样式（alt VK_LEFT）",
     "source": "file_context",
@@ -509,6 +569,12 @@
     "source_path": "",
     "sources": []
   },
+  "faxu": {
+    "translation": "发须",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
   "fps": {
     "translation": "帧率",
     "source": "builtin",
@@ -545,6 +611,12 @@
     "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\hiyuki\\DISABLED_绯雪-朝颜淡2.0（内附切换） og 辉映星辰允如光\\mod.ini",
     "sources": []
   },
+  "fuzhuang": {
+    "translation": "Fuzhuang",
+    "source": "untranslated",
+    "source_path": "",
+    "sources": []
+  },
   "g": {
     "translation": "g样式",
     "source": "file_context",
@@ -555,6 +627,12 @@
     "translation": "（0,1） 眼镜样式",
     "source": "file_context",
     "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\hiyuki\\DISABLED_绯雪-朝颜淡2.0（内附切换） og 辉映星辰允如光\\mod.ini",
+    "sources": []
+  },
+  "glove": {
+    "translation": "拳套",
+    "source": "online_query",
+    "source_path": "https://api.mymemory.translated.net/get",
     "sources": []
   },
   "glow": {
@@ -636,9 +714,9 @@
     "sources": []
   },
   "hat": {
-    "translation": "hat",
-    "source": "untranslated",
-    "source_path": "",
+    "translation": "帽子",
+    "source": "online_query",
+    "source_path": "https://api.mymemory.translated.net/get",
     "sources": []
   },
   "head": {
@@ -799,6 +877,12 @@
   },
   "longsleeves": {
     "translation": "长袖",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "low": {
+    "translation": "低",
     "source": "builtin",
     "source_path": "",
     "sources": []
@@ -1013,6 +1097,12 @@
     "source_path": "",
     "sources": []
   },
+  "mods": {
+    "translation": "mods",
+    "source": "untranslated",
+    "source_path": "",
+    "sources": []
+  },
   "mouse": {
     "translation": "鼠标",
     "source": "builtin",
@@ -1035,6 +1125,12 @@
     "translation": "鼠标长按",
     "source": "builtin",
     "source_path": "",
+    "sources": []
+  },
+  "nail": {
+    "translation": "指甲",
+    "source": "online_query",
+    "source_path": "https://api.mymemory.translated.net/get",
     "sources": []
   },
   "necklace": {
@@ -1541,6 +1637,30 @@
     "source_path": "",
     "sources": []
   },
+  "swap_toggle0": {
+    "translation": "开关0",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_toggle1": {
+    "translation": "开关1",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_toggle2": {
+    "translation": "开关2",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "swap_toggle3": {
+    "translation": "开关3",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
   "swap_toufa_fashi": {
     "translation": "头发fashi",
     "source": "builtin",
@@ -1891,6 +2011,30 @@
     "source_path": "",
     "sources": []
   },
+  "swapvar_toggle_0": {
+    "translation": "0",
+    "source": "untranslated",
+    "source_path": "",
+    "sources": []
+  },
+  "swapvar_toggle_1": {
+    "translation": "1",
+    "source": "untranslated",
+    "source_path": "",
+    "sources": []
+  },
+  "swapvar_toggle_2": {
+    "translation": "2",
+    "source": "untranslated",
+    "source_path": "",
+    "sources": []
+  },
+  "swapvar_toggle_3": {
+    "translation": "3",
+    "source": "untranslated",
+    "source_path": "",
+    "sources": []
+  },
   "swapvar_toufa": {
     "translation": "前发长度",
     "source": "file_context",
@@ -2017,6 +2161,12 @@
     "source_path": "D:\\0Temp\\mingchao\\WWMI\\Mods\\character\\lucilla\\洛瑟菈-逆兔（ctrl+alt）by yyzj\\C\\mod.ini",
     "sources": []
   },
+  "switch": {
+    "translation": "切换",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
   "t": {
     "translation": "t样式",
     "source": "file_context",
@@ -2074,6 +2224,12 @@
   "tm": {
     "translation": "透明",
     "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "toggle_mods": {
+    "translation": "Mods",
+    "source": "untranslated",
     "source_path": "",
     "sources": []
   },
@@ -2145,6 +2301,12 @@
   },
   "umbrella": {
     "translation": "雨伞",
+    "source": "builtin",
+    "source_path": "",
+    "sources": []
+  },
+  "up": {
+    "translation": "上侧",
     "source": "builtin",
     "source_path": "",
     "sources": []
