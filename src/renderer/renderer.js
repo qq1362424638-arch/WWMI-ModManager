@@ -44,6 +44,7 @@ const SHORTCUTS = [
   { key: 'Ctrl+C', scope: '二级', desc: '复制所选 mod' },
   { key: 'Ctrl+V', scope: '二级', desc: '粘贴 mod' },
   { key: 'Ctrl+X', scope: '二级', desc: '剪切所选 mod' },
+  { key: 'Ctrl+A', scope: '二级', desc: '全选当前列表 mod' },
   { key: 'Delete', scope: '全局', desc: '删除当前所选项到回收站' },
   { key: 'Enter', scope: '输入框', desc: '确认当前编辑' },
   { key: 'Esc', scope: '二级', desc: '返回一级界面' },
@@ -56,7 +57,7 @@ const SHORTCUTS = [
   { key: 'Ctrl+点击', scope: '二级', desc: '增减多选 mod' },
 ]
 
-const SHORTCUT_KEY_ORDER = ['Tab', 'Tab Tab', 'Enter', 'Esc', 'F2', 'Delete', 'Ctrl+C', 'Ctrl+V', 'Ctrl+X', 'Ctrl+点击', 'Shift+点击']
+const SHORTCUT_KEY_ORDER = ['Tab', 'Tab Tab', 'Enter', 'Esc', 'F2', 'Delete', 'Ctrl+A', 'Ctrl+C', 'Ctrl+V', 'Ctrl+X', 'Ctrl+点击', 'Shift+点击']
 const THEME_STORAGE_KEY = 'wwmi-modora-theme'
 const APP_THEMES = new Set(['dark', 'light', 'pink'])
 
@@ -1358,10 +1359,12 @@ function applySelection(item, rel, event) {
 
 function updateBatchSelection() {
   const items = Array.from(dom.modList.querySelectorAll('.mod-item'))
+  const isMultiSelect = selectedModRels.size > 1
   items.forEach((item) => {
-    item.classList.remove('batch-selected', 'batch-start', 'batch-middle', 'batch-end', 'batch-single')
+    item.classList.remove('batch-selected', 'batch-multi', 'batch-start', 'batch-middle', 'batch-end', 'batch-single')
     if (!selectedModRels.has(item.dataset.rel)) return
     item.classList.add('batch-selected')
+    if (isMultiSelect) item.classList.add('batch-multi')
   })
 
   let index = 0
@@ -1385,6 +1388,14 @@ function updateBatchSelection() {
 
 function getSelectedModRels() {
   return selectedModRels.size ? Array.from(selectedModRels) : (selectedModRel ? [selectedModRel] : [])
+}
+
+function selectAllCurrentMods() {
+  if (!isDetailVisible()) return
+  const items = Array.from(dom.modList.querySelectorAll('.mod-item'))
+  selectedModRels = new Set(items.map((item) => item.dataset.rel).filter(Boolean))
+  lastSelectedRel = items.at(-1)?.dataset.rel || null
+  updateBatchSelection()
 }
 
 function hasBusyMod(rels) {
@@ -2900,6 +2911,9 @@ document.addEventListener('keydown', async (e) => {
   if (key === 'c') {
     e.preventDefault()
     copyOrCutSelectedMods('copy')
+  } else if (key === 'a') {
+    e.preventDefault()
+    selectAllCurrentMods()
   } else if (key === 'x') {
     e.preventDefault()
     copyOrCutSelectedMods('cut')

@@ -1827,7 +1827,7 @@ body {
   border-left-color: transparent;
   border-right-color: transparent;
 }
-.mod-row.batch-selected::after {
+.mod-row.batch-selected.batch-multi::after {
   content: "✓";
   position: absolute;
   right: 42px;
