@@ -27,10 +27,18 @@ jobs:
         run: npm ci
 
       - name: Build installer
+        shell: pwsh
         run: npm run dist:win
         env:
-          CSC_LINK: ${{ secrets.CSC_LINK }}
-          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+
+      - name: List dist on failure
+        if: failure()
+        shell: pwsh
+        run: |
+          if (Test-Path dist) {
+            Get-ChildItem -Recurse dist | Select-Object FullName,Length,LastWriteTime
+          }
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
@@ -39,6 +47,15 @@ jobs:
           path: |
             dist/WWMI-ModManager-Setup-*-x64.exe
             dist/WWMI-ModManager-Setup-*-x64.exe.blockmap
+
+      - name: Upload debug artifact
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: WWMI-ModManager-debug
+          path: |
+            dist/builder-debug.yml
+            dist/**/*.log
 
       - name: Upload assets to GitHub Release
         if: github.event_name == 'release'
