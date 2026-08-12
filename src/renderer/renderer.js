@@ -794,6 +794,7 @@ function ensureOverviewMenu() {
     <button data-action="delete" title="将该目录删除到回收站">删除到回收站</button>
   `
   document.body.appendChild(menu)
+  bindAutoCloseMenu(menu, hideOverviewMenu)
   menu.addEventListener('click', async (e) => {
     const action = e.target?.dataset?.action
     const group = getOverviewContextGroup(menu)
@@ -819,6 +820,19 @@ function ensureOverviewMenu() {
   return menu
 }
 
+function bindAutoCloseMenu(menu, close) {
+  let closeTimer = null
+  menu.addEventListener('mouseenter', () => {
+    clearTimeout(closeTimer)
+  })
+  menu.addEventListener('mouseleave', () => {
+    clearTimeout(closeTimer)
+    closeTimer = setTimeout(() => {
+      if (!menu.matches(':hover')) close()
+    }, 120)
+  })
+}
+
 function positionFloatingMenu(menu, x, y) {
   const pad = 8
   const rect = menu.getBoundingClientRect()
@@ -831,6 +845,7 @@ function positionFloatingMenu(menu, x, y) {
 function showOverviewMenu(x, y, path) {
   const menu = ensureOverviewMenu()
   if (path) menu.dataset.path = path
+  hideBatchMenu()
   menu.classList.remove('hidden')
   positionFloatingMenu(menu, x, y)
 }
@@ -1391,6 +1406,7 @@ function ensureBatchMenu() {
     <button data-action="delete" title="将所选 mod 删除到回收站">删除到回收站</button>
   `
   document.body.appendChild(menu)
+  bindAutoCloseMenu(menu, hideBatchMenu)
   menu.addEventListener('click', async (e) => {
     const action = e.target?.dataset?.action
     if (!action) return
@@ -1436,6 +1452,7 @@ function syncBatchMenu() {
 function showBatchMenu(x, y) {
   const menu = ensureBatchMenu()
   syncBatchMenu()
+  hideOverviewMenu()
   menu.classList.remove('hidden')
   positionFloatingMenu(menu, x, y)
 }
