@@ -1827,6 +1827,10 @@ body {
   border-left-color: transparent;
   border-right-color: transparent;
 }
+.mod-row.batch-selected::before {
+  width: 0;
+  background: transparent;
+}
 .mod-row.batch-selected.batch-multi::after {
   content: "✓";
   position: absolute;
