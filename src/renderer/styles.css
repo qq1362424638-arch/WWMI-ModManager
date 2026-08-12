@@ -20,6 +20,7 @@
   --accent-border: rgba(189, 252, 88, 0.55);
   --accent-strong-border: rgba(189, 252, 88, 0.82);
   --mod-row-disabled-bg: var(--bg-elevated);
+  --mod-row-disabled-hover-bg: #262b33;
   --mod-row-enabled-bg: rgba(189, 252, 88, 0.06);
   --mod-row-enabled-hover-bg: rgba(189, 252, 88, 0.09);
   --mod-row-enabled-bar: rgba(189, 252, 88, 0.76);
@@ -68,6 +69,7 @@ body[data-theme="dark"] {
   --accent-border: rgba(189, 252, 88, 0.42);
   --accent-strong-border: rgba(189, 252, 88, 0.78);
   --mod-row-disabled-bg: var(--bg-elevated);
+  --mod-row-disabled-hover-bg: #262b33;
   --mod-row-enabled-bg: #182716;
   --mod-row-enabled-hover-bg: #1d301a;
   --mod-row-enabled-bar: rgba(189, 252, 88, 0.76);
@@ -112,6 +114,7 @@ body[data-theme="light"] {
   --accent-border: rgba(117, 165, 30, 0.45);
   --accent-strong-border: rgba(117, 165, 30, 0.78);
   --mod-row-disabled-bg: #ffffff;
+  --mod-row-disabled-hover-bg: #f6faf3;
   --mod-row-enabled-bg: #eef8ea;
   --mod-row-enabled-hover-bg: #e9f6e3;
   --mod-row-enabled-bar: #bdfc58;
@@ -156,6 +159,7 @@ body[data-theme="pink"] {
   --accent-border: rgba(255, 105, 167, 0.44);
   --accent-strong-border: rgba(255, 105, 167, 0.76);
   --mod-row-disabled-bg: #fff4f9;
+  --mod-row-disabled-hover-bg: #ffeef6;
   --mod-row-enabled-bg: #f8e4ef;
   --mod-row-enabled-hover-bg: #f2d8e5;
   --mod-row-enabled-bar: rgba(255, 105, 167, 0.76);
@@ -1513,6 +1517,22 @@ body {
   transition: background 0.16s, border-color 0.16s, box-shadow 0.16s, transform 0.16s;
   gap: 10px;
 }
+.mod-row:focus,
+.mod-row:focus-visible,
+.mod-row .mod-check:focus,
+.mod-row .mod-check:focus-visible,
+.mod-row .btn-lock:focus,
+.mod-row .btn-lock:focus-visible,
+.mod-row .btn-favorite:focus,
+.mod-row .btn-favorite:focus-visible,
+.mod-row .btn-open:focus,
+.mod-row .btn-open:focus-visible {
+  outline: none;
+}
+.mod-row:focus-visible,
+.mod-row:focus-within {
+  box-shadow: inset 0 0 0 1px var(--accent-weak);
+}
 .mod-row::before {
   content: "";
   position: absolute;
@@ -1525,6 +1545,14 @@ body {
 }
 .mod-row.disabled {
   background: var(--mod-row-disabled-bg);
+}
+.mod-row.disabled:hover {
+  background: var(--mod-row-disabled-hover-bg);
+  box-shadow: inset 0 0 0 1px var(--accent-strong-border);
+}
+.mod-row.disabled:hover::before {
+  width: 5px;
+  background: var(--accent-strong-border);
 }
 .mod-row:not(.disabled) {
   background: var(--mod-row-enabled-bg);
@@ -1601,6 +1629,12 @@ body {
 .mod-item.busy .mod-check,
 .mod-item.busy .btn-lock,
 .mod-item.busy .btn-favorite { cursor: wait; }
+.mod-item.pending-toggle {
+  opacity: 0.88;
+}
+.mod-item.pending-toggle .mod-check {
+  box-shadow: 0 0 0 2px var(--accent-weak);
+}
 .mod-row.framework-isolation-target {
   overflow: hidden;
 }

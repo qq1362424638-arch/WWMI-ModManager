@@ -38,7 +38,8 @@
         }
       ],
       "icon": "build/icon.ico",
-      "publisherName": "WWMI Mod Manager"
+      "publisherName": "WWMI Mod Manager",
+      "signAndEditExecutable": false
     },
     "nsis": {
       "oneClick": false,

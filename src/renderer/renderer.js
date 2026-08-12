@@ -24,6 +24,12 @@ let overviewDraggedPath = null
 let overviewDraggedSectionId = null
 let frameworkIsolation = { active: false }
 const busyModRels = new Set()
+const pendingModToggles = new Map()
+const modToggleQueue = []
+const queuedModToggleRels = new Set()
+const MOD_TOGGLE_CONCURRENCY = 4
+let modToggleActiveCount = 0
+let modToggleRefreshTimer = null
 const preloadedImages = new Set()
 let previewRenderToken = 0
 let modHoverPreviewEl = null
@@ -157,6 +163,123 @@ const dom = {
 
 function isModBusy(rel) {
   return busyModRels.has(rel)
+}
+
+function getModByRel(rel) {
+  return activeGroup?.mods?.find((mod) => mod.rel === rel) || null
+}
+
+function getEffectiveModDisabled(modOrRel) {
+  const rel = typeof modOrRel === 'string' ? modOrRel : modOrRel?.rel
+  if (!rel) return false
+  const pending = pendingModToggles.get(rel)
+  if (pending) return !pending.desiredEnable
+  const mod = typeof modOrRel === 'string' ? getModByRel(rel) : modOrRel
+  return !!mod?.disabled
+}
+
+function getEffectiveModEnabled(modOrRel) {
+  return !getEffectiveModDisabled(modOrRel)
+}
+
+function applyModRowState(item, disabled, pending = false) {
+  if (!item) return
+  const rel = item.dataset.rel
+  item.classList.toggle('disabled', disabled)
+  item.classList.toggle('pending-toggle', pending)
+  const check = item.querySelector('.mod-check')
+  if (check) check.checked = !disabled
+  item.querySelectorAll('.btn-lock, .btn-favorite').forEach((el) => {
+    el.disabled = isModBusy(rel)
+  })
+}
+
+function syncModRowState(rel) {
+  dom.modList.querySelectorAll('.mod-item').forEach((item) => {
+    if (item.dataset.rel !== rel) return
+    applyModRowState(item, getEffectiveModDisabled(rel), pendingModToggles.has(rel))
+  })
+}
+
+function updateModCounts() {
+  if (!activeGroup) return
+  updateDetailHeader(activeGroup)
+  if (!isDetailVisible()) renderOverview()
+}
+
+function queueModToggleRefresh() {
+  clearTimeout(modToggleRefreshTimer)
+  modToggleRefreshTimer = setTimeout(() => {
+    if (modToggleActiveCount > 0 || pendingModToggles.size > 0) return
+    loadData({ quiet: true })
+  }, 180)
+}
+
+function enqueueModToggle(rel, enable) {
+  if (!rel) return
+  const mod = getModByRel(rel)
+  if (!mod) return
+  const pending = pendingModToggles.get(rel) || {
+    confirmedEnable: !mod.disabled,
+    desiredEnable: !mod.disabled,
+    running: false,
+  }
+  pending.desiredEnable = enable
+  pendingModToggles.set(rel, pending)
+  syncModRowState(rel)
+  if (!pending.running && !queuedModToggleRels.has(rel)) {
+    modToggleQueue.push(rel)
+    queuedModToggleRels.add(rel)
+    pumpModToggleQueue()
+  }
+}
+
+function pumpModToggleQueue() {
+  while (modToggleActiveCount < MOD_TOGGLE_CONCURRENCY && modToggleQueue.length) {
+    const rel = modToggleQueue.shift()
+    queuedModToggleRels.delete(rel)
+    const pending = pendingModToggles.get(rel)
+    if (!pending || pending.running) continue
+    runQueuedModToggle(rel, pending)
+  }
+}
+
+async function runQueuedModToggle(rel, pending) {
+  pending.running = true
+  modToggleActiveCount++
+  try {
+    while (true) {
+      const state = pendingModToggles.get(rel)
+      if (!state) return
+      const targetEnable = state.desiredEnable
+      if (state.confirmedEnable === targetEnable) {
+        pendingModToggles.delete(rel)
+        syncModRowState(rel)
+        return
+      }
+      const result = await window.api.toggleMod(rel, targetEnable)
+      if (!result.ok) {
+        showToast('操作失败：' + (result.error || '未知错误'), 'err')
+        pendingModToggles.delete(rel)
+        syncModRowState(rel)
+        await loadData({ quiet: true })
+        return
+      }
+      state.confirmedEnable = targetEnable
+      const mod = getModByRel(rel)
+      if (mod) mod.disabled = !targetEnable
+      syncModRowState(rel)
+      updateModCounts()
+    }
+  } finally {
+    pending.running = false
+    modToggleActiveCount = Math.max(0, modToggleActiveCount - 1)
+    syncModRowState(rel)
+    if (!pendingModToggles.size && !modToggleQueue.length && modToggleActiveCount === 0) {
+      queueModToggleRefresh()
+    }
+    pumpModToggleQueue()
+  }
 }
 
 function setLoadingState(active, message = '') {
@@ -458,7 +581,7 @@ function bindOverviewImageFallback() {
 }
 
 function renderOverviewCard(g, canDrag, sectionId) {
-  const en = g.mods.filter((m) => !m.disabled).length
+  const en = g.mods.filter((m) => getEffectiveModEnabled(m)).length
   const tot = g.mods.length
   const isCharacterGroup = String(g.path || '').startsWith('character/')
   const hasCustomArtwork = !!g.customMeta?.artworkPath
@@ -869,7 +992,7 @@ function openDetail(group, focusRel = null) {
 
 function updateDetailHeader(group) {
   dom.detailTitle.textContent = group.name
-  const enabled = group.mods.filter((m) => !m.disabled).length
+  const enabled = group.mods.filter((m) => getEffectiveModEnabled(m)).length
   const total = group.mods.length
   dom.detailCount.textContent = `${enabled}/${total}`
   const artwork = group.artwork || group.avatar || group.preview || ''
@@ -930,7 +1053,7 @@ function renderModTable() {
   dom.detailEmpty.classList.add('hidden')
   dom.modList.className = `mod-list ${detailViewMode === 'card' ? 'card-view' : 'list-view'}`
 
-  const separatorIndex = mods.findIndex((m, index) => m.disabled && index > 0 && !mods[index - 1].disabled)
+  const separatorIndex = mods.findIndex((m, index) => getEffectiveModDisabled(m) && index > 0 && !getEffectiveModDisabled(mods[index - 1]))
   const separatorHtml = separatorIndex >= 0
     ? `<div class="mod-state-separator ${detailViewMode === 'card' ? 'card-view' : 'list-view'}" aria-hidden="true"></div>`
     : ''
@@ -942,6 +1065,24 @@ function renderModTable() {
   setupModDrag()
   preloadModImages(mods)
   applyFrameworkIsolationUi()
+}
+
+function reconcilePendingModToggles() {
+  if (!pendingModToggles.size) return
+  const currentRels = new Set((activeGroup?.mods || []).map((mod) => mod.rel))
+  for (const [rel] of pendingModToggles) {
+    if (!currentRels.has(rel)) pendingModToggles.delete(rel)
+  }
+  if (pendingModToggles.size) {
+    requestAnimationFrame(() => {
+      dom.modList.querySelectorAll('.mod-item').forEach((item) => {
+        const rel = item.dataset.rel
+        if (!pendingModToggles.has(rel)) return
+        applyModRowState(item, getEffectiveModDisabled(rel), true)
+      })
+      updateModCounts()
+    })
+  }
 }
 
 function getModSearchText(mod) {
@@ -1026,8 +1167,10 @@ function renderModRow(m, extraClass = '') {
     ? `<img src="${escapeAttr(previewSrc)}" loading="lazy" alt="" />`
     : ''
   const group = displayGroup(m)
-  return `<div class="mod-row mod-item ${m.disabled ? 'disabled' : ''} ${extraClass}" data-rel="${escapeAttr(m.rel)}" data-order-key="${escapeAttr(m.orderKey || m.rel)}" data-preview-src="${escapeAttr(previewSrc)}" draggable="true">
-      <input type="checkbox" class="mod-check" ${m.disabled ? '' : 'checked'} />
+  const disabled = getEffectiveModDisabled(m)
+  const pending = pendingModToggles.has(m.rel)
+  return `<div class="mod-row mod-item ${disabled ? 'disabled' : ''} ${pending ? 'pending-toggle' : ''} ${extraClass}" data-rel="${escapeAttr(m.rel)}" data-order-key="${escapeAttr(m.orderKey || m.rel)}" data-preview-src="${escapeAttr(previewSrc)}" draggable="true">
+      <input type="checkbox" class="mod-check" ${disabled ? '' : 'checked'} />
       <button class="btn-lock ${m.locked ? 'locked' : ''}" title="${m.locked ? '取消锁定配置' : '锁定配置'}">${renderLockIcon(m.locked)}</button>
       <div class="mod-thumb">${thumb}</div>
       <div class="mod-info">
@@ -1044,11 +1187,13 @@ function renderModCard(m, extraClass = '') {
     ? `<img src="${escapeAttr(previewSrc)}" loading="lazy" alt="" />`
     : `<div class="no-thumb">MOD</div>`
   const group = displayGroup(m)
-  return `<div class="mod-card mod-item ${m.disabled ? 'disabled' : ''} ${extraClass}" data-rel="${escapeAttr(m.rel)}" data-order-key="${escapeAttr(m.orderKey || m.rel)}" data-preview-src="${escapeAttr(previewSrc)}" draggable="true">
+  const disabled = getEffectiveModDisabled(m)
+  const pending = pendingModToggles.has(m.rel)
+  return `<div class="mod-card mod-item ${disabled ? 'disabled' : ''} ${pending ? 'pending-toggle' : ''} ${extraClass}" data-rel="${escapeAttr(m.rel)}" data-order-key="${escapeAttr(m.orderKey || m.rel)}" data-preview-src="${escapeAttr(previewSrc)}" draggable="true">
       <div class="mod-card-image">
         ${thumb}
         <label class="mod-card-toggle">
-          <input type="checkbox" class="mod-check" ${m.disabled ? '' : 'checked'} />
+          <input type="checkbox" class="mod-check" ${disabled ? '' : 'checked'} />
           <span></span>
         </label>
         <button class="btn-lock ${m.locked ? 'locked' : ''}" title="${m.locked ? '取消锁定配置' : '锁定配置'}">${renderLockIcon(m.locked)}</button>
@@ -1070,12 +1215,8 @@ function bindModItems() {
     const nameEl = item.querySelector('[data-edit-name]')
     const previewSrc = item.dataset.previewSrc
     const hoverPreviewEnabled = detailViewMode !== 'card'
-    if (isModBusy(rel)) {
-      item.classList.add('busy')
-      check.disabled = true
-      lockBtn.disabled = true
-      favoriteBtn.disabled = true
-    }
+    applyModRowState(item, getEffectiveModDisabled(rel), pendingModToggles.has(rel))
+    if (isModBusy(rel)) item.classList.add('busy')
 
     item.addEventListener('click', (e) => {
       if (suppressNextClick) return
@@ -1130,17 +1271,7 @@ function bindModItems() {
         check.checked = !enable
         return
       }
-      setModBusy(rel, true)
-      try {
-        const result = await window.api.toggleMod(rel, enable)
-        if (!result.ok) throw new Error(result.error || 'toggle failed')
-        await loadData({ quiet: true })
-      } catch (err) {
-        showToast('操作失败：' + err.message, 'err')
-        check.checked = !enable
-      } finally {
-        setModBusy(rel, false)
-      }
+      enqueueModToggle(rel, enable)
     })
 
     lockBtn.addEventListener('click', async (e) => {
@@ -1287,7 +1418,7 @@ function syncBatchMenu() {
   let frameworkBtn = menu.querySelector('[data-action="framework-isolate"], [data-action="framework-restore"]')
   const mod = getContextMenuMod()
   const isTarget = !!frameworkIsolation?.active && mod?.rel === frameworkIsolation.targetRel
-  const isEnabled = !!mod && !mod.disabled
+  const isEnabled = !!mod && getEffectiveModEnabled(mod)
   const label = frameworkIsolation?.active
     ? (isTarget ? '结束框架隔离' : '切换到此项调试')
     : '框架隔离调试此项'
@@ -1345,7 +1476,7 @@ async function startContextFrameworkIsolation() {
   const rel = contextMenuRel || getSelectedModRels()[0]
   const mod = activeGroup?.mods?.find((item) => item.rel === rel)
   if (!rel || blockBusyMod(rel)) return
-  if (mod?.disabled) {
+  if (!getEffectiveModEnabled(mod)) {
     showToast('请先开启该 mod，再进行框架隔离', 'err')
     return
   }
@@ -1470,25 +1601,14 @@ async function applySelectedEnabled(enable) {
     return
   }
   const targets = rels
-    .map((rel) => activeGroup?.mods?.find((mod) => mod.rel === rel))
-    .filter((mod) => mod && !mod.locked && mod.disabled === enable)
+    .map((rel) => getModByRel(rel))
+    .filter((mod) => mod && !mod.locked && (getEffectiveModDisabled(mod) !== enable || pendingModToggles.has(mod.rel)))
   if (!targets.length) {
     showToast(enable ? '所选 mod 已启用' : '所选 mod 已停用')
     return
   }
   showToast(enable ? '正在启用所选…' : '正在停用所选…')
-  for (const mod of targets) {
-    setModBusy(mod.rel, true)
-    const result = await window.api.toggleMod(mod.rel, enable)
-    setModBusy(mod.rel, false)
-    if (!result.ok) {
-      showToast('操作失败：' + (result.error || '未知错误'), 'err')
-      await loadData({ quiet: true })
-      return
-    }
-  }
-  await loadData({ quiet: true })
-  showToast('操作完成')
+  targets.forEach((mod) => enqueueModToggle(mod.rel, enable))
 }
 
 function isTextEditingTarget(target) {
@@ -1781,7 +1901,7 @@ function setupModDrag() {
     container: dom.modList,
     itemSelector: '.mod-item',
     getItem: (key) => activeGroup.mods.find((mod) => (mod.orderKey || mod.rel) === key),
-    isEnabled: (mod) => mod && !mod.disabled,
+    isEnabled: (mod) => mod && getEffectiveModEnabled(mod),
     isFavorite: (mod) => mod && mod.favorite,
     move: async (draggedKey, targetKey) => {
       moveItem(activeGroup.mods, draggedKey, targetKey, (mod) => mod.orderKey || mod.rel)
@@ -1936,7 +2056,7 @@ function showImageModal(src) {
 }
 
 function renderDetailPanel(mod) {
-  const status = mod.disabled ? '已停用' : '已启用'
+  const status = getEffectiveModEnabled(mod) ? '已启用' : '已停用'
   const keys = mod.keyBindingsLoading
     ? `<div class="key-empty">正在读取键位…</div>`
     : Array.isArray(mod.keyBindings) && mod.keyBindings.length
@@ -1953,7 +2073,7 @@ function renderDetailPanel(mod) {
       <div class="detail-panel-eyebrow">当前 MOD</div>
       <div class="detail-panel-title" data-detail-rename title="${escapeAttr(mod.name)}">${escapeHtml(mod.name)}</div>
       <div class="detail-panel-meta">
-        <span class="${mod.disabled ? 'state-off' : 'state-on'}">${status}</span>
+        <span class="${getEffectiveModEnabled(mod) ? 'state-on' : 'state-off'}">${status}</span>
         ${mod.locked ? '<span class="state-lock">配置锁定</span>' : ''}
       </div>
       <div class="detail-actions">
@@ -2486,6 +2606,7 @@ async function loadData(options = {}) {
         activeGroup = updated
         updateDetailHeader(activeGroup)
         renderModTable()
+        reconcilePendingModToggles()
         if (selectedModRel) {
           const selectedItem = Array.from(dom.modList.querySelectorAll('.mod-item'))
             .find((item) => item.dataset.rel === selectedModRel)
@@ -2509,7 +2630,7 @@ async function loadData(options = {}) {
     dataLoadInFlight = null
     if (dataLoadQueued) {
       dataLoadQueued = false
-      return loadData()
+      return loadData({ quiet })
     }
   }
 }
@@ -2771,8 +2892,8 @@ document.addEventListener('keydown', async (e) => {
   }
 })
 
-dom.btnRefresh.addEventListener('click', loadData)
-dom.btnRefreshb.addEventListener('click', loadData)
+dom.btnRefresh.addEventListener('click', () => loadData({ quiet: false }))
+dom.btnRefreshb.addEventListener('click', () => loadData({ quiet: false }))
 
 dom.btnBack.addEventListener('click', backToOverview)
 
