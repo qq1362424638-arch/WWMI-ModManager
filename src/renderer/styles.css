@@ -1845,9 +1845,9 @@ body {
   pointer-events: none;
 }
 .mod-row.batch-single,
-.mod-row.batch-start { border-top: 2px solid var(--mod-row-selected-border); }
+.mod-row.batch-start { border-top: 1px solid var(--mod-row-selected-border); }
 .mod-row.batch-single,
-.mod-row.batch-end { border-bottom: 2px solid var(--mod-row-selected-border); }
+.mod-row.batch-end { border-bottom: 1px solid var(--mod-row-selected-border); }
 
 /* 右栏：预览 */
 .rename-input {
