@@ -5,7 +5,7 @@ using System.Windows.Forms;
 
 internal static class Launcher
 {
-    private const string AppExe = "鸣潮 Mod 管理器.exe";
+    private const string AppExe = "WWMI-ModManager.exe";
 
     [STAThread]
     private static int Main()
