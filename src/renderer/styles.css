@@ -21,6 +21,8 @@
   --accent-strong-border: rgba(189, 252, 88, 0.82);
   --mod-row-disabled-bg: var(--bg-elevated);
   --mod-row-disabled-hover-bg: #262b33;
+  --mod-row-selected-bg: rgba(189, 252, 88, 0.22);
+  --mod-row-selected-border: rgba(189, 252, 88, 0.95);
   --mod-row-enabled-bg: rgba(189, 252, 88, 0.06);
   --mod-row-enabled-hover-bg: rgba(189, 252, 88, 0.09);
   --mod-row-enabled-bar: rgba(189, 252, 88, 0.76);
@@ -70,6 +72,8 @@ body[data-theme="dark"] {
   --accent-strong-border: rgba(189, 252, 88, 0.78);
   --mod-row-disabled-bg: var(--bg-elevated);
   --mod-row-disabled-hover-bg: #262b33;
+  --mod-row-selected-bg: rgba(189, 252, 88, 0.24);
+  --mod-row-selected-border: rgba(189, 252, 88, 0.95);
   --mod-row-enabled-bg: #182716;
   --mod-row-enabled-hover-bg: #1d301a;
   --mod-row-enabled-bar: rgba(189, 252, 88, 0.76);
@@ -115,6 +119,8 @@ body[data-theme="light"] {
   --accent-strong-border: rgba(117, 165, 30, 0.78);
   --mod-row-disabled-bg: #ffffff;
   --mod-row-disabled-hover-bg: #f6faf3;
+  --mod-row-selected-bg: #e3f8c9;
+  --mod-row-selected-border: rgba(117, 165, 30, 0.86);
   --mod-row-enabled-bg: #eef8ea;
   --mod-row-enabled-hover-bg: #e9f6e3;
   --mod-row-enabled-bar: #bdfc58;
@@ -160,6 +166,8 @@ body[data-theme="pink"] {
   --accent-strong-border: rgba(255, 105, 167, 0.76);
   --mod-row-disabled-bg: #fff4f9;
   --mod-row-disabled-hover-bg: #ffeef6;
+  --mod-row-selected-bg: #ffd8e9;
+  --mod-row-selected-border: rgba(255, 105, 167, 0.92);
   --mod-row-enabled-bg: #f8e4ef;
   --mod-row-enabled-hover-bg: #f2d8e5;
   --mod-row-enabled-bar: rgba(255, 105, 167, 0.76);
@@ -1812,13 +1820,34 @@ body {
   color: var(--text);
 }
 .mod-row.batch-selected {
-  border-left: 2px solid var(--accent);
-  border-right: 2px solid var(--accent);
+  background: var(--mod-row-selected-bg) !important;
+  box-shadow:
+    inset 5px 0 0 var(--mod-row-selected-border),
+    inset 0 0 0 1px var(--mod-row-selected-border);
+  border-left-color: transparent;
+  border-right-color: transparent;
+}
+.mod-row.batch-selected::after {
+  content: "✓";
+  position: absolute;
+  right: 42px;
+  top: 50%;
+  width: 22px;
+  height: 22px;
+  transform: translateY(-50%);
+  border-radius: 999px;
+  background: var(--mod-row-selected-border);
+  color: var(--primary-text);
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+  font-weight: 900;
+  pointer-events: none;
 }
 .mod-row.batch-single,
-.mod-row.batch-start { border-top: 2px solid var(--accent); }
+.mod-row.batch-start { border-top: 2px solid var(--mod-row-selected-border); }
 .mod-row.batch-single,
-.mod-row.batch-end { border-bottom: 2px solid var(--accent); }
+.mod-row.batch-end { border-bottom: 2px solid var(--mod-row-selected-border); }
 
 /* 右栏：预览 */
 .rename-input {
