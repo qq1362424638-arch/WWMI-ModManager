@@ -78,11 +78,11 @@ jobs:
             dist/**/*.log
 
       - name: Upload assets to GitHub Release
-        if: github.event_name == 'release'
+        if: github.event_name == 'release' || github.event_name == 'push' || github.event_name == 'workflow_dispatch'
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG_NAME: ${{ github.event.release.tag_name }}
+          TAG_NAME: v0.1.0
         run: |
           $files = @(
             Get-ChildItem dist/WWMI-ModManager-*-win-x64.zip -ErrorAction SilentlyContinue
@@ -91,5 +91,9 @@ jobs:
           )
           if (-not $files) {
             throw 'No release assets were generated.'
+          }
+          gh release view $env:TAG_NAME *> $null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create $env:TAG_NAME --title "WWMI Mod Manager v0.1.0" --notes "Windows build for WWMI Mod Manager."
           }
           gh release upload $env:TAG_NAME @($files.FullName) --clobber
