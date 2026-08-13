@@ -29,12 +29,13 @@ jobs:
       - name: Build Windows zip
         shell: pwsh
         run: |
+          $version = (Get-Content package.json | ConvertFrom-Json).version
           npm run dist:win:dir 2>&1 | Tee-Object -FilePath electron-builder-dir.log
           if ($LASTEXITCODE -ne 0) {
             exit $LASTEXITCODE
           }
 
-          Compress-Archive -Path dist/win-unpacked/* -DestinationPath dist/WWMI-ModManager-0.1.0-win-x64.zip -Force
+          Compress-Archive -Path dist/win-unpacked/* -DestinationPath "dist/WWMI-ModManager-$version-win-x64.zip" -Force
 
       - name: Build NSIS installer
         id: nsis
@@ -82,8 +83,9 @@ jobs:
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG_NAME: v0.1.0
         run: |
+          $version = (Get-Content package.json | ConvertFrom-Json).version
+          $tagName = "v$version"
           $files = @(
             Get-ChildItem dist/WWMI-ModManager-*-win-x64.zip -ErrorAction SilentlyContinue
             Get-ChildItem dist/WWMI-ModManager-Setup-*-x64.exe -ErrorAction SilentlyContinue
@@ -92,8 +94,8 @@ jobs:
           if (-not $files) {
             throw 'No release assets were generated.'
           }
-          gh release view $env:TAG_NAME *> $null
+          gh release view $tagName *> $null
           if ($LASTEXITCODE -ne 0) {
-            gh release create $env:TAG_NAME --title "WWMI Mod Manager v0.1.0" --notes "Windows build for WWMI Mod Manager."
+            gh release create $tagName --title "WWMI Mod Manager v$version" --notes "Windows build for WWMI Mod Manager."
           }
-          gh release upload $env:TAG_NAME @($files.FullName) --clobber
+          gh release upload $tagName @($files.FullName) --clobber
