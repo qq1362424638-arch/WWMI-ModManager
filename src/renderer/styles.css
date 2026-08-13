@@ -1576,13 +1576,8 @@ body {
   width: 5px;
   background: var(--mod-row-enabled-bar);
 }
-.mod-row.selected:not(.disabled) {
-  background: var(--mod-row-enabled-bg);
-  box-shadow: inset 0 0 0 1px var(--accent-weak);
-}
-.mod-row.selected:not(.disabled)::before {
-  width: 5px;
-  background: var(--mod-row-enabled-bar);
+.mod-row.selected {
+  box-shadow: none;
 }
 .mod-state-separator {
   height: 6px;
@@ -1821,37 +1816,88 @@ body {
 }
 .mod-row.batch-selected {
   background: var(--mod-row-selected-bg) !important;
-  box-shadow:
-    inset 5px 0 0 var(--mod-row-selected-border),
-    inset 0 0 0 1px var(--mod-row-selected-border);
-  border-left-color: transparent;
-  border-right-color: transparent;
+  box-shadow: none;
 }
-.mod-row.batch-selected::before {
-  width: 0;
+.mod-row.batch-selected:hover {
+  background: var(--mod-row-selected-bg) !important;
+  box-shadow: inset 0 0 999px rgba(255, 105, 167, 0.08);
+}
+.mod-row.batch-selected::before,
+.mod-row.batch-selected:hover::before,
+.mod-row.batch-selected:not(.disabled)::before,
+.mod-row.batch-selected:not(.disabled):hover::before {
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: auto;
+  border: 2px solid var(--mod-row-selected-border);
   background: transparent;
+  box-shadow: inset 5px 0 0 var(--mod-row-selected-border);
+  z-index: 1;
 }
+.mod-row.batch-selected > * { position: relative; z-index: 2; }
 .mod-row.batch-selected.batch-multi::after {
   content: "✓";
   position: absolute;
   right: 42px;
   top: 50%;
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
   transform: translateY(-50%);
   border-radius: 999px;
   background: var(--mod-row-selected-border);
   color: var(--primary-text);
   display: grid;
   place-items: center;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 900;
+  z-index: 3;
   pointer-events: none;
 }
+.mod-row.clipboard-cut {
+  opacity: 0.72;
+}
+.mod-clipboard-marker {
+  display: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--mod-row-selected-border);
+  color: var(--primary-text);
+  place-items: center;
+  flex: 0 0 20px;
+  pointer-events: none;
+}
+.mod-row .mod-clipboard-marker {
+  position: absolute;
+  right: 42px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 3;
+}
+.mod-row.batch-multi .mod-clipboard-marker {
+  right: 65px;
+}
+.mod-row.clipboard-copy .mod-clipboard-marker,
+.mod-row.clipboard-cut .mod-clipboard-marker,
+.mod-card.clipboard-copy .mod-clipboard-marker,
+.mod-card.clipboard-cut .mod-clipboard-marker {
+  display: grid;
+}
+.mod-clipboard-marker svg {
+  width: 13px;
+  height: 13px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
 .mod-row.batch-single,
-.mod-row.batch-start { border-top: 1px solid var(--mod-row-selected-border); }
+.mod-row.batch-start { border-top-color: transparent; }
 .mod-row.batch-single,
-.mod-row.batch-end { border-bottom: 1px solid var(--mod-row-selected-border); }
+.mod-row.batch-end { border-bottom-color: transparent; }
 
 /* 右栏：预览 */
 .rename-input {
@@ -2034,6 +2080,15 @@ body {
   align-self: center;
 }
 .mod-card.batch-selected { outline: 2px solid var(--accent); outline-offset: 2px; }
+.mod-card .mod-clipboard-marker {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  z-index: 3;
+}
+.mod-card.clipboard-cut {
+  opacity: 0.72;
+}
 
 .batch-menu {
   position: fixed;

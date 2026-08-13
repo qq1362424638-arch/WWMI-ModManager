@@ -80,7 +80,7 @@ function setAppTheme(theme, persist = true) {
   dom.themeSwitch?.querySelectorAll('[data-theme]').forEach((button) => {
     button.classList.toggle('active', button.dataset.theme === nextTheme)
   })
-  if (persist) localStorage.setItem(THEME_STORAGE_KEY, nextTheme)
+  if (persist) window.api.setConfig('appTheme', nextTheme)
 }
 
 function openSettingsModal() {
@@ -1193,6 +1193,7 @@ function renderModRow(m, extraClass = '') {
         <div class="mod-name" data-edit-name>${escapeHtml(m.name)}</div>
         ${group ? `<div class="mod-group">${escapeHtml(group)}</div>` : ''}
       </div>
+      <span class="mod-clipboard-marker" aria-hidden="true"></span>
       <button class="btn-favorite ${m.favorite ? 'favorited' : ''}" title="${m.favorite ? '取消收藏' : '收藏'}" aria-pressed="${m.favorite ? 'true' : 'false'}">${renderFavoriteIcon(m.favorite)}</button>
     </div>`
 }
@@ -1214,6 +1215,7 @@ function renderModCard(m, extraClass = '') {
         </label>
         <button class="btn-lock ${m.locked ? 'locked' : ''}" title="${m.locked ? '取消锁定配置' : '锁定配置'}">${renderLockIcon(m.locked)}</button>
         <button class="btn-favorite ${m.favorite ? 'favorited' : ''}" title="${m.favorite ? '取消收藏' : '收藏'}" aria-pressed="${m.favorite ? 'true' : 'false'}">${renderFavoriteIcon(m.favorite)}</button>
+        <span class="mod-clipboard-marker" aria-hidden="true"></span>
       </div>
       <div class="mod-card-body">
         <div class="mod-name" data-edit-name>${escapeHtml(m.name)}</div>
@@ -1384,10 +1386,28 @@ function updateBatchSelection() {
     }
     index++
   }
+  updateClipboardMarkers()
 }
 
 function getSelectedModRels() {
   return selectedModRels.size ? Array.from(selectedModRels) : (selectedModRel ? [selectedModRel] : [])
+}
+
+function updateClipboardMarkers() {
+  const rels = new Set(modClipboard?.rels || [])
+  const mode = modClipboard?.mode === 'cut' ? 'cut' : (modClipboard?.mode === 'copy' ? 'copy' : null)
+  dom.modList?.querySelectorAll('.mod-item').forEach((item) => {
+    const active = mode && rels.has(item.dataset.rel)
+    const marker = item.querySelector('.mod-clipboard-marker')
+    item.classList.toggle('clipboard-copy', active && mode === 'copy')
+    item.classList.toggle('clipboard-cut', active && mode === 'cut')
+    if (marker) marker.innerHTML = active ? renderClipboardIcon(mode) : ''
+  })
+}
+
+function clearModClipboard() {
+  modClipboard = null
+  updateClipboardMarkers()
 }
 
 function selectAllCurrentMods() {
@@ -1673,6 +1693,7 @@ function copyOrCutSelectedMods(mode) {
     return
   }
   modClipboard = { mode: mode === 'cut' ? 'cut' : 'copy', rels, sourceGroupPath: activeGroup.path }
+  updateClipboardMarkers()
   showToast(`${mode === 'cut' ? '已剪切' : '已复制'} ${rels.length} 个 mod`)
 }
 
@@ -1687,7 +1708,7 @@ async function pasteSelectedMods() {
     showToast('粘贴失败：' + (result.error || result.err || '未知错误'), 'err')
     return
   }
-  if (modClipboard.mode === 'cut') modClipboard = null
+  clearModClipboard()
   showToast(`已粘贴 ${result.changed} 个 mod`)
   await loadData({ quiet: true })
 }
@@ -2484,6 +2505,12 @@ function renderFavoriteIcon(favorited) {
     : `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.9 14.5 9.2 20.3 10l-4.2 4.3 1 5.7L12 17.2 6.9 20l1-5.7L3.7 10l5.8-.8z"/></svg>`
 }
 
+function renderClipboardIcon(mode) {
+  return mode === 'cut'
+    ? `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M8.2 8.2 19 19"/><path d="M8.2 15.8 19 5"/></svg>`
+    : `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1"/></svg>`
+}
+
 function ensureModHoverPreview() {
   if (modHoverPreviewEl) return modHoverPreviewEl
   modHoverPreviewEl = document.createElement('div')
@@ -2931,7 +2958,10 @@ dom.btnBack.addEventListener('click', backToOverview)
 // ==================== 初始化 ====================
 
 async function init() {
-  setAppTheme(localStorage.getItem(THEME_STORAGE_KEY) || 'light', false)
+  const { value: savedTheme } = await window.api.getConfig('appTheme')
+  const legacyTheme = localStorage.getItem(THEME_STORAGE_KEY)
+  const initialTheme = APP_THEMES.has(savedTheme) ? savedTheme : (APP_THEMES.has(legacyTheme) ? legacyTheme : 'light')
+  setAppTheme(initialTheme, !APP_THEMES.has(savedTheme) && APP_THEMES.has(legacyTheme))
   renderShortcutHelp()
 
   await refreshSettingsPaths()

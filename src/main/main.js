@@ -650,6 +650,7 @@ let keyPopupWindow = null
 let watcher = null
 let rescanTimer = null
 const modOperationLocks = new Set()
+let appTheme = 'light'
 
 // ---------- 閰嶇疆鎸佷箙鍖?----------
 function loadConfig() {
@@ -658,6 +659,7 @@ function loadConfig() {
     if (raw.modsRoot) MODS_ROOT = raw.modsRoot
     if (raw.wwmiRoot) WWMI_ROOT = raw.wwmiRoot
     if (raw.detailViewMode === 'list' || raw.detailViewMode === 'card') detailViewMode = raw.detailViewMode
+    if (raw.appTheme === 'dark' || raw.appTheme === 'light' || raw.appTheme === 'pink') appTheme = raw.appTheme
     if (raw.characterAvatarCache && typeof raw.characterAvatarCache === 'object') {
       characterAvatarCache = raw.characterAvatarCache
       characterDataLoaded = Object.keys(characterAvatarCache).length > 0
@@ -681,7 +683,7 @@ function loadConfig() {
 function saveConfig() {
   try {
     fs.mkdirSync(path.dirname(CONFIG_FILE), { recursive: true })
-    fs.writeFileSync(CONFIG_FILE, JSON.stringify({ modsRoot: MODS_ROOT, wwmiRoot: WWMI_ROOT, detailViewMode, sortOrder, overviewMeta, favoriteMods, characterAvatarCache, frameworkIsolationSession }, null, 2), 'utf8')
+    fs.writeFileSync(CONFIG_FILE, JSON.stringify({ modsRoot: MODS_ROOT, wwmiRoot: WWMI_ROOT, detailViewMode, appTheme, sortOrder, overviewMeta, favoriteMods, characterAvatarCache, frameworkIsolationSession }, null, 2), 'utf8')
   } catch (e) {
     console.error('淇濆瓨閰嶇疆澶辫触', e)
   }
@@ -2338,10 +2340,9 @@ async function moveSourceDirs(targetGroupPath, sourceDirs) {
 function uniqueDestination(parent, baseName) {
   let candidate = path.join(parent, baseName)
   if (!fs.existsSync(candidate)) return candidate
-  const parsed = path.parse(baseName)
   let index = 1
   do {
-    candidate = path.join(parent, `${parsed.name}_copy${index}${parsed.ext}`)
+    candidate = path.join(parent, `${baseName}_copy${index}`)
     index++
   } while (fs.existsSync(candidate))
   return candidate
@@ -2762,11 +2763,15 @@ function registerIpc() {
     if (key === 'detailViewMode') {
       detailViewMode = value === 'card' ? 'card' : 'list'
       saveConfig()
+    } else if (key === 'appTheme') {
+      appTheme = value === 'dark' || value === 'pink' ? value : 'light'
+      saveConfig()
     }
     return { ok: true }
   })
   ipcMain.handle('config:get', (_e, key) => {
     if (key === 'detailViewMode') return { value: detailViewMode }
+    if (key === 'appTheme') return { value: appTheme }
     return { value: null }
   })
   // 1绾х晫闈細鐩存帴浠?Mods 鐩綍鎵弿鐢熸垚 groups
