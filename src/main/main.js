@@ -624,7 +624,11 @@ let detailViewMode = 'list'
 let sortOrder = { overview: [], overviewSections: [], mods: {} }
 let overviewMeta = {}
 let favoriteMods = []
+let modTags = {}
+let modTagOrders = {}
+let modTagColors = {}
 let frameworkIsolationSession = null
+const DEFAULT_MOD_TAG = '默认'
 
 // 璧勬簮鍥剧墖鍗忚蹇呴』鍦?app ready 涔嬪墠娉ㄥ唽
 protocol.registerSchemesAsPrivileged([
@@ -658,6 +662,9 @@ function loadConfig() {
     }
     if (raw.overviewMeta && typeof raw.overviewMeta === 'object') overviewMeta = normalizeOverviewMeta(raw.overviewMeta)
     favoriteMods = normalizeOrderList(raw.favoriteMods)
+    if (raw.modTags && typeof raw.modTags === 'object') modTags = normalizeModTags(raw.modTags)
+    if (raw.modTagOrders && typeof raw.modTagOrders === 'object') modTagOrders = normalizeModTagOrders(raw.modTagOrders)
+    if (raw.modTagColors && typeof raw.modTagColors === 'object') modTagColors = normalizeModTagColors(raw.modTagColors)
     if (raw.frameworkIsolationSession && typeof raw.frameworkIsolationSession === 'object') {
       frameworkIsolationSession = normalizeFrameworkIsolationSession(raw.frameworkIsolationSession)
     }
@@ -675,7 +682,7 @@ function loadConfig() {
 function saveConfig() {
   try {
     fs.mkdirSync(path.dirname(CONFIG_FILE), { recursive: true })
-    fs.writeFileSync(CONFIG_FILE, JSON.stringify({ modsRoot: MODS_ROOT, wwmiRoot: WWMI_ROOT, detailViewMode, appTheme, sortOrder, overviewMeta, favoriteMods, characterAvatarCache, frameworkIsolationSession }, null, 2), 'utf8')
+    fs.writeFileSync(CONFIG_FILE, JSON.stringify({ modsRoot: MODS_ROOT, wwmiRoot: WWMI_ROOT, detailViewMode, appTheme, sortOrder, overviewMeta, favoriteMods, modTags, modTagOrders, modTagColors, characterAvatarCache, frameworkIsolationSession }, null, 2), 'utf8')
   } catch (e) {
     console.error('淇濆瓨閰嶇疆澶辫触', e)
   }
@@ -698,6 +705,73 @@ function normalizeOrderMap(value) {
     if (typeof key === 'string' && key) result[normalizeOrderKey(key)] = normalizeOrderList(list)
   }
   return result
+}
+
+function normalizeModTagText(value) {
+  return String(value || '').replace(/\s+/g, ' ').trim().slice(0, 16) || DEFAULT_MOD_TAG
+}
+
+function normalizeModTags(value) {
+  if (!value || typeof value !== 'object') return {}
+  const result = {}
+  for (const [groupPath, tags] of Object.entries(value)) {
+    if (typeof groupPath !== 'string' || !groupPath || !tags || typeof tags !== 'object') continue
+    const groupKey = normalizeOrderKey(groupPath)
+    const entries = {}
+    for (const [modKey, tag] of Object.entries(tags)) {
+      if (typeof modKey !== 'string' || !modKey) continue
+      const clean = normalizeModTagText(tag)
+      if (clean !== DEFAULT_MOD_TAG) entries[normalizeOrderKey(modKey)] = clean
+    }
+    if (Object.keys(entries).length) result[groupKey] = entries
+  }
+  return result
+}
+
+function normalizeModTagOrders(value) {
+  if (!value || typeof value !== 'object') return {}
+  const result = {}
+  for (const [groupPath, tags] of Object.entries(value)) {
+    const groupKey = normalizeOrderKey(groupPath)
+    const clean = normalizeOrderList(tags).map(normalizeModTagText)
+    const ordered = [DEFAULT_MOD_TAG, ...clean.filter((tag) => tag !== DEFAULT_MOD_TAG)]
+    if (groupKey) result[groupKey] = Array.from(new Set(ordered))
+  }
+  return result
+}
+
+function normalizeTagColor(value) {
+  if (!value || typeof value !== 'object') return null
+  const colorRe = /^#[0-9a-f]{6}$/i
+  const bg = String(value.bg || '').trim()
+  const border = String(value.border || '').trim()
+  const text = String(value.text || '').trim()
+  if (!colorRe.test(bg) || !colorRe.test(border) || !colorRe.test(text)) return null
+  return { bg: bg.toLowerCase(), border: border.toLowerCase(), text: text.toLowerCase() }
+}
+
+function normalizeModTagColors(value) {
+  if (!value || typeof value !== 'object') return {}
+  const result = {}
+  for (const [groupPath, colors] of Object.entries(value)) {
+    const groupKey = normalizeOrderKey(groupPath)
+    if (!groupKey || !colors || typeof colors !== 'object') continue
+    const groupColors = {}
+    for (const [tag, color] of Object.entries(colors)) {
+      const cleanTag = normalizeModTagText(tag)
+      const cleanColor = cleanTag === DEFAULT_MOD_TAG ? null : normalizeTagColor(color)
+      if (cleanColor) groupColors[cleanTag] = cleanColor
+    }
+    if (Object.keys(groupColors).length) result[groupKey] = groupColors
+  }
+  return result
+}
+
+function getGroupTagOrder(groupPath) {
+  const groupKey = normalizeOrderKey(groupPath)
+  const used = new Set(Object.values(modTags[groupKey] || {}).map(normalizeModTagText).filter((tag) => tag !== DEFAULT_MOD_TAG))
+  const ordered = normalizeOrderList(modTagOrders[groupKey]).map(normalizeModTagText)
+  return [DEFAULT_MOD_TAG, ...ordered.filter((tag) => tag !== DEFAULT_MOD_TAG), ...[...used].filter((tag) => !ordered.includes(tag)).sort((a, b) => a.localeCompare(b, 'zh-Hans'))]
 }
 
 function normalizeOverviewSections(value) {
@@ -765,13 +839,23 @@ function normalizeOrderKey(value) {
   return String(value || '').split(/[\\/]+/).filter(Boolean).map(stripDisabled).join('/')
 }
 
-function sortByPinnedOrder(items, orderList, isEnabled, getKey, fallbackCompare) {
+function sortByPinnedOrder(items, orderList, isEnabled, getKey, fallbackCompare, getTag = null) {
   const orderIndex = new Map(normalizeOrderList(orderList).map((key, index) => [key, index]))
   const favoriteSet = new Set(normalizeOrderList(favoriteMods))
   items.sort((a, b) => {
     const ae = isEnabled(a) ? 1 : 0
     const be = isEnabled(b) ? 1 : 0
     if (ae !== be) return be - ae
+
+    if (getTag) {
+      const at = normalizeModTagText(getTag(a))
+      const bt = normalizeModTagText(getTag(b))
+      const order = getTag.order || [DEFAULT_MOD_TAG]
+      const ai = order.includes(at) ? order.indexOf(at) : Number.MAX_SAFE_INTEGER
+      const bi = order.includes(bt) ? order.indexOf(bt) : Number.MAX_SAFE_INTEGER
+      if (ai !== bi) return ai - bi
+      if (at !== bt) return at.localeCompare(bt, 'zh-Hans')
+    }
 
     const af = favoriteSet.has(getKey(a)) ? 1 : 0
     const bf = favoriteSet.has(getKey(b)) ? 1 : 0
@@ -829,12 +913,15 @@ async function scanCategory(categoryName) {
   }
 
   await collect(root, '', true)
+  const getTag = (mod) => mod.tag
+  getTag.order = getGroupTagOrder(categoryName)
   return sortByPinnedOrder(
     result,
     sortOrder.mods[normalizeOrderKey(categoryName)],
     (mod) => !mod.disabled,
     (mod) => mod.orderKey,
     (a, b) => a.name.localeCompare(b.name, 'zh'),
+    getTag,
   )
 }
 
@@ -842,6 +929,8 @@ async function makeModEntry(categoryName, dir, groupPath, files) {
   const name = path.basename(dir)
   const rel = path.relative(MODS_ROOT, dir)
   const orderKey = stripDisabledRel(rel)
+  const groupKey = normalizeOrderKey(categoryName)
+  const tag = modTags[groupKey]?.[orderKey] || DEFAULT_MOD_TAG
   return {
     rel,
     name: stripDisabled(name),
@@ -850,6 +939,7 @@ async function makeModEntry(categoryName, dir, groupPath, files) {
     disabled: isDisabledDirName(name),
     locked: isModLocked(dir),
     favorite: favoriteMods.includes(orderKey),
+    tag,
     keyBindings: [],
     keyBindingsLoaded: false,
     category: categoryName,
@@ -1217,19 +1307,22 @@ function recordUntranslatedDictionaryKey(key, text = '', sourcePath = '') {
   return true
 }
 
-function getDictionaryText(dictionary, key) {
+function getDictionaryText(dictionary, key, allowAnyText = false) {
   const entry = dictionary?.[key]
   if (!entry) return ''
-  if (typeof entry === 'string') return isValidKeyDescription(entry) ? entry : ''
+  if (typeof entry === 'string') {
+    const text = String(entry || '').trim()
+    return allowAnyText ? text : (isValidKeyDescription(text) ? text : '')
+  }
   if (entry && typeof entry === 'object') {
     if (entry.source === 'untranslated') return ''
-    const text = String(entry.translation || entry.chinese || entry.text || '')
-    return isValidKeyDescription(text) ? text : ''
+    const text = String(entry.translation || entry.chinese || entry.text || '').trim()
+    return allowAnyText ? text : (isValidKeyDescription(text) ? text : '')
   }
   return ''
 }
 
-function getDictionaryTextWithVariants(dictionary, key) {
+function getDictionaryTextWithVariants(dictionary, key, allowAnyText = false) {
   const normalized = String(key || '').toLowerCase()
   const variants = [normalized]
   const stripped = normalized.replace(/^(swapvar|swap|toggle|var)_+/i, '')
@@ -1238,7 +1331,7 @@ function getDictionaryTextWithVariants(dictionary, key) {
   if (normalized.endsWith('s')) variants.push(normalized.slice(0, -1))
   else variants.push(`${normalized}s`)
   for (const variant of variants) {
-    const text = getDictionaryText(dictionary, variant)
+    const text = getDictionaryText(dictionary, variant, allowAnyText)
     if (text) return text
   }
   return ''
@@ -1339,7 +1432,11 @@ const onlineTranslationCache = new Map()
 async function queryOnlineTranslation(key) {
   const normalized = normalizeKeyHintName(key)
   if (!normalized) return ''
-  if (onlineTranslationCache.has(normalized)) return onlineTranslationCache.get(normalized)
+  if (onlineTranslationCache.has(normalized)) {
+    const cached = onlineTranslationCache.get(normalized)
+    if (cached) updateLocalDictionary(normalized, cached, 'online_query', ONLINE_TRANSLATION_SOURCE)
+    return cached
+  }
   if (AMBIGUOUS_ONLINE_TRANSLATIONS[normalized]) {
     const value = AMBIGUOUS_ONLINE_TRANSLATIONS[normalized]
     onlineTranslationCache.set(normalized, value)
@@ -1550,8 +1647,8 @@ async function describeKeySection(section) {
     return cleaned
   }
   const { corrections, local, words } = getKeyHintDictionaries()
-  const correctionLookup = getDictionaryTextWithVariants(corrections, lookup)
-  if (correctionLookup) return cleanKeyDescription(correctionLookup)
+  const correctionLookup = getDictionaryTextWithVariants(corrections, lookup, true)
+  if (correctionLookup) return correctionLookup
   const localLookup = getDictionaryTextWithVariants(local, lookup)
   if (localLookup) return cleanKeyDescription(localLookup)
 
@@ -1568,6 +1665,8 @@ async function describeKeySection(section) {
     const baseText = (await describeKeySection(alphaNumeric[1])).replace(/切换$/u, '')
     if (/[\u4e00-\u9fff]/.test(baseText)) return remember(`${baseText}${alphaNumeric[2]}`)
   }
+  const online = await queryOnlineTranslation(normalized)
+  if (online) return cleanKeyDescription(online)
   const exact = {
     swap: '切换', swapvar: '切换', toggle: '切换',
     color: '颜色切换', colour: '颜色切换', bow: '蝴蝶结切换',
@@ -1583,8 +1682,8 @@ async function describeKeySection(section) {
   }
   if (exact[normalized]) return remember(exact[normalized])
   const localNormalized = getDictionaryTextWithVariants(local, normalized)
-  const correctionNormalized = getDictionaryTextWithVariants(corrections, normalized)
-  if (correctionNormalized) return cleanKeyDescription(correctionNormalized)
+  const correctionNormalized = getDictionaryTextWithVariants(corrections, normalized, true)
+  if (correctionNormalized) return correctionNormalized
   if (localNormalized) return cleanKeyDescription(localNormalized)
   const wordsNormalized = getDictionaryTextWithVariants(words, normalized)
   if (wordsNormalized) return remember(wordsNormalized)
@@ -1610,18 +1709,25 @@ async function describeKeySection(section) {
     .split(/[^a-z0-9]+/)
     .filter(Boolean)
   const hasToggleWord = parts.some((part) => ['swap', 'swapvar', 'toggle'].includes(part))
+  let usedCorrectionPart = false
   const translated = parts
-    .map((part) => getDictionaryTextWithVariants(corrections, part) || wordMap[part] || getDictionaryTextWithVariants(words, part) || getDictionaryTextWithVariants(local, part) || part)
+    .map((part) => {
+      const correction = getDictionaryTextWithVariants(corrections, part, true)
+      if (correction) {
+        usedCorrectionPart = true
+        return correction
+      }
+      return getDictionaryTextWithVariants(local, part) || getDictionaryTextWithVariants(words, part) || wordMap[part] || part
+    })
     .filter((part) => !['swapvar', 'swap', 'toggle', 'var'].includes(String(part).toLowerCase()))
     .filter(Boolean)
     .join('')
   if (!translated) return '切换'
+  if (usedCorrectionPart) return translated
   if (!/[\u4e00-\u9fff]/.test(translated) && !hasToggleWord) {
-    const online = await queryOnlineTranslation(normalized)
-    if (online) return cleanKeyDescription(online)
     recordUntranslatedDictionaryKey(lookup, raw)
     for (const part of parts) {
-      if (!wordMap[part] && !getDictionaryTextWithVariants(words, part) && !getDictionaryTextWithVariants(local, part)) {
+      if (!wordMap[part] && !getDictionaryTextWithVariants(corrections, part, true) && !getDictionaryTextWithVariants(local, part) && !getDictionaryTextWithVariants(words, part)) {
         recordUntranslatedDictionaryKey(part, part)
       }
     }
@@ -1907,6 +2013,85 @@ function setModFavorite(rel, favorite) {
   return { ok: true, favorite: favoriteMods.includes(key) }
 }
 
+function getGroupPathFromRel(rel) {
+  const parts = normalizeOrderKey(rel).split('/').filter(Boolean)
+  if (parts[0] === SPECIAL_EXPAND_DIR && parts[1]) return `${parts[0]}/${parts[1]}`
+  return parts[0] || ''
+}
+
+function cleanupModTags(groupPath, visibleKeys = null) {
+  const groupKey = normalizeOrderKey(groupPath)
+  const tags = modTags[groupKey]
+  if (!tags) return
+  for (const [key, tag] of Object.entries(tags)) {
+    if (normalizeModTagText(tag) === DEFAULT_MOD_TAG || (visibleKeys && !visibleKeys.has(key))) delete tags[key]
+  }
+  if (!Object.keys(tags).length) delete modTags[groupKey]
+}
+
+function getModTagList(groupPath) {
+  const groupKey = normalizeOrderKey(groupPath)
+  return { ok: true, tags: getGroupTagOrder(groupKey), colors: modTagColors[groupKey] || {} }
+}
+
+function setModTagList(groupPath, tags, renames = {}, colors = {}) {
+  const groupKey = normalizeOrderKey(groupPath)
+  if (!groupKey) return { ok: false, error: 'Invalid group' }
+  const nextTags = [DEFAULT_MOD_TAG, ...normalizeOrderList(tags).map(normalizeModTagText).filter((tag) => tag !== DEFAULT_MOD_TAG)]
+  const unique = Array.from(new Set(nextTags))
+  const allowed = new Set(unique)
+  const groupTags = modTags[groupKey] || {}
+  for (const key of Object.keys(groupTags)) {
+    const current = normalizeModTagText(groupTags[key])
+    const tag = renames && Object.prototype.hasOwnProperty.call(renames, current)
+      ? normalizeModTagText(renames[current])
+      : current
+    if (!allowed.has(tag)) delete groupTags[key]
+    else groupTags[key] = tag
+  }
+  if (Object.keys(groupTags).length) modTags[groupKey] = groupTags
+  else delete modTags[groupKey]
+  modTagOrders[groupKey] = unique
+  const nextColors = {}
+  const sourceColors = { ...(modTagColors[groupKey] || {}), ...(colors && typeof colors === 'object' ? colors : {}) }
+  for (const [from, to] of Object.entries(renames || {})) {
+    const fromTag = normalizeModTagText(from)
+    const toTag = normalizeModTagText(to)
+    if (!sourceColors[toTag] && sourceColors[fromTag]) sourceColors[toTag] = sourceColors[fromTag]
+  }
+  for (const tag of unique) {
+    if (tag === DEFAULT_MOD_TAG) continue
+    const color = normalizeTagColor(sourceColors[tag])
+    if (color) nextColors[tag] = color
+  }
+  if (Object.keys(nextColors).length) modTagColors[groupKey] = nextColors
+  else delete modTagColors[groupKey]
+  saveConfig()
+  return { ok: true, tags: getGroupTagOrder(groupKey), colors: modTagColors[groupKey] || {} }
+}
+
+async function setModTag(rel, tag, groupPath = '') {
+  const key = modOperationKey(rel)
+  if (!key) return { ok: false, error: 'Invalid mod' }
+  const groupKey = normalizeOrderKey(groupPath || getGroupPathFromRel(rel))
+  if (!groupKey) return { ok: false, error: 'Invalid group' }
+  const target = path.join(MODS_ROOT, rel)
+  if (!isInsideRoot(path.resolve(target), path.resolve(MODS_ROOT))) return { ok: false, error: 'Invalid path' }
+  const nextTag = normalizeModTagText(tag)
+  if (!modTags[groupKey]) modTags[groupKey] = {}
+  if (nextTag === DEFAULT_MOD_TAG) delete modTags[groupKey][key]
+  else {
+    modTags[groupKey][key] = nextTag
+    const order = getGroupTagOrder(groupKey)
+    if (!order.includes(nextTag)) order.push(nextTag)
+    modTagOrders[groupKey] = order
+  }
+  const mods = await scanCategory(groupKey)
+  cleanupModTags(groupKey, new Set(mods.map((mod) => mod.orderKey)))
+  saveConfig()
+  return { ok: true, tag: nextTag }
+}
+
 // ---------- F10 鍙戦€侊紙璋?powershell 鑴氭湰锛?---------
 function normalizeModDisplayName(value) {
   const name = stripDisabled(String(value || '').trim())
@@ -1939,6 +2124,11 @@ async function renameMod(rel, nextName, groupPath) {
   const newKey = stripDisabledRel(newRel)
   if (typeof groupPath === 'string' && sortOrder.mods[groupPath]) {
     sortOrder.mods[groupPath] = sortOrder.mods[groupPath].map((key) => key === oldKey ? newKey : key)
+  }
+  const groupKey = normalizeOrderKey(groupPath || getGroupPathFromRel(rel))
+  if (modTags[groupKey]?.[oldKey]) {
+    modTags[groupKey][newKey] = modTags[groupKey][oldKey]
+    delete modTags[groupKey][oldKey]
   }
   favoriteMods = normalizeOrderList(favoriteMods).map((key) => key === oldKey ? newKey : key)
   saveConfig()
@@ -2122,6 +2312,18 @@ async function renameOverviewGroup(groupPath, nextName) {
   if (sortOrder.mods[groupPath]) {
     sortOrder.mods[newPath] = sortOrder.mods[groupPath]
     delete sortOrder.mods[groupPath]
+  }
+  if (modTags[groupPath]) {
+    modTags[newPath] = modTags[groupPath]
+    delete modTags[groupPath]
+  }
+  if (modTagOrders[groupPath]) {
+    modTagOrders[newPath] = modTagOrders[groupPath]
+    delete modTagOrders[groupPath]
+  }
+  if (modTagColors[groupPath]) {
+    modTagColors[newPath] = modTagColors[groupPath]
+    delete modTagColors[groupPath]
   }
   saveConfig()
   return { ok: true, path: newPath, name: cleanName }
@@ -2416,6 +2618,7 @@ function clearLocalDictionary() {
   ensureJsonDictionaryFile(LOCAL_DICT_FILE, DEFAULT_LOCAL_DICT_FILE)
   const current = loadJsonDictionary(LOCAL_DICT_FILE)
   saveJsonDictionary(LOCAL_DICT_FILE, {})
+  onlineTranslationCache.clear()
   keyHintDictionaryCache = null
   return { ok: true, cleared: Object.keys(current).length }
 }
@@ -2441,12 +2644,10 @@ function setTranslationCorrection(rawKey, translation) {
     keyHintDictionaryCache = null
     return { ok: true, removed: existed }
   }
-  const cleaned = cleanKeyDescription(value)
-  if (!isValidKeyDescription(cleaned)) return { ok: false, err: '请输入有效中文翻译' }
-  dict[normalizedKey] = makeDictionaryEntry(cleaned, 'user_correction')
+  dict[normalizedKey] = makeDictionaryEntry(value, 'user_correction')
   saveJsonDictionary(CORRECTION_DICT_FILE, dict)
   keyHintDictionaryCache = null
-  return { ok: true, key: normalizedKey, translation: cleaned }
+  return { ok: true, key: normalizedKey, translation: value }
 }
 
 function normalizeIniKeyValue(raw) {
@@ -3094,6 +3295,11 @@ function registerIpc() {
   ipcMain.handle('mods:setFavorite', (_e, rel, favorite) => {
     return setModFavorite(rel, favorite)
   })
+  ipcMain.handle('mods:setTag', (_e, rel, tag, groupPath) => {
+    return setModTag(rel, tag, groupPath)
+  })
+  ipcMain.handle('mods:getTagList', (_e, groupPath) => getModTagList(groupPath))
+  ipcMain.handle('mods:setTagList', (_e, groupPath, tags, renames, colors) => setModTagList(groupPath, tags, renames, colors))
   ipcMain.handle('mods:setKey', async (_e, rel, binding, nextKey) => {
     return withModOperationLock(rel, async () => {
       const result = await setModKey(rel, binding, nextKey)

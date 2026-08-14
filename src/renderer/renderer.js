@@ -10,8 +10,11 @@ let overviewGroups = [] // 1级界面的 groups
 let overviewSections = []
 let activeGroup = null // 当前选中的目录组（进入 detail 时设置）
 let searchTerm = ''
+let overviewConflictSearch = false
 let detailSearchTerm = ''
 let detailSearchGlobal = false
+let activeTagOrder = ['默认']
+let activeTagColors = {}
 let selectedModRel = null
 let suppressNextClick = false
 let detailViewMode = 'list'
@@ -50,6 +53,7 @@ const SHORTCUTS = [
   { key: 'Esc', scope: '二级', desc: '返回一级界面' },
   { key: 'Esc', scope: '输入框', desc: '取消当前编辑' },
   { key: 'F2', scope: '二级', desc: '切换全局搜索' },
+  { key: 'F2', scope: '一级', desc: '切换冲突筛选' },
   { key: 'Shift+点击', scope: '二级', desc: '连续多选 mod' },
   { key: 'Tab', scope: '一级', desc: '聚焦搜索框' },
   { key: 'Tab', scope: '二级', desc: '搜索当前页并聚焦搜索框' },
@@ -126,6 +130,7 @@ const dom = {
   overviewGrid: $('#overviewGrid'),
   overviewEmpty: $('#overviewEmpty'),
   search: $('#search'),
+  overviewConflictSearch: $('#overviewConflictSearch'),
   btnRefresh: $('#btnRefresh'),
   overviewTitle: $('#overviewTitle'),
   btnUpdateTools: $('#btnUpdateTools'),
@@ -162,6 +167,7 @@ const dom = {
   btnCardView: $('#btnCardView'),
   btnBatchMove: $('#btnBatchMove'),
   btnFlatten: $('#btnFlatten'),
+  btnTagManager: $('#btnTagManager'),
   btnRefreshb: $('#btnRefreshb'),
   toast: $('#toast'),
 }
@@ -199,7 +205,7 @@ function applyModRowState(item, disabled, pending = false) {
   item.classList.toggle('pending-toggle', pending)
   const check = item.querySelector('.mod-check')
   if (check) check.checked = !disabled
-  item.querySelectorAll('.btn-lock, .btn-favorite').forEach((el) => {
+  item.querySelectorAll('.btn-lock, .btn-favorite, .mod-tag').forEach((el) => {
     el.disabled = isModBusy(rel)
   })
 }
@@ -343,7 +349,7 @@ function setModBusy(rel, busy) {
   dom.modList.querySelectorAll('.mod-item').forEach((item) => {
     if (item.dataset.rel !== rel) return
     item.classList.toggle('busy', busy)
-    item.querySelectorAll('.mod-check, .btn-lock, .btn-favorite').forEach((el) => {
+    item.querySelectorAll('.mod-check, .btn-lock, .btn-favorite, .mod-tag').forEach((el) => {
       el.disabled = busy
     })
   })
@@ -376,10 +382,76 @@ function sortCurrentModsByFavorite() {
     const ae = a.disabled ? 0 : 1
     const be = b.disabled ? 0 : 1
     if (ae !== be) return be - ae
+    const at = getModTag(a)
+    const bt = getModTag(b)
+    const ai = getTagOrderIndex(at)
+    const bi = getTagOrderIndex(bt)
+    if (ai !== bi) return ai - bi
     const af = a.favorite ? 1 : 0
     const bf = b.favorite ? 1 : 0
-    return bf - af
+    if (af !== bf) return bf - af
+    return String(a.name || '').localeCompare(String(b.name || ''), 'zh-Hans')
   })
+}
+
+function hashText(value) {
+  let hash = 2166136261
+  for (const char of String(value || '')) {
+    hash ^= char.charCodeAt(0)
+    hash = Math.imul(hash, 16777619)
+  }
+  return hash >>> 0
+}
+
+const TAG_COLOR_PALETTE = [
+  { bg: '#e8f2ff', border: '#82b8ff', text: '#16406c' },
+  { bg: '#e9f8ef', border: '#78c99b', text: '#185132' },
+  { bg: '#fff0d9', border: '#f0ad55', text: '#6a3a08' },
+  { bg: '#f1ecff', border: '#aa92f3', text: '#3d2678' },
+  { bg: '#e8f8f7', border: '#67c7c0', text: '#164d4a' },
+  { bg: '#ffe9ef', border: '#f08aaa', text: '#6a1d38' },
+  { bg: '#eef3dc', border: '#a8c65a', text: '#3d4f10' },
+  { bg: '#f3ece8', border: '#c59a85', text: '#563324' },
+]
+
+function normalizeTagColor(value) {
+  const colorRe = /^#[0-9a-f]{6}$/i
+  if (!value || typeof value !== 'object') return null
+  const bg = String(value.bg || '').trim()
+  const border = String(value.border || '').trim()
+  const text = String(value.text || '').trim()
+  if (!colorRe.test(bg) || !colorRe.test(border) || !colorRe.test(text)) return null
+  return { bg: bg.toLowerCase(), border: border.toLowerCase(), text: text.toLowerCase() }
+}
+
+function getRandomTagColor(excludeColors = {}) {
+  const used = new Set(Object.values(excludeColors || {}).map((color) => normalizeTagColor(color)?.bg).filter(Boolean))
+  const candidates = TAG_COLOR_PALETTE.filter((color) => !used.has(color.bg.toLowerCase()))
+  const pool = candidates.length ? candidates : TAG_COLOR_PALETTE
+  return { ...pool[Math.floor(Math.random() * pool.length)] }
+}
+
+function getTagStyleFromColor(color) {
+  const clean = normalizeTagColor(color)
+  return clean ? `--tag-bg:${clean.bg};--tag-border:${clean.border};--tag-text:${clean.text};` : '--tag-bg:transparent;--tag-border:transparent;--tag-text:var(--text-dim);'
+}
+
+function getTagStyle(tag, groupPath = activeGroup?.path) {
+  const clean = getModTag({ tag })
+  if (clean === DEFAULT_MOD_TAG) return '--tag-bg:transparent;--tag-border:transparent;--tag-text:var(--text-dim);'
+  const saved = normalizeTagColor(activeTagColors[clean])
+  if (saved) return `--tag-bg:${saved.bg};--tag-border:${saved.border};--tag-text:${saved.text};`
+  const tags = [...new Set((activeGroup?.mods || []).map(getModTag).filter((item) => item !== DEFAULT_MOD_TAG))]
+    .sort((a, b) => a.localeCompare(b, 'zh-Hans'))
+  const index = Math.max(0, tags.indexOf(clean))
+  const offset = hashText(groupPath || '') % TAG_COLOR_PALETTE.length
+  const color = TAG_COLOR_PALETTE[(offset + index) % TAG_COLOR_PALETTE.length]
+  return `--tag-bg:${color.bg};--tag-border:${color.border};--tag-text:${color.text};`
+}
+
+function getAvailableTags(excludeTag = '') {
+  const current = getModTag({ tag: excludeTag })
+  return getCurrentTagOrder().filter((tag) => tag !== current)
 }
 
 function isIsolationBlockedMod(rel) {
@@ -524,12 +596,65 @@ function blockDisablingFrameworkIsolationTarget(rel, enable) {
 
 const DEFAULT_OVERVIEW_SECTION = '__default'
 const DEFAULT_COVER_SRC = '../assets/default.png'
+const DEFAULT_MOD_TAG = '默认'
+
+function getModTag(mod) {
+  return String(mod?.tag || DEFAULT_MOD_TAG).trim() || DEFAULT_MOD_TAG
+}
+
+function getCurrentTagOrder() {
+  const used = [...new Set((activeGroup?.mods || []).map(getModTag))]
+  const ordered = [DEFAULT_MOD_TAG, ...activeTagOrder.filter((tag) => tag !== DEFAULT_MOD_TAG)]
+  return [...new Set([...ordered, ...used])]
+}
+
+function getTagOrderIndex(tag) {
+  const order = getCurrentTagOrder()
+  const index = order.indexOf(getModTag({ tag }))
+  return index >= 0 ? index : Number.MAX_SAFE_INTEGER
+}
+
+async function refreshActiveTagOrder(groupPath = activeGroup?.path) {
+  if (!groupPath || !window.api.getModTagList) {
+    activeTagOrder = getCurrentTagOrder()
+    return
+  }
+  const result = await window.api.getModTagList(groupPath)
+  if (result?.ok && Array.isArray(result.tags)) {
+    activeTagOrder = result.tags
+    activeTagColors = result.colors && typeof result.colors === 'object' ? result.colors : {}
+  }
+}
+
+function groupHasEnabledTagConflict(group) {
+  const counts = new Map()
+  for (const mod of group.mods || []) {
+    if (!getEffectiveModEnabled(mod)) continue
+    const tag = getModTag(mod)
+    counts.set(tag, (counts.get(tag) || 0) + 1)
+    if (counts.get(tag) > 1) return true
+  }
+  return false
+}
+
+function setOverviewConflictSearch(enabled, rerender = true) {
+  overviewConflictSearch = !!enabled
+  dom.overviewConflictSearch?.classList.toggle('active', overviewConflictSearch)
+  dom.overviewConflictSearch?.setAttribute('aria-pressed', overviewConflictSearch ? 'true' : 'false')
+  const title = overviewConflictSearch ? 'F2 关闭冲突筛选' : 'F2 开启冲突筛选'
+  if (dom.overviewConflictSearch) dom.overviewConflictSearch.title = title
+  setSearchPlaceholder()
+  if (rerender && !activeGroup) renderOverview()
+}
 
 function renderOverview() {
   const term = normalizeSearchText(searchTerm)
-  const filtered = term
-    ? overviewGroups.filter((g) => getGroupSearchText(g).includes(term))
+  const conflictFiltered = overviewConflictSearch
+    ? overviewGroups.filter(groupHasEnabledTagConflict)
     : overviewGroups
+  const filtered = term
+    ? conflictFiltered.filter((g) => getGroupSearchText(g).includes(term))
+    : conflictFiltered
 
   if (filtered.length === 0) {
     dom.overviewGrid.innerHTML = ''
@@ -538,8 +663,8 @@ function renderOverview() {
   }
   dom.overviewEmpty.classList.add('hidden')
 
-  dom.overviewGrid.innerHTML = getOverviewRenderSections(filtered, !!term).map((section) => {
-    const expanded = !!term ? section.groups.length > 0 : (!section.collapsed && section.groups.length > 0)
+  dom.overviewGrid.innerHTML = getOverviewRenderSections(filtered, !!term || overviewConflictSearch).map((section) => {
+    const expanded = (!!term || overviewConflictSearch) ? section.groups.length > 0 : (!section.collapsed && section.groups.length > 0)
     const header = section.showHeader
       ? `<div class="overview-section-header" data-section-id="${escapeAttr(section.id)}" draggable="${section.custom ? 'true' : 'false'}">
           <button class="section-toggle" data-section-action="toggle" title="${expanded ? '折叠分组' : '展开分组'}">${expanded ? '⌄' : '›'}</button>
@@ -551,7 +676,7 @@ function renderOverview() {
       : ''
     const cards = !expanded
       ? ''
-      : `<div class="overview-section-grid" data-section-id="${escapeAttr(section.id)}">${section.groups.map((g) => renderOverviewCard(g, !term, section.id)).join('')}</div>`
+      : `<div class="overview-section-grid" data-section-id="${escapeAttr(section.id)}">${section.groups.map((g) => renderOverviewCard(g, !term && !overviewConflictSearch, section.id)).join('')}</div>`
     return `<section class="overview-section">${header}${cards}</section>`
   }).join('')
 
@@ -989,6 +1114,8 @@ async function handleBatchMove(targetPath) {
 
 function openDetail(group, focusRel = null) {
   activeGroup = group
+  activeTagOrder = [DEFAULT_MOD_TAG, ...[...new Set((group.mods || []).map(getModTag).filter((tag) => tag !== DEFAULT_MOD_TAG))].sort((a, b) => a.localeCompare(b, 'zh-Hans'))]
+  activeTagColors = {}
   detailSearchTerm = ''
   dom.detailSearch.value = ''
   setDetailSearchGlobal(false, false)
@@ -1009,6 +1136,11 @@ function openDetail(group, focusRel = null) {
 
   // 渲染 mod 表
   renderModTable()
+  refreshActiveTagOrder(group.path).then(() => {
+    if (activeGroup?.path !== group.path) return
+    sortCurrentModsByFavorite()
+    renderModTable()
+  }).catch(() => {})
   if (focusRel) {
     focusModRow(focusRel)
   }
@@ -1111,7 +1243,7 @@ function reconcilePendingModToggles() {
 }
 
 function getModSearchText(mod) {
-  return [mod.name, mod.rel, mod.group]
+  return [mod.name, mod.rel, mod.group, getModTag(mod)]
     .filter(Boolean)
     .map((value) => {
       const normalized = normalizeSearchText(value)
@@ -1203,8 +1335,16 @@ function renderModRow(m, extraClass = '') {
         ${group ? `<div class="mod-group">${escapeHtml(group)}</div>` : ''}
       </div>
       <span class="mod-clipboard-marker" aria-hidden="true"></span>
+      ${renderModTag(m)}
       <button class="btn-favorite ${m.favorite ? 'favorited' : ''}" title="${m.favorite ? '取消收藏' : '收藏'}" aria-pressed="${m.favorite ? 'true' : 'false'}">${renderFavoriteIcon(m.favorite)}</button>
     </div>`
+}
+
+function renderModTag(m) {
+  const tag = getModTag(m)
+  return `<div class="mod-tag-wrap" style="${escapeAttr(getTagStyle(tag, activeGroup?.path))}">
+    <button class="mod-tag" type="button" title="选择标签">${escapeHtml(tag)}</button>
+  </div>`
 }
 
 function renderModCard(m, extraClass = '') {
@@ -1223,6 +1363,7 @@ function renderModCard(m, extraClass = '') {
           <span></span>
         </label>
         <button class="btn-lock ${m.locked ? 'locked' : ''}" title="${m.locked ? '取消锁定配置' : '锁定配置'}">${renderLockIcon(m.locked)}</button>
+        ${renderModTag(m)}
         <button class="btn-favorite ${m.favorite ? 'favorited' : ''}" title="${m.favorite ? '取消收藏' : '收藏'}" aria-pressed="${m.favorite ? 'true' : 'false'}">${renderFavoriteIcon(m.favorite)}</button>
         <span class="mod-clipboard-marker" aria-hidden="true"></span>
       </div>
@@ -1239,6 +1380,7 @@ function bindModItems() {
     const check = item.querySelector('.mod-check')
     const lockBtn = item.querySelector('.btn-lock')
     const favoriteBtn = item.querySelector('.btn-favorite')
+    const tagBtn = item.querySelector('.mod-tag')
     const nameEl = item.querySelector('[data-edit-name]')
     const previewSrc = item.dataset.previewSrc
     const hoverPreviewEnabled = detailViewMode !== 'card'
@@ -1247,7 +1389,7 @@ function bindModItems() {
 
     item.addEventListener('click', (e) => {
       if (suppressNextClick) return
-      if (e.target === check || e.target === lockBtn || e.target === favoriteBtn || e.target.closest('.rename-input')) return
+      if (e.target === check || e.target === lockBtn || e.target === favoriteBtn || e.target === tagBtn || e.target.closest('.rename-input, .mod-tag-picker')) return
       if (blockIsolationMod(rel)) return
       if (blockBusyMod(rel)) return
       applySelection(item, rel, e)
@@ -1344,8 +1486,273 @@ function bindModItems() {
         setModBusy(rel, false)
       }
     })
+
+    tagBtn?.addEventListener('click', (e) => {
+      e.stopPropagation()
+      if (blockBusyMod(rel)) return
+      startModTagEdit(item, rel)
+    })
   })
   updateBatchSelection()
+}
+
+function cleanModTagInput(value) {
+  return String(value || '').replace(/\s+/g, ' ').trim().slice(0, 16) || DEFAULT_MOD_TAG
+}
+
+async function saveModTag(rel, tag) {
+  if (!activeGroup) return
+  const nextTag = cleanModTagInput(tag)
+  const targetRels = selectedModRels.size > 1 && selectedModRels.has(rel)
+    ? Array.from(selectedModRels)
+    : [rel]
+  const targets = targetRels.map(getModByRel).filter(Boolean)
+  if (!targets.length) return
+  const changed = targets.filter((mod) => nextTag !== getModTag(mod))
+  if (!changed.length) {
+    renderModTable()
+    updateBatchSelection()
+    return
+  }
+  changed.forEach((mod) => setModBusy(mod.rel, true))
+  try {
+    const results = await Promise.all(changed.map((mod) => window.api.setModTag(mod.rel, nextTag, activeGroup.path)))
+    const failed = results.find((result) => !result?.ok)
+    if (failed) throw new Error(failed.error || 'tag failed')
+    changed.forEach((mod, index) => {
+      mod.tag = results[index]?.tag || nextTag
+    })
+    if (!activeTagOrder.includes(nextTag)) activeTagOrder.push(nextTag)
+    sortCurrentModsByFavorite()
+    changed.forEach((mod) => setModBusy(mod.rel, false))
+    renderModTable()
+    updateBatchSelection()
+    showToast(changed.length > 1 ? `已批量设置 ${changed.length} 个标签` : '标签已保存')
+  } catch (err) {
+    changed.forEach((mod) => setModBusy(mod.rel, false))
+    showToast('标签保存失败：' + err.message, 'err')
+    renderModTable()
+    updateBatchSelection()
+  } finally {
+    changed.forEach((mod) => setModBusy(mod.rel, false))
+  }
+}
+
+function openTagManager() {
+  if (!activeGroup) return
+  const original = getCurrentTagOrder()
+  let tagRows = original.map((tag) => ({
+    original: tag,
+    value: tag,
+    editing: false,
+    color: tag === DEFAULT_MOD_TAG ? null : (normalizeTagColor(activeTagColors[tag]) || getRandomTagColor(activeTagColors)),
+  }))
+  const modal = document.createElement('div')
+  modal.className = 'text-modal'
+  const commitEdit = (index, value) => {
+    if (index <= 0 || !tagRows[index]) return
+    const used = tagRows.map((row, rowIndex) => rowIndex === index ? '' : row.value)
+    const clean = cleanModTagInput(value)
+    tagRows[index].value = uniqueTagName(used, clean === DEFAULT_MOD_TAG ? '标签' : clean)
+    tagRows[index].editing = false
+  }
+  const render = () => {
+    modal.innerHTML = `
+      <div class="text-dialog tag-manager-dialog">
+        <div class="text-dialog-title">标签管理</div>
+        <div class="tag-manager-list">
+          ${tagRows.map((row, index) => `
+            <div class="tag-manager-row" data-index="${index}">
+              <button class="tag-manager-drag" type="button" title="拖动排序" draggable="${index > 0 ? 'true' : 'false'}" ${index === 0 ? 'disabled' : ''}>⋮⋮</button>
+              <div class="tag-manager-color-sample" style="${escapeAttr(row.value === DEFAULT_MOD_TAG ? getTagStyle(row.value, activeGroup?.path) : getTagStyleFromColor(row.color))}"></div>
+              <div class="tag-manager-name">
+                ${row.editing
+                  ? `<input class="text-dialog-input tag-manager-input" value="${escapeAttr(row.value)}" maxlength="16" autofocus />`
+                  : `<button class="tag-manager-label" type="button" ${index === 0 ? 'disabled' : ''}>${escapeHtml(row.value)}</button>`}
+              </div>
+              <button class="btn btn-ghost tag-manager-color-btn" data-tag-action="color" ${index === 0 ? 'disabled' : ''}>随机颜色</button>
+              <button class="btn btn-ghost" data-tag-action="edit" ${index === 0 ? 'disabled' : ''}>重命名</button>
+              <button class="btn btn-ghost" data-tag-action="delete" ${index === 0 ? 'disabled' : ''}>删除</button>
+            </div>
+          `).join('')}
+        </div>
+        <div class="text-dialog-actions">
+          <button class="btn btn-ghost" data-tag-action="add">添加</button>
+          <button class="btn btn-ghost" data-tag-action="cancel">取消</button>
+          <button class="btn btn-primary" data-tag-action="save">保存</button>
+        </div>
+      </div>`
+    const input = modal.querySelector('.tag-manager-input')
+    if (input) {
+      input.focus()
+      input.select()
+    }
+  }
+  const syncRows = () => {
+    Array.from(modal.querySelectorAll('.tag-manager-input')).forEach((input, index) => {
+      const row = input.closest('.tag-manager-row')
+      const rowIndex = Number(row?.dataset.index)
+      if (tagRows[rowIndex]) tagRows[rowIndex].value = cleanModTagInput(input.value)
+    })
+    tagRows[0] = { original: DEFAULT_MOD_TAG, value: DEFAULT_MOD_TAG, editing: false, color: null }
+  }
+  const normalizeRowsForSave = () => {
+    const used = [DEFAULT_MOD_TAG]
+    tagRows = tagRows.map((row, index) => {
+      if (index === 0) return { original: DEFAULT_MOD_TAG, value: DEFAULT_MOD_TAG, editing: false, color: null }
+      const clean = cleanModTagInput(row.value)
+      const value = uniqueTagName(used, clean === DEFAULT_MOD_TAG ? '标签' : clean)
+      used.push(value)
+      return { ...row, value, editing: false }
+    })
+  }
+  const close = () => modal.remove()
+  render()
+  modal.addEventListener('click', async (e) => {
+    const action = e.target?.dataset?.tagAction
+    if (e.target === modal || action === 'cancel') {
+      close()
+      return
+    }
+    if (!action) return
+    syncRows()
+    const row = e.target.closest('.tag-manager-row')
+    const index = Number(row?.dataset.index)
+    if (action === 'add') {
+      const value = uniqueTagName(tagRows.map((item) => item.value), '标签')
+      const color = getRandomTagColor(Object.fromEntries(tagRows.filter((item) => item.color).map((item) => [item.value, item.color])))
+      tagRows.push({ original: '', value, editing: true, color })
+    }
+    if (action === 'delete' && index > 0) tagRows.splice(index, 1)
+    if (action === 'edit' && index > 0) tagRows[index].editing = true
+    if (action === 'color' && index > 0) tagRows[index].color = getRandomTagColor(Object.fromEntries(tagRows.filter((item, rowIndex) => rowIndex !== index && item.color).map((item) => [item.value, item.color])))
+    if (action === 'save') {
+      normalizeRowsForSave()
+      const unique = [DEFAULT_MOD_TAG]
+      for (const row of tagRows) if (row.value !== DEFAULT_MOD_TAG && !unique.includes(row.value)) unique.push(row.value)
+      const renames = {}
+      tagRows.forEach((row) => {
+        if (row.original && row.original !== row.value) renames[row.original] = row.value
+      })
+      const colors = {}
+      tagRows.forEach((row) => {
+        if (row.value !== DEFAULT_MOD_TAG && unique.includes(row.value) && row.color) colors[row.value] = row.color
+      })
+      const result = await window.api.setModTagList(activeGroup.path, unique, renames, colors)
+      if (!result?.ok) {
+        showToast(result?.error || '保存标签失败', 'err')
+        return
+      }
+      activeTagOrder = result.tags || unique
+      activeTagColors = result.colors && typeof result.colors === 'object' ? result.colors : colors
+      for (const mod of activeGroup.mods || []) {
+        if (renames[getModTag(mod)]) mod.tag = renames[getModTag(mod)]
+        if (!activeTagOrder.includes(getModTag(mod))) mod.tag = DEFAULT_MOD_TAG
+      }
+      sortCurrentModsByFavorite()
+      renderModTable()
+      showToast('标签已保存')
+      close()
+      return
+    }
+    render()
+  })
+  modal.addEventListener('dblclick', (e) => {
+    const label = e.target.closest('.tag-manager-label')
+    const row = label?.closest('.tag-manager-row')
+    const index = Number(row?.dataset.index)
+    if (!label || index <= 0) return
+    syncRows()
+    tagRows[index].editing = true
+    render()
+  })
+  modal.addEventListener('focusout', (e) => {
+    if (!e.target.classList.contains('tag-manager-input')) return
+    const row = e.target.closest('.tag-manager-row')
+    const index = Number(row?.dataset.index)
+    commitEdit(index, e.target.value)
+    setTimeout(() => {
+      if (document.body.contains(modal)) render()
+    }, 80)
+  })
+  modal.addEventListener('keydown', (e) => {
+    if (!e.target.classList.contains('tag-manager-input')) return
+    if (e.key !== 'Enter') return
+    e.preventDefault()
+    const row = e.target.closest('.tag-manager-row')
+    const index = Number(row?.dataset.index)
+    commitEdit(index, e.target.value)
+    render()
+  })
+  let draggedTagIndex = null
+  modal.addEventListener('dragstart', (e) => {
+    const handle = e.target.closest('.tag-manager-drag')
+    const row = handle?.closest('.tag-manager-row')
+    const index = Number(row?.dataset.index)
+    if (!handle || !row || index <= 0) {
+      e.preventDefault()
+      return
+    }
+    syncRows()
+    draggedTagIndex = index
+    row.classList.add('dragging')
+    e.dataTransfer.effectAllowed = 'move'
+  })
+  modal.addEventListener('dragover', (e) => {
+    const row = e.target.closest('.tag-manager-row')
+    const index = Number(row?.dataset.index)
+    if (!row || index <= 0 || draggedTagIndex === null || draggedTagIndex === index) return
+    e.preventDefault()
+    row.classList.add('drag-over')
+  })
+  modal.addEventListener('dragleave', (e) => {
+    e.target.closest('.tag-manager-row')?.classList.remove('drag-over')
+  })
+  modal.addEventListener('drop', (e) => {
+    const row = e.target.closest('.tag-manager-row')
+    const index = Number(row?.dataset.index)
+    if (!row || index <= 0 || draggedTagIndex === null || draggedTagIndex === index) return
+    e.preventDefault()
+    const [moved] = tagRows.splice(draggedTagIndex, 1)
+    tagRows.splice(index, 0, moved)
+    draggedTagIndex = null
+    modal.querySelectorAll('.dragging,.drag-over').forEach((el) => el.classList.remove('dragging', 'drag-over'))
+    render()
+  })
+  modal.addEventListener('dragend', () => {
+    draggedTagIndex = null
+    modal.querySelectorAll('.dragging,.drag-over').forEach((el) => el.classList.remove('dragging', 'drag-over'))
+  })
+  document.body.appendChild(modal)
+}
+
+function uniqueTagName(tags, base) {
+  let index = 1
+  let name = base
+  while (tags.includes(name)) {
+    index += 1
+    name = `${base}${index}`
+  }
+  return name
+}
+
+function startModTagEdit(item, rel) {
+  const mod = getModByRel(rel)
+  const wrap = item.querySelector('.mod-tag-wrap')
+  if (!mod || !wrap || wrap.querySelector('.mod-tag-picker')) return
+  const current = getModTag(mod)
+  const options = getCurrentTagOrder()
+  wrap.innerHTML = `
+    <div class="mod-tag-picker">
+      <button class="mod-tag" type="button" style="${escapeAttr(getTagStyle(current, activeGroup?.path))}">${escapeHtml(current)}</button>
+      <div class="mod-tag-options">${options.map((tag) => `<button type="button" data-tag="${escapeAttr(tag)}" class="${tag === current ? 'active' : ''}" style="${escapeAttr(getTagStyle(tag, activeGroup?.path))}">${escapeHtml(tag)}</button>`).join('')}</div>
+    </div>`
+  wrap.querySelectorAll('[data-tag]').forEach((button) => {
+    button.addEventListener('click', (e) => {
+      e.stopPropagation()
+      saveModTag(rel, button.dataset.tag || DEFAULT_MOD_TAG)
+    })
+  })
 }
 
 function applySelection(item, rel, event) {
@@ -1961,6 +2368,7 @@ function setupModDrag() {
     itemSelector: '.mod-item',
     getItem: (key) => activeGroup.mods.find((mod) => (mod.orderKey || mod.rel) === key),
     isEnabled: (mod) => mod && getEffectiveModEnabled(mod),
+    getTag: (mod) => getModTag(mod),
     isFavorite: (mod) => mod && mod.favorite,
     move: async (draggedKey, targetKey) => {
       moveItem(activeGroup.mods, draggedKey, targetKey, (mod) => mod.orderKey || mod.rel)
@@ -1970,7 +2378,7 @@ function setupModDrag() {
   })
 }
 
-function setupDragSort({ container, itemSelector, getItem, isEnabled, isFavorite = () => false, move }) {
+function setupDragSort({ container, itemSelector, getItem, isEnabled, getTag = () => DEFAULT_MOD_TAG, isFavorite = () => false, move }) {
   let draggedKey = null
   container.querySelectorAll(itemSelector).forEach((item) => {
     item.addEventListener('dragstart', (e) => {
@@ -2003,6 +2411,10 @@ function setupDragSort({ container, itemSelector, getItem, isEnabled, isFavorite
       const target = getItem(targetKey)
       if (isEnabled(dragged) !== isEnabled(target)) {
         showToast('已启用项会始终排在前面')
+        return
+      }
+      if (getTag(dragged) !== getTag(target)) {
+        showToast('相同标签内才能手动排序')
         return
       }
       if (isFavorite(dragged) !== isFavorite(target)) {
@@ -2182,7 +2594,10 @@ async function loadModKeyBindings(mod, renderToken) {
 }
 
 function formatKeyLabel(binding) {
-  return binding.description || String(binding.section || 'Key').replace(/^Key/i, '')
+  const raw = formatRawKeyLabel(binding)
+  const label = String(binding.description || '').trim()
+  if (raw && label.toLowerCase() === raw.toLowerCase()) return ''
+  return label || String(binding.section || 'Key').replace(/^Key/i, '')
 }
 
 function formatRawKeyLabel(binding) {
@@ -2195,10 +2610,57 @@ function renderKeyLabel(binding) {
   const showRaw = raw && raw.toLowerCase() !== String(label || '').trim().toLowerCase()
   return `
     <span class="key-label-wrap">
-      <span class="key-label">${escapeHtml(label)}</span>
-      ${showRaw ? `<button class="key-original" type="button" data-translation-raw="${escapeAttr(raw)}" data-translation-current="${escapeAttr(label)}" title="修正这个原词的翻译">${escapeHtml(raw)}</button>` : ''}
+      ${label ? `<span class="key-label">${escapeHtml(label)}</span>` : ''}
+      ${showRaw || raw ? `<button class="key-original" type="button" data-translation-raw="${escapeAttr(raw)}" data-translation-current="${escapeAttr(label)}" title="左键修正这个原词的翻译">${escapeHtml(raw)}</button>` : ''}
     </span>
   `
+}
+
+function startTranslationInlineEdit(button, mod) {
+  const wrap = button.closest('.key-label-wrap')
+  if (!wrap || wrap.querySelector('.key-label-edit')) return
+  const raw = button.dataset.translationRaw || ''
+  const current = button.dataset.translationCurrent || ''
+  const label = wrap.querySelector('.key-label')
+  const input = document.createElement('input')
+  input.className = 'key-label key-label-edit'
+  input.type = 'text'
+  input.value = current
+  input.placeholder = '输入中文说明'
+  input.dataset.originalValue = current
+  if (label) label.replaceWith(input)
+  else wrap.insertBefore(input, button)
+  input.focus()
+  input.select()
+
+  let saving = false
+  const finish = async (save) => {
+    if (saving) return
+    saving = true
+    const next = input.value.trim()
+    if (!save || next === input.dataset.originalValue) {
+      renderDetailPanel(mod)
+      return
+    }
+    const result = await window.api.setTranslationCorrection(raw, next)
+    if (!result?.ok) {
+      showToast(result?.err || '保存修正失败', 'err')
+      saving = false
+      input.focus()
+      return
+    }
+    showToast(next ? '翻译修正已保存' : '翻译修正已删除', 'ok')
+    mod.keyBindingsLoaded = false
+    mod.keyBindingsLoading = true
+    renderDetailPanel(mod)
+    loadModKeyBindings(mod, ++previewRenderToken)
+  }
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') finish(true)
+    if (e.key === 'Escape') finish(false)
+  })
+  input.addEventListener('blur', () => finish(true))
 }
 
 function bindDetailPanel(mod) {
@@ -2253,22 +2715,7 @@ function bindDetailPanel(mod) {
     })
   })
   dom.previewName.querySelectorAll('[data-translation-raw]').forEach((button) => {
-    button.addEventListener('click', async () => {
-      const raw = button.dataset.translationRaw || ''
-      const current = button.dataset.translationCurrent || ''
-      const next = prompt(`修正「${raw}」的翻译：\n留空会删除该修正。`, current)
-      if (next === null) return
-      const result = await window.api.setTranslationCorrection(raw, next)
-      if (!result?.ok) {
-        showToast(result?.err || '保存修正失败', 'err')
-        return
-      }
-      showToast(next.trim() ? '翻译修正已保存' : '翻译修正已删除', 'ok')
-      mod.keyBindingsLoaded = false
-      mod.keyBindingsLoading = true
-      renderDetailPanel(mod)
-      loadModKeyBindings(mod, ++previewRenderToken)
-    })
+    button.addEventListener('click', () => startTranslationInlineEdit(button, mod))
   })
   dom.previewName.querySelectorAll('[data-key-index]').forEach((button) => {
     button.addEventListener('click', async () => {
@@ -2737,11 +3184,15 @@ dom.detailSearchGlobal.addEventListener('click', () => {
   setDetailSearchGlobal(!detailSearchGlobal)
   dom.detailSearch.focus()
 })
+dom.overviewConflictSearch?.addEventListener('click', () => {
+  setOverviewConflictSearch(!overviewConflictSearch)
+  dom.search.focus()
+})
 dom.frameworkIsolationNotice?.addEventListener('click', jumpToFrameworkIsolationTarget)
 setDetailSearchGlobal(false, false)
 function setSearchPlaceholder(focused = document.activeElement === dom.search) {
-  dom.search.placeholder = SEARCH_HINT
-  dom.search.title = SEARCH_HINT
+  dom.search.placeholder = overviewConflictSearch ? 'Tab 搜当前页 · F2 关闭冲突' : SEARCH_HINT
+  dom.search.title = overviewConflictSearch ? 'Tab 搜当前页，F2 关闭冲突筛选' : SEARCH_HINT
 }
 dom.search.addEventListener('focus', () => setSearchPlaceholder(true))
 dom.search.addEventListener('blur', () => setSearchPlaceholder(false))
@@ -2775,8 +3226,17 @@ dom.btnUpdateTools.addEventListener('click', async () => {
   }
 })
 
+function reloadSelectedModKeyBindings() {
+  const mod = getModByRel(selectedModRel)
+  if (!mod) return
+  mod.keyBindingsLoaded = false
+  mod.keyBindingsLoading = true
+  renderDetailPanel(mod)
+  loadModKeyBindings(mod, ++previewRenderToken)
+}
+
 dom.btnClearDictionary.addEventListener('click', async () => {
-  if (!confirm('确定清空本地翻译词典？\n之后会重新记录新遇到的词条。')) return
+  if (!confirm('确定清空网络翻译词典？\n之后会重新记录新遇到的词条。')) return
   const originalText = dom.btnClearDictionary.textContent
   dom.btnClearDictionary.disabled = true
   dom.btnClearDictionary.textContent = '清空中...'
@@ -2786,7 +3246,8 @@ dom.btnClearDictionary.addEventListener('click', async () => {
       showToast(result?.error || '清空词典失败', 'err')
       return
     }
-    showToast(`本地词典已清空：${result.cleared || 0} 个词条`, 'ok')
+    showToast(`网络词典已清空：${result.cleared || 0} 个词条`, 'ok')
+    reloadSelectedModKeyBindings()
   } catch (error) {
     showToast('清空词典失败：' + error.message, 'err')
   } finally {
@@ -2796,7 +3257,7 @@ dom.btnClearDictionary.addEventListener('click', async () => {
 })
 
 dom.btnClearCorrectionDictionary?.addEventListener('click', async () => {
-  if (!confirm('确定清空修正翻译词典？\n键位说明会重新回到本地词典或内置翻译结果。')) return
+  if (!confirm('确定清空修正翻译词典？\n键位说明会重新回到网络词典或内置翻译结果。')) return
   const originalText = dom.btnClearCorrectionDictionary.textContent
   dom.btnClearCorrectionDictionary.disabled = true
   dom.btnClearCorrectionDictionary.textContent = '清空中...'
@@ -2807,13 +3268,7 @@ dom.btnClearCorrectionDictionary?.addEventListener('click', async () => {
       return
     }
     showToast(`修正词典已清空：${result.cleared || 0} 个词条`, 'ok')
-    const mod = getModByRel(selectedModRel)
-    if (mod) {
-      mod.keyBindingsLoaded = false
-      mod.keyBindingsLoading = true
-      renderDetailPanel(mod)
-      loadModKeyBindings(mod, ++previewRenderToken)
-    }
+    reloadSelectedModKeyBindings()
   } catch (error) {
     showToast('清空修正失败：' + error.message, 'err')
   } finally {
@@ -2902,6 +3357,7 @@ dom.btnBatchMove.addEventListener('click', async () => {
   if (!activeGroup) return
   await handleBatchMove(activeGroup.path)
 })
+dom.btnTagManager?.addEventListener('click', openTagManager)
 dom.btnFlatten.addEventListener('click', async () => {
   if (!activeGroup) return
   if (!confirm(`确认平整当前目录：${activeGroup.path}？`)) return
@@ -2917,6 +3373,7 @@ dom.btnFlatten.addEventListener('click', async () => {
 document.addEventListener('click', (e) => {
   if (!e.target.closest('#batchMenu')) hideBatchMenu()
   if (!e.target.closest('#overviewMenu')) hideOverviewMenu()
+  if (!e.target.closest('.mod-tag-wrap') && dom.modList.querySelector('.mod-tag-picker')) renderModTable()
   hideAppTooltip()
 })
 
@@ -2973,6 +3430,13 @@ document.addEventListener('keydown', async (e) => {
     e.preventDefault()
     setDetailSearchGlobal(!detailSearchGlobal)
     dom.detailSearch.focus()
+    return
+  }
+
+  if (isOverviewVisible() && e.key === 'F2' && !editingTarget) {
+    e.preventDefault()
+    setOverviewConflictSearch(!overviewConflictSearch)
+    dom.search.focus()
     return
   }
 

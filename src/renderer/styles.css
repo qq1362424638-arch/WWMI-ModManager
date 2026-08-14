@@ -933,6 +933,7 @@ body {
   opacity: 1;
 }
 .overview-search-shell { min-width: 160px; }
+.overview-search-shell .search-field { padding-right: 62px; }
 .detail-search-shell { min-width: 0; }
 .search-shell .search-field {
   position: relative;
@@ -1340,6 +1341,13 @@ body {
   color: var(--primary-text);
   box-shadow: 0 0 0 1px var(--accent-weak), 0 8px 20px var(--accent-weak);
 }
+.overview-search-shell .detail-global-search {
+  right: 4px;
+  height: 28px;
+}
+.overview-search-shell .detail-global-search:active {
+  transform: translateY(calc(-50% + 1px));
+}
 .detail-header-actions {
   margin-left: auto;
   display: flex;
@@ -1533,6 +1541,8 @@ body {
 .mod-row .btn-lock:focus-visible,
 .mod-row .btn-favorite:focus,
 .mod-row .btn-favorite:focus-visible,
+.mod-row .mod-tag:focus,
+.mod-row .mod-tag:focus-visible,
 .mod-row .btn-open:focus,
 .mod-row .btn-open:focus-visible {
   outline: none;
@@ -1814,6 +1824,180 @@ body {
   margin-left: auto;
   color: var(--text);
 }
+.mod-tag-wrap {
+  position: relative;
+  flex: 0 0 auto;
+  z-index: 5;
+}
+.mod-tag {
+  max-width: 92px;
+  min-width: 44px;
+  height: 26px;
+  border: 1px solid var(--tag-border);
+  background: var(--tag-bg);
+  color: var(--tag-text);
+  border-radius: 7px;
+  padding: 0 8px;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+.mod-tag-wrap[style*="transparent"] .mod-tag {
+  box-shadow: none;
+}
+.mod-tag-wrap[style*="transparent"] .mod-tag:hover {
+  border-color: transparent;
+  box-shadow: none;
+}
+.mod-tag:hover {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-weak);
+}
+.mod-tag-picker {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.mod-tag-input {
+  width: 104px;
+  height: 28px;
+  border: 1px solid var(--accent-border);
+  border-radius: 7px;
+  background: var(--bg-elevated);
+  color: var(--text);
+  padding: 0 7px;
+  font: inherit;
+  font-size: 12px;
+  outline: none;
+}
+.mod-tag-confirm {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--accent-border);
+  border-radius: 7px;
+  background: var(--primary-bg);
+  color: var(--primary-text);
+  cursor: pointer;
+  font-weight: 900;
+}
+.mod-tag-options {
+  position: absolute;
+  z-index: 40;
+  right: 0;
+  top: calc(100% + 6px);
+  min-width: 128px;
+  max-height: 180px;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px;
+  border: 1px solid var(--floating-border);
+  border-radius: 8px;
+  background: var(--floating-surface);
+  box-shadow: 0 12px 28px rgba(31,41,51,0.18);
+}
+.mod-tag-options button {
+  height: 26px;
+  border: 1px solid var(--tag-border);
+  border-radius: 7px;
+  background: var(--tag-bg);
+  color: var(--tag-text);
+  padding: 0 8px;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.mod-tag-options button:hover {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-weak);
+}
+.mod-tag-options button.active {
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+.tag-manager-dialog {
+  width: min(520px, calc(100vw - 48px));
+}
+.tag-manager-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 14px 0;
+  max-height: 46vh;
+  overflow: auto;
+}
+.tag-manager-row {
+  display: grid;
+  grid-template-columns: 28px 26px minmax(0, 1fr) 78px 66px 66px;
+  align-items: center;
+  gap: 8px;
+}
+.tag-manager-row.dragging {
+  opacity: 0.55;
+}
+.tag-manager-row.drag-over {
+  outline: 2px solid var(--accent);
+  border-radius: 8px;
+}
+.tag-manager-drag {
+  width: 26px;
+  height: 34px;
+  border: 0;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 17px;
+  line-height: 1;
+  cursor: grab;
+}
+.tag-manager-drag:disabled {
+  cursor: default;
+  opacity: 0.35;
+}
+.tag-manager-color-sample {
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--tag-border);
+  border-radius: 6px;
+  background: var(--tag-bg);
+}
+.tag-manager-name {
+  min-width: 0;
+}
+.tag-manager-label {
+  width: 100%;
+  height: 34px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text);
+  padding: 0 8px;
+  text-align: left;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tag-manager-label:not(:disabled):hover {
+  border-color: var(--border);
+  background: var(--surface-soft);
+}
+.tag-manager-input {
+  min-width: 0;
+  width: 100%;
+}
+.tag-manager-row .btn {
+  min-width: 0;
+  height: 34px;
+  padding: 0 8px;
+}
+.tag-manager-color-btn {
+  font-size: 12px;
+}
 .mod-row.batch-selected {
   background: var(--mod-row-selected-bg) !important;
   box-shadow: none;
@@ -2012,6 +2196,15 @@ body {
   right: 132px;
   top: 10px;
   margin-left: 0;
+}
+.mod-card-image .mod-tag-wrap {
+  position: absolute;
+  right: 168px;
+  top: 12px;
+}
+.mod-card-image .mod-tag-options {
+  right: auto;
+  left: 0;
 }
 .mod-hover-preview {
   position: fixed;
@@ -2305,6 +2498,21 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.key-label-edit {
+  min-width: 140px;
+  max-width: 45%;
+  border: 1px solid var(--accent-border);
+  background: var(--bg-elevated);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 2px 6px;
+  font: inherit;
+  outline: none;
+}
+.key-label-edit:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-weak);
 }
 .key-original {
   flex: 0 0 auto;

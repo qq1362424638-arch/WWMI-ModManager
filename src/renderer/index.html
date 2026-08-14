@@ -34,6 +34,7 @@
       <div class="overview-toolbar">
         <div class="search-shell overview-search-shell">
           <input id="search" class="search-field" type="text" placeholder="Tab 搜当前页" title="Tab 搜当前页" autocomplete="off" />
+          <button id="overviewConflictSearch" class="detail-global-search" type="button" title="F2 开启冲突筛选" aria-pressed="false">冲突</button>
         </div>
         <button id="btnAddOverviewSection" class="btn btn-ghost" title="新建一级目录分组">新建分组</button>
         <button id="btnUpdateTools" class="btn btn-ghost" title="更新脚本、角色名称、头像与缓存配置">更新配置</button>
@@ -69,6 +70,7 @@
           <button id="btnListView" class="view-toggle-btn active" type="button" title="以列表形式显示 mod">列表</button>
           <button id="btnCardView" class="view-toggle-btn" type="button" title="以卡片形式显示 mod">卡片</button>
         </div>
+        <button id="btnTagManager" class="btn btn-ghost" title="管理当前目录标签">标签管理</button>
         <button id="btnFlatten" class="btn btn-ghost" title="将当前目录内嵌套的 mod 平整到同一级">平整目录</button>
         <button id="btnBatchMove" class="btn btn-ghost" title="批量选择文件夹并移入当前目录">批量移入</button>
         <button id="btnRefreshb" class="btn btn-ghost" title="重新扫描当前目录并刷新界面">刷新</button>
@@ -128,19 +130,19 @@
         <div class="settings-field settings-danger-field">
           <div class="settings-field-head">
             <div>
-              <div class="settings-label">本地翻译词典</div>
-              <div class="settings-path">清空后会重新记录新遇到的词条</div>
+              <div class="settings-label">修正翻译词典</div>
+              <div class="settings-path">优先于网络词典，用于覆盖键位说明翻译</div>
             </div>
-            <button id="btnClearDictionary" class="btn btn-ghost" type="button">清空词典</button>
+            <button id="btnClearCorrectionDictionary" class="btn btn-ghost" type="button">清空</button>
           </div>
         </div>
         <div class="settings-field settings-danger-field">
           <div class="settings-field-head">
             <div>
-              <div class="settings-label">修正翻译词典</div>
-              <div class="settings-path">优先于本地词典，用于覆盖键位说明翻译</div>
+              <div class="settings-label">网络翻译词典</div>
+              <div class="settings-path">清空后会重新记录新遇到的词条</div>
             </div>
-            <button id="btnClearCorrectionDictionary" class="btn btn-ghost" type="button">清空修正</button>
+            <button id="btnClearDictionary" class="btn btn-ghost" type="button">清空</button>
           </div>
         </div>
       </div>
