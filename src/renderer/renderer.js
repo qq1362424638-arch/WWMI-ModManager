@@ -1559,9 +1559,11 @@ async function saveModTag(rel, tag) {
   }
 }
 
-function openTagManager() {
+async function openTagManager() {
   if (!activeGroup) return
+  await refreshActiveTagOrder(activeGroup.path)
   const original = getCurrentTagOrder()
+  const deletedGlobalTags = new Set()
   let tagRows = original.map((tag) => ({
     original: tag,
     value: tag,
@@ -1614,7 +1616,7 @@ function openTagManager() {
       if (row.value !== DEFAULT_MOD_TAG && unique.includes(row.value) && row.color) colors[row.value] = row.color
     })
     const globals = tagRows.filter((row) => row.value !== DEFAULT_MOD_TAG && row.global && unique.includes(row.value)).map((row) => row.value)
-    const result = await window.api.setModTagList(activeGroup.path, unique, renames, colors, globals)
+    const result = await window.api.setModTagList(activeGroup.path, unique, renames, colors, globals, [...deletedGlobalTags])
     savingTags = false
     if (!result?.ok) {
       showToast(result?.error || '保存标签失败', 'err')
@@ -1712,6 +1714,7 @@ function openTagManager() {
     const index = Number(row?.dataset.index)
     if (action === 'delete' && index > 0) {
       if (tagRows[index]?.global && !confirm(`确定删除全局标签「${tagRows[index].value}」？\n删除后所有角色网格都不再显示该标签，并会清除已使用该标签的 Mod 标记。`)) return
+      if (tagRows[index]?.global) deletedGlobalTags.add(tagRows[index].value)
       tagRows.splice(index, 1)
       await persistTagRows('标签已删除')
       render()

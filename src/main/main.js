@@ -691,6 +691,7 @@ function loadConfig() {
 function saveConfig() {
   try {
     fs.mkdirSync(path.dirname(CONFIG_FILE), { recursive: true })
+    if (fs.existsSync(CONFIG_FILE)) fs.copyFileSync(CONFIG_FILE, `${CONFIG_FILE}.bak`)
     fs.writeFileSync(CONFIG_FILE, JSON.stringify({ modsRoot: MODS_ROOT, wwmiRoot: WWMI_ROOT, detailViewMode, appTheme, sortOrder, overviewMeta, favoriteMods, modTags, modTagOrders, modTagColors, modGlobalTags, modGlobalTagColors, characterAvatarCache, frameworkIsolationSession }, null, 2), 'utf8')
   } catch (e) {
     console.error('淇濆瓨閰嶇疆澶辫触', e)
@@ -2062,14 +2063,20 @@ function getModTagList(groupPath) {
   return { ok: true, tags: getGroupTagOrder(groupKey), colors: { ...modGlobalTagColors, ...(modTagColors[groupKey] || {}) }, globals: normalizeOrderList(modGlobalTags) }
 }
 
-function setModTagList(groupPath, tags, renames = {}, colors = {}, globals = []) {
+function setModTagList(groupPath, tags, renames = {}, colors = {}, globals = [], deletedGlobals = []) {
   const groupKey = normalizeOrderKey(groupPath)
   if (!groupKey) return { ok: false, error: 'Invalid group' }
   const nextTags = [DEFAULT_MOD_TAG, ...normalizeOrderList(tags).map(normalizeModTagText).filter((tag) => tag !== DEFAULT_MOD_TAG)]
   const unique = Array.from(new Set(nextTags))
   const allowed = new Set(unique)
   const previousGlobals = normalizeOrderList(modGlobalTags).map(normalizeModTagText).filter((tag) => tag !== DEFAULT_MOD_TAG)
-  const nextGlobals = Array.from(new Set(normalizeOrderList(globals).map(normalizeModTagText).filter((tag) => tag !== DEFAULT_MOD_TAG && allowed.has(tag))))
+  const requestedGlobals = Array.from(new Set(normalizeOrderList(globals).map(normalizeModTagText).filter((tag) => tag !== DEFAULT_MOD_TAG && allowed.has(tag))))
+  const explicitDeletedGlobals = new Set(normalizeOrderList(deletedGlobals).map(normalizeModTagText).filter((tag) => tag !== DEFAULT_MOD_TAG))
+  const previousGroupOrder = getGroupTagOrder(groupKey)
+  const requestCoveredGlobals = previousGlobals.every((tag) => previousGroupOrder.includes(tag) && allowed.has(tag))
+  const nextGlobals = requestCoveredGlobals
+    ? requestedGlobals.filter((tag) => !explicitDeletedGlobals.has(tag))
+    : Array.from(new Set([...previousGlobals.filter((tag) => !explicitDeletedGlobals.has(tag)), ...requestedGlobals]))
   const globalRenameSources = new Set(previousGlobals)
   const groupTags = modTags[groupKey] || {}
   for (const key of Object.keys(groupTags)) {
@@ -2117,7 +2124,7 @@ function setModTagList(groupPath, tags, renames = {}, colors = {}, globals = [])
     const color = normalizeTagColor(sourceGlobalColors[tag])
     if (color) nextGlobalColors[tag] = color
   }
-  const removedGlobals = previousGlobals.filter((tag) => !nextGlobals.includes(tag) && !unique.includes(tag))
+  const removedGlobals = previousGlobals.filter((tag) => explicitDeletedGlobals.has(tag))
   for (const tag of removedGlobals) {
     for (const [group, tags] of Object.entries(modTags)) {
       for (const [key, value] of Object.entries(tags)) {
@@ -3371,7 +3378,7 @@ function registerIpc() {
     return setModTag(rel, tag, groupPath)
   })
   ipcMain.handle('mods:getTagList', (_e, groupPath) => getModTagList(groupPath))
-  ipcMain.handle('mods:setTagList', (_e, groupPath, tags, renames, colors, globals) => setModTagList(groupPath, tags, renames, colors, globals))
+  ipcMain.handle('mods:setTagList', (_e, groupPath, tags, renames, colors, globals, deletedGlobals) => setModTagList(groupPath, tags, renames, colors, globals, deletedGlobals))
   ipcMain.handle('mods:setKey', async (_e, rel, binding, nextKey) => {
     return withModOperationLock(rel, async () => {
       const result = await setModKey(rel, binding, nextKey)

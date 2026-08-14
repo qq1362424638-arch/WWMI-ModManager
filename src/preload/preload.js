@@ -24,7 +24,7 @@ contextBridge.exposeInMainWorld('api', {
   setModFavorite: (rel, favorite) => ipcRenderer.invoke('mods:setFavorite', rel, favorite),
   setModTag: (rel, tag, groupPath) => ipcRenderer.invoke('mods:setTag', rel, tag, groupPath),
   getModTagList: (groupPath) => ipcRenderer.invoke('mods:getTagList', groupPath),
-  setModTagList: (groupPath, tags, renames, colors, globals) => ipcRenderer.invoke('mods:setTagList', groupPath, tags, renames, colors, globals),
+  setModTagList: (groupPath, tags, renames, colors, globals, deletedGlobals) => ipcRenderer.invoke('mods:setTagList', groupPath, tags, renames, colors, globals, deletedGlobals),
   getKeyBindings: (rel) => ipcRenderer.invoke('mods:getKeyBindings', rel),
   setModKey: (rel, binding, nextKey) => ipcRenderer.invoke('mods:setKey', rel, binding, nextKey),
   translateIni: (rel) => ipcRenderer.invoke('mods:translateIni', rel),
