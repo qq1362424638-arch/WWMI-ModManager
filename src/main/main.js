@@ -29,6 +29,11 @@ const DEFAULT_CORRECTION_DICT_FILE = path.join(TOOLS_DIR, 'translation_correctio
 const LOCAL_DICT_FILE = path.join(app.getPath('userData'), 'local_dict.json')
 const CORRECTION_DICT_FILE = path.join(app.getPath('userData'), 'translation_corrections.json')
 const WORD_DICT_FILE = path.join(TOOLS_DIR, 'word_dict.json')
+const APP_THEME_BACKGROUND_COLORS = {
+  dark: '#000000',
+  light: '#ffffff',
+  pink: '#f8e4ef',
+}
 function unpackedPath(filePath) {
   return app.isPackaged ? filePath.replace('app.asar', 'app.asar.unpacked') : filePath
 }
@@ -627,6 +632,8 @@ let favoriteMods = []
 let modTags = {}
 let modTagOrders = {}
 let modTagColors = {}
+let modGlobalTags = []
+let modGlobalTagColors = {}
 let frameworkIsolationSession = null
 const DEFAULT_MOD_TAG = '默认'
 
@@ -665,6 +672,8 @@ function loadConfig() {
     if (raw.modTags && typeof raw.modTags === 'object') modTags = normalizeModTags(raw.modTags)
     if (raw.modTagOrders && typeof raw.modTagOrders === 'object') modTagOrders = normalizeModTagOrders(raw.modTagOrders)
     if (raw.modTagColors && typeof raw.modTagColors === 'object') modTagColors = normalizeModTagColors(raw.modTagColors)
+    modGlobalTags = normalizeOrderList(raw.modGlobalTags).map(normalizeModTagText).filter((tag) => tag !== DEFAULT_MOD_TAG)
+    if (raw.modGlobalTagColors && typeof raw.modGlobalTagColors === 'object') modGlobalTagColors = normalizeTagColorMap(raw.modGlobalTagColors)
     if (raw.frameworkIsolationSession && typeof raw.frameworkIsolationSession === 'object') {
       frameworkIsolationSession = normalizeFrameworkIsolationSession(raw.frameworkIsolationSession)
     }
@@ -682,7 +691,7 @@ function loadConfig() {
 function saveConfig() {
   try {
     fs.mkdirSync(path.dirname(CONFIG_FILE), { recursive: true })
-    fs.writeFileSync(CONFIG_FILE, JSON.stringify({ modsRoot: MODS_ROOT, wwmiRoot: WWMI_ROOT, detailViewMode, appTheme, sortOrder, overviewMeta, favoriteMods, modTags, modTagOrders, modTagColors, characterAvatarCache, frameworkIsolationSession }, null, 2), 'utf8')
+    fs.writeFileSync(CONFIG_FILE, JSON.stringify({ modsRoot: MODS_ROOT, wwmiRoot: WWMI_ROOT, detailViewMode, appTheme, sortOrder, overviewMeta, favoriteMods, modTags, modTagOrders, modTagColors, modGlobalTags, modGlobalTagColors, characterAvatarCache, frameworkIsolationSession }, null, 2), 'utf8')
   } catch (e) {
     console.error('淇濆瓨閰嶇疆澶辫触', e)
   }
@@ -767,11 +776,24 @@ function normalizeModTagColors(value) {
   return result
 }
 
+function normalizeTagColorMap(value) {
+  if (!value || typeof value !== 'object') return {}
+  const result = {}
+  for (const [tag, color] of Object.entries(value)) {
+    const cleanTag = normalizeModTagText(tag)
+    const cleanColor = cleanTag === DEFAULT_MOD_TAG ? null : normalizeTagColor(color)
+    if (cleanColor) result[cleanTag] = cleanColor
+  }
+  return result
+}
+
 function getGroupTagOrder(groupPath) {
   const groupKey = normalizeOrderKey(groupPath)
   const used = new Set(Object.values(modTags[groupKey] || {}).map(normalizeModTagText).filter((tag) => tag !== DEFAULT_MOD_TAG))
   const ordered = normalizeOrderList(modTagOrders[groupKey]).map(normalizeModTagText)
-  return [DEFAULT_MOD_TAG, ...ordered.filter((tag) => tag !== DEFAULT_MOD_TAG), ...[...used].filter((tag) => !ordered.includes(tag)).sort((a, b) => a.localeCompare(b, 'zh-Hans'))]
+  const globals = normalizeOrderList(modGlobalTags).map(normalizeModTagText).filter((tag) => tag !== DEFAULT_MOD_TAG)
+  const base = [DEFAULT_MOD_TAG, ...globals, ...ordered.filter((tag) => tag !== DEFAULT_MOD_TAG)]
+  return [...new Set([...base, ...[...used].filter((tag) => !base.includes(tag)).sort((a, b) => a.localeCompare(b, 'zh-Hans'))])]
 }
 
 function normalizeOverviewSections(value) {
@@ -930,7 +952,13 @@ async function makeModEntry(categoryName, dir, groupPath, files) {
   const rel = path.relative(MODS_ROOT, dir)
   const orderKey = stripDisabledRel(rel)
   const groupKey = normalizeOrderKey(categoryName)
-  const tag = modTags[groupKey]?.[orderKey] || DEFAULT_MOD_TAG
+  let tag = modTags[groupKey]?.[orderKey]
+  const legacyKey = orderKey.toLowerCase()
+  if (!tag && legacyKey !== orderKey && modTags[groupKey]?.[legacyKey]) {
+    tag = modTags[groupKey][legacyKey]
+    modTags[groupKey][orderKey] = tag
+    delete modTags[groupKey][legacyKey]
+  }
   return {
     rel,
     name: stripDisabled(name),
@@ -939,7 +967,7 @@ async function makeModEntry(categoryName, dir, groupPath, files) {
     disabled: isDisabledDirName(name),
     locked: isModLocked(dir),
     favorite: favoriteMods.includes(orderKey),
-    tag,
+    tag: tag || DEFAULT_MOD_TAG,
     keyBindings: [],
     keyBindingsLoaded: false,
     category: categoryName,
@@ -2031,15 +2059,18 @@ function cleanupModTags(groupPath, visibleKeys = null) {
 
 function getModTagList(groupPath) {
   const groupKey = normalizeOrderKey(groupPath)
-  return { ok: true, tags: getGroupTagOrder(groupKey), colors: modTagColors[groupKey] || {} }
+  return { ok: true, tags: getGroupTagOrder(groupKey), colors: { ...modGlobalTagColors, ...(modTagColors[groupKey] || {}) }, globals: normalizeOrderList(modGlobalTags) }
 }
 
-function setModTagList(groupPath, tags, renames = {}, colors = {}) {
+function setModTagList(groupPath, tags, renames = {}, colors = {}, globals = []) {
   const groupKey = normalizeOrderKey(groupPath)
   if (!groupKey) return { ok: false, error: 'Invalid group' }
   const nextTags = [DEFAULT_MOD_TAG, ...normalizeOrderList(tags).map(normalizeModTagText).filter((tag) => tag !== DEFAULT_MOD_TAG)]
   const unique = Array.from(new Set(nextTags))
   const allowed = new Set(unique)
+  const previousGlobals = normalizeOrderList(modGlobalTags).map(normalizeModTagText).filter((tag) => tag !== DEFAULT_MOD_TAG)
+  const nextGlobals = Array.from(new Set(normalizeOrderList(globals).map(normalizeModTagText).filter((tag) => tag !== DEFAULT_MOD_TAG && allowed.has(tag))))
+  const globalRenameSources = new Set(previousGlobals)
   const groupTags = modTags[groupKey] || {}
   for (const key of Object.keys(groupTags)) {
     const current = normalizeModTagText(groupTags[key])
@@ -2054,24 +2085,65 @@ function setModTagList(groupPath, tags, renames = {}, colors = {}) {
   modTagOrders[groupKey] = unique
   const nextColors = {}
   const sourceColors = { ...(modTagColors[groupKey] || {}), ...(colors && typeof colors === 'object' ? colors : {}) }
+  const nextGlobalColors = {}
+  const sourceGlobalColors = { ...modGlobalTagColors, ...(colors && typeof colors === 'object' ? colors : {}) }
   for (const [from, to] of Object.entries(renames || {})) {
     const fromTag = normalizeModTagText(from)
     const toTag = normalizeModTagText(to)
     if (!sourceColors[toTag] && sourceColors[fromTag]) sourceColors[toTag] = sourceColors[fromTag]
+    if (!sourceGlobalColors[toTag] && sourceGlobalColors[fromTag]) sourceGlobalColors[toTag] = sourceGlobalColors[fromTag]
+    if (globalRenameSources.has(fromTag)) {
+      for (const tags of Object.values(modTags)) {
+        for (const [key, tag] of Object.entries(tags)) {
+          if (normalizeModTagText(tag) === fromTag) tags[key] = toTag
+        }
+      }
+      for (const [key, order] of Object.entries(modTagOrders)) {
+        modTagOrders[key] = Array.from(new Set(normalizeOrderList(order).map((tag) => normalizeModTagText(tag) === fromTag ? toTag : normalizeModTagText(tag))))
+      }
+      for (const [key, groupColors] of Object.entries(modTagColors)) {
+        if (groupColors?.[fromTag] && !groupColors[toTag]) groupColors[toTag] = groupColors[fromTag]
+        if (groupColors) delete groupColors[fromTag]
+        if (groupColors && !Object.keys(groupColors).length) delete modTagColors[key]
+      }
+    }
   }
   for (const tag of unique) {
     if (tag === DEFAULT_MOD_TAG) continue
     const color = normalizeTagColor(sourceColors[tag])
     if (color) nextColors[tag] = color
   }
+  for (const tag of nextGlobals) {
+    const color = normalizeTagColor(sourceGlobalColors[tag])
+    if (color) nextGlobalColors[tag] = color
+  }
+  const removedGlobals = previousGlobals.filter((tag) => !nextGlobals.includes(tag) && !unique.includes(tag))
+  for (const tag of removedGlobals) {
+    for (const [group, tags] of Object.entries(modTags)) {
+      for (const [key, value] of Object.entries(tags)) {
+        if (normalizeModTagText(value) === tag) delete tags[key]
+      }
+      if (!Object.keys(tags).length) delete modTags[group]
+    }
+    for (const [group, order] of Object.entries(modTagOrders)) {
+      modTagOrders[group] = normalizeOrderList(order).filter((item) => normalizeModTagText(item) !== tag)
+      if (modTagOrders[group].length <= 1) delete modTagOrders[group]
+    }
+    for (const [group, groupColors] of Object.entries(modTagColors)) {
+      if (groupColors) delete groupColors[tag]
+      if (groupColors && !Object.keys(groupColors).length) delete modTagColors[group]
+    }
+  }
+  modGlobalTags = nextGlobals
+  modGlobalTagColors = nextGlobalColors
   if (Object.keys(nextColors).length) modTagColors[groupKey] = nextColors
   else delete modTagColors[groupKey]
   saveConfig()
-  return { ok: true, tags: getGroupTagOrder(groupKey), colors: modTagColors[groupKey] || {} }
+  return { ok: true, tags: getGroupTagOrder(groupKey), colors: { ...modGlobalTagColors, ...(modTagColors[groupKey] || {}) }, globals: normalizeOrderList(modGlobalTags) }
 }
 
 async function setModTag(rel, tag, groupPath = '') {
-  const key = modOperationKey(rel)
+  const key = stripDisabledRel(rel)
   if (!key) return { ok: false, error: 'Invalid mod' }
   const groupKey = normalizeOrderKey(groupPath || getGroupPathFromRel(rel))
   if (!groupKey) return { ok: false, error: 'Invalid group' }
@@ -3299,7 +3371,7 @@ function registerIpc() {
     return setModTag(rel, tag, groupPath)
   })
   ipcMain.handle('mods:getTagList', (_e, groupPath) => getModTagList(groupPath))
-  ipcMain.handle('mods:setTagList', (_e, groupPath, tags, renames, colors) => setModTagList(groupPath, tags, renames, colors))
+  ipcMain.handle('mods:setTagList', (_e, groupPath, tags, renames, colors, globals) => setModTagList(groupPath, tags, renames, colors, globals))
   ipcMain.handle('mods:setKey', async (_e, rel, binding, nextKey) => {
     return withModOperationLock(rel, async () => {
       const result = await setModKey(rel, binding, nextKey)
@@ -3456,6 +3528,7 @@ function registerIpc() {
       saveConfig()
     } else if (key === 'appTheme') {
       appTheme = value === 'dark' || value === 'pink' ? value : 'light'
+      BrowserWindow.fromWebContents(_e.sender)?.setBackgroundColor(APP_THEME_BACKGROUND_COLORS[appTheme])
       saveConfig()
     }
     return { ok: true }
@@ -3561,7 +3634,7 @@ function createWindow() {
     height: 800,
     minWidth: 900,
     minHeight: 600,
-    backgroundColor: '#edf0f3',
+    backgroundColor: APP_THEME_BACKGROUND_COLORS[appTheme] || APP_THEME_BACKGROUND_COLORS.light,
     title: '鸣潮 Mod 管理器',
     icon: APP_ICON_FILE,
     frame: false,
@@ -3572,7 +3645,9 @@ function createWindow() {
       nodeIntegration: false,
     },
   })
-  mainWindow.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'))
+  mainWindow.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'), {
+    query: { theme: appTheme },
+  })
 }
 
 function escapeHtmlText(value) {

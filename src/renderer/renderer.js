@@ -15,6 +15,7 @@ let detailSearchTerm = ''
 let detailSearchGlobal = false
 let activeTagOrder = ['默认']
 let activeTagColors = {}
+let activeGlobalTags = []
 let selectedModRel = null
 let suppressNextClick = false
 let detailViewMode = 'list'
@@ -33,6 +34,7 @@ const queuedModToggleRels = new Set()
 const MOD_TOGGLE_CONCURRENCY = 4
 let modToggleActiveCount = 0
 let modToggleRefreshTimer = null
+let modTagCloseTimer = null
 const preloadedImages = new Set()
 let previewRenderToken = 0
 let modHoverPreviewEl = null
@@ -623,6 +625,7 @@ async function refreshActiveTagOrder(groupPath = activeGroup?.path) {
   if (result?.ok && Array.isArray(result.tags)) {
     activeTagOrder = result.tags
     activeTagColors = result.colors && typeof result.colors === 'object' ? result.colors : {}
+    activeGlobalTags = Array.isArray(result.globals) ? result.globals : []
   }
 }
 
@@ -888,7 +891,7 @@ function getChineseInitial(char) {
 }
 
 function getGroupSearchText(group) {
-  const values = [group.name, group.chineseName, group.path]
+  const values = [group.name, group.chineseName]
   const aliases = values
     .filter(Boolean)
     .flatMap((value) => {
@@ -1116,6 +1119,7 @@ function openDetail(group, focusRel = null) {
   activeGroup = group
   activeTagOrder = [DEFAULT_MOD_TAG, ...[...new Set((group.mods || []).map(getModTag).filter((tag) => tag !== DEFAULT_MOD_TAG))].sort((a, b) => a.localeCompare(b, 'zh-Hans'))]
   activeTagColors = {}
+  activeGlobalTags = []
   detailSearchTerm = ''
   dom.detailSearch.value = ''
   setDetailSearchGlobal(false, false)
@@ -1242,8 +1246,25 @@ function reconcilePendingModToggles() {
   }
 }
 
+function getDetailSearchIgnoredSegments(scopeGroup = activeGroup) {
+  return new Set([
+    'character',
+    ...String(scopeGroup?.path || '').split(/[\\/]+/),
+    scopeGroup?.name,
+    scopeGroup?.chineseName,
+  ].filter(Boolean).map(normalizeSearchText))
+}
+
+function stripSpecialSearchPathSegments(value, scopeGroup = activeGroup) {
+  const ignored = getDetailSearchIgnoredSegments(scopeGroup)
+  return String(value || '')
+    .split(/\s*[\\/]+\s*/)
+    .filter((segment) => !ignored.has(normalizeSearchText(segment)))
+    .join('/')
+}
+
 function getModSearchText(mod) {
-  return [mod.name, mod.rel, mod.group, getModTag(mod)]
+  return [mod.name, stripSpecialSearchPathSegments(mod.rel), stripSpecialSearchPathSegments(mod.group), getModTag(mod)]
     .filter(Boolean)
     .map((value) => {
       const normalized = normalizeSearchText(value)
@@ -1334,9 +1355,9 @@ function renderModRow(m, extraClass = '') {
         <div class="mod-name" data-edit-name>${escapeHtml(m.name)}</div>
         ${group ? `<div class="mod-group">${escapeHtml(group)}</div>` : ''}
       </div>
-      <span class="mod-clipboard-marker" aria-hidden="true"></span>
       ${renderModTag(m)}
       <button class="btn-favorite ${m.favorite ? 'favorited' : ''}" title="${m.favorite ? '取消收藏' : '收藏'}" aria-pressed="${m.favorite ? 'true' : 'false'}">${renderFavoriteIcon(m.favorite)}</button>
+      <span class="mod-clipboard-marker" aria-hidden="true"></span>
     </div>`
 }
 
@@ -1545,10 +1566,68 @@ function openTagManager() {
     original: tag,
     value: tag,
     editing: false,
+    global: activeGlobalTags.includes(tag),
     color: tag === DEFAULT_MOD_TAG ? null : (normalizeTagColor(activeTagColors[tag]) || getRandomTagColor(activeTagColors)),
   }))
   const modal = document.createElement('div')
   modal.className = 'text-modal'
+  let savingTags = false
+  let pendingTagSave = false
+  const applySavedTags = (result, renames, fallbackTags, fallbackColors) => {
+    activeTagOrder = result.tags || fallbackTags
+    activeTagColors = result.colors && typeof result.colors === 'object' ? result.colors : fallbackColors
+    activeGlobalTags = Array.isArray(result.globals) ? result.globals : tagRows.filter((row) => row.global).map((row) => row.value)
+    for (const mod of activeGroup.mods || []) {
+      const tag = getModTag(mod)
+      if (renames[tag]) mod.tag = renames[tag]
+      if (!activeTagOrder.includes(getModTag(mod))) mod.tag = DEFAULT_MOD_TAG
+    }
+    tagRows = activeTagOrder.map((tag) => {
+      const current = tagRows.find((row) => row.value === tag || row.original === tag)
+      return {
+        original: tag,
+        value: tag,
+        editing: current?.editing && tag !== DEFAULT_MOD_TAG,
+        global: activeGlobalTags.includes(tag),
+        color: tag === DEFAULT_MOD_TAG ? null : (normalizeTagColor(activeTagColors[tag]) || normalizeTagColor(current?.color) || getRandomTagColor(activeTagColors)),
+      }
+    })
+    sortCurrentModsByFavorite()
+    renderModTable()
+  }
+  const persistTagRows = async (toastText = '') => {
+    if (!activeGroup) return false
+    if (savingTags) {
+      pendingTagSave = true
+      return false
+    }
+    savingTags = true
+    normalizeRowsForSave()
+    const unique = [DEFAULT_MOD_TAG]
+    for (const row of tagRows) if (row.value !== DEFAULT_MOD_TAG && !unique.includes(row.value)) unique.push(row.value)
+    const renames = {}
+    tagRows.forEach((row) => {
+      if (row.original && row.original !== row.value) renames[row.original] = row.value
+    })
+    const colors = {}
+    tagRows.forEach((row) => {
+      if (row.value !== DEFAULT_MOD_TAG && unique.includes(row.value) && row.color) colors[row.value] = row.color
+    })
+    const globals = tagRows.filter((row) => row.value !== DEFAULT_MOD_TAG && row.global && unique.includes(row.value)).map((row) => row.value)
+    const result = await window.api.setModTagList(activeGroup.path, unique, renames, colors, globals)
+    savingTags = false
+    if (!result?.ok) {
+      showToast(result?.error || '保存标签失败', 'err')
+      return false
+    }
+    applySavedTags(result, renames, unique, colors)
+    if (toastText) showToast(toastText)
+    if (pendingTagSave) {
+      pendingTagSave = false
+      persistTagRows()
+    }
+    return true
+  }
   const commitEdit = (index, value) => {
     if (index <= 0 || !tagRows[index]) return
     const used = tagRows.map((row, rowIndex) => rowIndex === index ? '' : row.value)
@@ -1556,10 +1635,19 @@ function openTagManager() {
     tagRows[index].value = uniqueTagName(used, clean === DEFAULT_MOD_TAG ? '标签' : clean)
     tagRows[index].editing = false
   }
+  const focusNewTagInput = () => {
+    const input = modal.querySelector('.tag-manager-new-input')
+    if (!input) return
+    input.focus()
+    input.select()
+  }
   const render = () => {
     modal.innerHTML = `
       <div class="text-dialog tag-manager-dialog">
-        <div class="text-dialog-title">标签管理</div>
+        <div class="tag-manager-head">
+          <div class="text-dialog-title">标签管理</div>
+          <button class="tag-manager-close" type="button" data-tag-action="close" title="关闭">×</button>
+        </div>
         <div class="tag-manager-list">
           ${tagRows.map((row, index) => `
             <div class="tag-manager-row" data-index="${index}">
@@ -1572,14 +1660,18 @@ function openTagManager() {
               </div>
               <button class="btn btn-ghost tag-manager-color-btn" data-tag-action="color" ${index === 0 ? 'disabled' : ''}>随机颜色</button>
               <button class="btn btn-ghost" data-tag-action="edit" ${index === 0 ? 'disabled' : ''}>重命名</button>
+              <button class="btn btn-ghost tag-manager-global-btn ${row.global ? 'active' : ''}" data-tag-action="global" ${index === 0 ? 'disabled' : ''}>设为全局</button>
               <button class="btn btn-ghost" data-tag-action="delete" ${index === 0 ? 'disabled' : ''}>删除</button>
             </div>
           `).join('')}
-        </div>
-        <div class="text-dialog-actions">
-          <button class="btn btn-ghost" data-tag-action="add">添加</button>
-          <button class="btn btn-ghost" data-tag-action="cancel">取消</button>
-          <button class="btn btn-primary" data-tag-action="save">保存</button>
+          <div class="tag-manager-row tag-manager-new-row">
+            <button class="tag-manager-drag" type="button" disabled>⋮⋮</button>
+            <div class="tag-manager-color-sample tag-manager-new-color"></div>
+            <div class="tag-manager-name">
+              <input class="text-dialog-input tag-manager-new-input" value="" maxlength="16" placeholder="添加标签" />
+            </div>
+            <span></span><span></span><span></span><span></span>
+          </div>
         </div>
       </div>`
     const input = modal.querySelector('.tag-manager-input')
@@ -1594,7 +1686,7 @@ function openTagManager() {
       const rowIndex = Number(row?.dataset.index)
       if (tagRows[rowIndex]) tagRows[rowIndex].value = cleanModTagInput(input.value)
     })
-    tagRows[0] = { original: DEFAULT_MOD_TAG, value: DEFAULT_MOD_TAG, editing: false, color: null }
+    tagRows[0] = { original: DEFAULT_MOD_TAG, value: DEFAULT_MOD_TAG, editing: false, global: false, color: null }
   }
   const normalizeRowsForSave = () => {
     const used = [DEFAULT_MOD_TAG]
@@ -1610,7 +1702,7 @@ function openTagManager() {
   render()
   modal.addEventListener('click', async (e) => {
     const action = e.target?.dataset?.tagAction
-    if (e.target === modal || action === 'cancel') {
+    if (e.target === modal || action === 'close') {
       close()
       return
     }
@@ -1618,45 +1710,34 @@ function openTagManager() {
     syncRows()
     const row = e.target.closest('.tag-manager-row')
     const index = Number(row?.dataset.index)
-    if (action === 'add') {
-      const value = uniqueTagName(tagRows.map((item) => item.value), '标签')
-      const color = getRandomTagColor(Object.fromEntries(tagRows.filter((item) => item.color).map((item) => [item.value, item.color])))
-      tagRows.push({ original: '', value, editing: true, color })
-    }
-    if (action === 'delete' && index > 0) tagRows.splice(index, 1)
-    if (action === 'edit' && index > 0) tagRows[index].editing = true
-    if (action === 'color' && index > 0) tagRows[index].color = getRandomTagColor(Object.fromEntries(tagRows.filter((item, rowIndex) => rowIndex !== index && item.color).map((item) => [item.value, item.color])))
-    if (action === 'save') {
-      normalizeRowsForSave()
-      const unique = [DEFAULT_MOD_TAG]
-      for (const row of tagRows) if (row.value !== DEFAULT_MOD_TAG && !unique.includes(row.value)) unique.push(row.value)
-      const renames = {}
-      tagRows.forEach((row) => {
-        if (row.original && row.original !== row.value) renames[row.original] = row.value
-      })
-      const colors = {}
-      tagRows.forEach((row) => {
-        if (row.value !== DEFAULT_MOD_TAG && unique.includes(row.value) && row.color) colors[row.value] = row.color
-      })
-      const result = await window.api.setModTagList(activeGroup.path, unique, renames, colors)
-      if (!result?.ok) {
-        showToast(result?.error || '保存标签失败', 'err')
-        return
-      }
-      activeTagOrder = result.tags || unique
-      activeTagColors = result.colors && typeof result.colors === 'object' ? result.colors : colors
-      for (const mod of activeGroup.mods || []) {
-        if (renames[getModTag(mod)]) mod.tag = renames[getModTag(mod)]
-        if (!activeTagOrder.includes(getModTag(mod))) mod.tag = DEFAULT_MOD_TAG
-      }
-      sortCurrentModsByFavorite()
-      renderModTable()
-      showToast('标签已保存')
-      close()
+    if (action === 'delete' && index > 0) {
+      if (tagRows[index]?.global && !confirm(`确定删除全局标签「${tagRows[index].value}」？\n删除后所有角色网格都不再显示该标签，并会清除已使用该标签的 Mod 标记。`)) return
+      tagRows.splice(index, 1)
+      await persistTagRows('标签已删除')
+      render()
       return
+    }
+    if (action === 'edit' && index > 0) tagRows[index].editing = true
+    if (action === 'global' && index > 0) {
+      tagRows[index].global = !tagRows[index].global
+      await persistTagRows(tagRows[index].global ? '已设为全局标签' : '已取消全局标签')
+    }
+    if (action === 'color' && index > 0) {
+      tagRows[index].color = getRandomTagColor(Object.fromEntries(tagRows.filter((item, rowIndex) => rowIndex !== index && item.color).map((item) => [item.value, item.color])))
+      await persistTagRows('颜色已保存')
     }
     render()
   })
+  modal.addEventListener('pointerdown', (e) => {
+    const newRow = e.target.closest('.tag-manager-new-row')
+    if (!newRow) return
+    if (e.target.classList.contains('tag-manager-new-input')) {
+      e.stopPropagation()
+      return
+    }
+    e.preventDefault()
+    focusNewTagInput()
+  }, true)
   modal.addEventListener('dblclick', (e) => {
     const label = e.target.closest('.tag-manager-label')
     const row = label?.closest('.tag-manager-row')
@@ -1667,23 +1748,66 @@ function openTagManager() {
     render()
   })
   modal.addEventListener('focusout', (e) => {
-    if (!e.target.classList.contains('tag-manager-input')) return
-    const row = e.target.closest('.tag-manager-row')
-    const index = Number(row?.dataset.index)
-    commitEdit(index, e.target.value)
+    const isEditInput = e.target.classList.contains('tag-manager-input')
+    const isNewInput = e.target.classList.contains('tag-manager-new-input')
+    if (!isEditInput && !isNewInput) return
+    if (e.target.dataset.committed === 'true') return
     setTimeout(() => {
-      if (document.body.contains(modal)) render()
+      if (!document.body.contains(modal)) return
+      if (isNewInput) {
+        createTagFromInput(e.target).then(() => render())
+        return
+      }
+      const row = e.target.closest('.tag-manager-row')
+      const index = Number(row?.dataset.index)
+      commitEdit(index, e.target.value)
+      persistTagRows('标签已重命名').then(() => render())
     }, 80)
   })
   modal.addEventListener('keydown', (e) => {
-    if (!e.target.classList.contains('tag-manager-input')) return
+    if (e.key === 'Escape') {
+      e.preventDefault()
+      e.stopPropagation()
+      close()
+      return
+    }
+    if (e.key === 'Tab') {
+      e.preventDefault()
+      e.stopPropagation()
+      if (e.target.classList.contains('tag-manager-new-input')) {
+        createTagFromInput(e.target).then(() => {
+          render()
+          setTimeout(() => modal.querySelector('.tag-manager-new-input')?.focus(), 0)
+        })
+        return
+      }
+      focusNewTagInput()
+      return
+    }
+    if (!e.target.classList.contains('tag-manager-input') && !e.target.classList.contains('tag-manager-new-input')) return
     if (e.key !== 'Enter') return
     e.preventDefault()
+    if (e.target.classList.contains('tag-manager-new-input')) {
+      createTagFromInput(e.target).then(() => render())
+      return
+    }
+    e.target.dataset.committed = 'true'
     const row = e.target.closest('.tag-manager-row')
     const index = Number(row?.dataset.index)
     commitEdit(index, e.target.value)
-    render()
+    persistTagRows('标签已重命名').then(() => render())
   })
+  const createTagFromInput = async (input) => {
+    if (input.dataset.committed === 'true') return false
+    input.dataset.committed = 'true'
+    const value = input.value
+    const clean = String(value || '').replace(/\s+/g, ' ').trim().slice(0, 16)
+    if (!clean) return false
+    const tag = uniqueTagName(tagRows.map((item) => item.value), clean === DEFAULT_MOD_TAG ? '标签' : clean)
+    const color = getRandomTagColor(Object.fromEntries(tagRows.filter((item) => item.color).map((item) => [item.value, item.color])))
+    tagRows.push({ original: '', value: tag, editing: false, global: false, color })
+    return persistTagRows('标签已添加')
+  }
   let draggedTagIndex = null
   modal.addEventListener('dragstart', (e) => {
     const handle = e.target.closest('.tag-manager-drag')
@@ -1717,6 +1841,7 @@ function openTagManager() {
     tagRows.splice(index, 0, moved)
     draggedTagIndex = null
     modal.querySelectorAll('.dragging,.drag-over').forEach((el) => el.classList.remove('dragging', 'drag-over'))
+    persistTagRows('排序已保存')
     render()
   })
   modal.addEventListener('dragend', () => {
@@ -1724,6 +1849,7 @@ function openTagManager() {
     modal.querySelectorAll('.dragging,.drag-over').forEach((el) => el.classList.remove('dragging', 'drag-over'))
   })
   document.body.appendChild(modal)
+  setTimeout(focusNewTagInput, 0)
 }
 
 function uniqueTagName(tags, base) {
@@ -1736,23 +1862,74 @@ function uniqueTagName(tags, base) {
   return name
 }
 
+function clearModTagCloseTimer() {
+  if (!modTagCloseTimer) return
+  clearTimeout(modTagCloseTimer)
+  modTagCloseTimer = null
+}
+
+function closeModTagPicker() {
+  clearModTagCloseTimer()
+  dom.modList?.querySelectorAll('.tag-picker-open').forEach((el) => el.classList.remove('tag-picker-open'))
+  document.querySelectorAll('.mod-tag-floating').forEach((el) => el.remove())
+  if (dom.modList?.querySelector('.mod-tag-picker')) renderModTable()
+}
+
+function scheduleModTagPickerClose(delay = 180) {
+  clearModTagCloseTimer()
+  modTagCloseTimer = setTimeout(() => {
+    modTagCloseTimer = null
+    closeModTagPicker()
+  }, delay)
+}
+
+function positionModTagMenu(anchor, menu) {
+  const rect = anchor.getBoundingClientRect()
+  const margin = 8
+  const width = Math.max(128, menu.offsetWidth || 128)
+  const maxHeight = Math.max(120, window.innerHeight - margin * 2)
+  menu.style.maxHeight = `${Math.min(220, maxHeight)}px`
+  const height = Math.min(menu.scrollHeight || 180, parseFloat(menu.style.maxHeight))
+  const left = Math.min(Math.max(margin, rect.right - width), window.innerWidth - width - margin)
+  const below = rect.bottom + 6
+  const above = rect.top - height - 6
+  const top = below + height <= window.innerHeight - margin ? below : Math.max(margin, above)
+  menu.style.left = `${Math.round(left)}px`
+  menu.style.top = `${Math.round(top)}px`
+}
+
 function startModTagEdit(item, rel) {
   const mod = getModByRel(rel)
-  const wrap = item.querySelector('.mod-tag-wrap')
-  if (!mod || !wrap || wrap.querySelector('.mod-tag-picker')) return
+  let itemEl = item
+  let wrap = itemEl.querySelector('.mod-tag-wrap')
+  if (!mod || !wrap || wrap.classList.contains('tag-picker-open')) return
+  if (document.querySelector('.mod-tag-floating') || dom.modList?.querySelector('.mod-tag-picker')) {
+    closeModTagPicker()
+    itemEl = Array.from(dom.modList.querySelectorAll('.mod-item')).find((el) => el.dataset.rel === rel)
+    wrap = itemEl?.querySelector('.mod-tag-wrap')
+    if (!wrap || wrap.classList.contains('tag-picker-open')) return
+  }
   const current = getModTag(mod)
   const options = getCurrentTagOrder()
-  wrap.innerHTML = `
-    <div class="mod-tag-picker">
-      <button class="mod-tag" type="button" style="${escapeAttr(getTagStyle(current, activeGroup?.path))}">${escapeHtml(current)}</button>
-      <div class="mod-tag-options">${options.map((tag) => `<button type="button" data-tag="${escapeAttr(tag)}" class="${tag === current ? 'active' : ''}" style="${escapeAttr(getTagStyle(tag, activeGroup?.path))}">${escapeHtml(tag)}</button>`).join('')}</div>
-    </div>`
-  wrap.querySelectorAll('[data-tag]').forEach((button) => {
+  itemEl.classList.add('tag-picker-open')
+  wrap.classList.add('tag-picker-open')
+  const anchor = wrap.querySelector('.mod-tag')
+  const menu = document.createElement('div')
+  menu.className = 'mod-tag-options mod-tag-floating'
+  menu.innerHTML = options.map((tag) => `<button type="button" data-tag="${escapeAttr(tag)}" class="${tag === current ? 'active' : ''}" style="${escapeAttr(getTagStyle(tag, activeGroup?.path))}">${escapeHtml(tag)}</button>`).join('')
+  document.body.appendChild(menu)
+  positionModTagMenu(anchor || wrap, menu)
+  menu.querySelectorAll('[data-tag]').forEach((button) => {
     button.addEventListener('click', (e) => {
       e.stopPropagation()
+      clearModTagCloseTimer()
       saveModTag(rel, button.dataset.tag || DEFAULT_MOD_TAG)
     })
   })
+  wrap.addEventListener('pointerenter', clearModTagCloseTimer)
+  wrap.addEventListener('pointerleave', () => scheduleModTagPickerClose())
+  menu.addEventListener('pointerenter', clearModTagCloseTimer)
+  menu.addEventListener('pointerleave', () => scheduleModTagPickerClose())
 }
 
 function applySelection(item, rel, event) {
@@ -3373,7 +3550,7 @@ dom.btnFlatten.addEventListener('click', async () => {
 document.addEventListener('click', (e) => {
   if (!e.target.closest('#batchMenu')) hideBatchMenu()
   if (!e.target.closest('#overviewMenu')) hideOverviewMenu()
-  if (!e.target.closest('.mod-tag-wrap') && dom.modList.querySelector('.mod-tag-picker')) renderModTable()
+  if (!e.target.closest('.mod-tag-wrap')) closeModTagPicker()
   hideAppTooltip()
 })
 
@@ -3410,6 +3587,19 @@ document.addEventListener('focusin', (e) => {
 document.addEventListener('focusout', hideAppTooltip)
 
 document.addEventListener('keydown', async (e) => {
+  const tagManagerModal = document.querySelector('.text-modal .tag-manager-dialog')?.closest('.text-modal')
+  if (e.key === 'Escape' && tagManagerModal) {
+    e.preventDefault()
+    tagManagerModal.remove()
+    return
+  }
+  if (e.key === 'Tab' && tagManagerModal) {
+    e.preventDefault()
+    e.stopPropagation()
+    tagManagerModal.querySelector('.tag-manager-new-input')?.focus()
+    return
+  }
+
   if (e.key === 'Escape' && dom.settingsModal && !dom.settingsModal.classList.contains('hidden')) {
     e.preventDefault()
     closeSettingsModal()

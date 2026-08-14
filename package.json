@@ -1,6 +1,6 @@
 {
   "name": "wwmi-mod-manager",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "WWMI Mod Manager",
   "main": "src/main/main.js",
   "scripts": {
