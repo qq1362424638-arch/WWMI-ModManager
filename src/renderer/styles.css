@@ -2249,12 +2249,6 @@ body {
   font-weight: 700;
 }
 .detail-actions button:hover { background: var(--control-hover-bg); border-color: var(--accent); }
-.detail-danger-actions button.danger-action {
-  border-color: rgba(255, 95, 109, 0.65);
-  background: rgba(255, 95, 109, 0.16);
-  color: #ff9aa4;
-}
-.detail-danger-actions button.danger-action:hover { background: rgba(255, 95, 109, 0.26); }
 .key-section {
   border-top: 1px solid var(--border);
   padding-top: 14px;
@@ -2265,12 +2259,22 @@ body {
   justify-content: space-between;
   gap: 10px;
   margin-bottom: 10px;
+  flex-wrap: wrap;
 }
 .key-section-title {
   font-size: 17px;
   font-weight: 800;
+  min-width: 0;
 }
-.key-section-header button {
+.key-section-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+.key-section-actions button {
   border: 1px solid var(--accent-border);
   background: var(--accent-weak);
   color: var(--text);
@@ -2279,7 +2283,7 @@ body {
   cursor: pointer;
   font-weight: 700;
 }
-.key-section-header button:hover {
+.key-section-actions button:hover {
   background: var(--control-hover-bg);
   border-color: var(--accent);
 }
@@ -2315,7 +2319,9 @@ body {
   padding: 2px 6px;
   font-size: 12px;
   line-height: 1.4;
+  cursor: pointer;
 }
+.key-original:hover { color: var(--text); border-color: var(--accent); }
 .key-value {
   border: 1px solid var(--accent-border);
   background: var(--bg-elevated);

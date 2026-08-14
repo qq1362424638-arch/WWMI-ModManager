@@ -22,31 +22,18 @@ const USER_CHARACTER_AVATAR_DIR = path.join(app.getPath('userData'), 'character-
 const TOOLS_DIR = path.join(__dirname, '..', 'tools')
 const FLATTEN_SCRIPT = path.join(TOOLS_DIR, 'flatten.ps1')
 const TRANSLATE_SCRIPT = path.join(TOOLS_DIR, 'translate.py')
-const WATCHER_SCRIPT = path.join(TOOLS_DIR, 'watcher.py')
+const WATCHER_PS_SCRIPT = path.join(__dirname, 'watch-ini.ps1')
 const INI_UTIL_SCRIPT = path.join(TOOLS_DIR, 'wwmi_ini_util.py')
-const LOCAL_DICT_FILE = path.join(TOOLS_DIR, 'local_dict.json')
+const DEFAULT_LOCAL_DICT_FILE = path.join(TOOLS_DIR, 'local_dict.default.json')
+const DEFAULT_CORRECTION_DICT_FILE = path.join(TOOLS_DIR, 'translation_corrections.default.json')
+const LOCAL_DICT_FILE = path.join(app.getPath('userData'), 'local_dict.json')
+const CORRECTION_DICT_FILE = path.join(app.getPath('userData'), 'translation_corrections.json')
 const WORD_DICT_FILE = path.join(TOOLS_DIR, 'word_dict.json')
 function unpackedPath(filePath) {
   return app.isPackaged ? filePath.replace('app.asar', 'app.asar.unpacked') : filePath
 }
-function toolPath(name) {
-  return unpackedPath(path.join(TOOLS_DIR, name))
-}
-const TOOL_UPDATE_FILES = [
-  { name: 'flatten.ps1', sourceDirs: ['wwmi-flatten'] },
-  { name: 'watcher.py', sourceDirs: ['wwmi-watcher', 'wwmi-translate'] },
-  { name: 'translate.py', sourceDirs: ['wwmi-translate'] },
-  { name: 'wwmi_ini_util.py', sourceDirs: ['wwmi-translate'] },
-  { name: 'local_dict.json', sourceDirs: ['wwmi-translate'] },
-  { name: 'word_dict.json', sourceDirs: ['wwmi-translate'] },
-  { name: 'translate_ini.bat', sourceDirs: ['wwmi-translate'] },
-]
-const USER_HOME = process.env.USERPROFILE || app.getPath('home')
-const SKILL_ROOT_CANDIDATES = [
-  path.join(USER_HOME, '.codex', 'skills'),
-  path.join(USER_HOME, '.config', 'opencode', 'skills'),
-]
 const DICT_SOURCE_PRIORITY = {
+  user_correction: 100,
   image: 30,
   file_context: 20,
   online_query: 10,
@@ -647,6 +634,11 @@ protocol.registerSchemesAsPrivileged([
 
 let mainWindow = null
 let keyPopupWindow = null
+let keyWatchWindow = null
+let keyWatchState = null
+let keyWatchPoller = null
+let keyWatchProcess = null
+let keyWatchOpenToken = 0
 let watcher = null
 let rescanTimer = null
 const modOperationLocks = new Set()
@@ -956,6 +948,61 @@ function isModLocked(dir) {
   return commented > 0 && active === 0
 }
 
+function parseIniVariableValues(value) {
+  return String(value || '').split(',').map((item) => item.trim()).filter(Boolean)
+}
+
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function readIniPersistValue(file, varName) {
+  if (!file || !varName) return ''
+  let text = ''
+  try {
+    text = fs.readFileSync(file, 'utf8')
+  } catch {
+    return ''
+  }
+  const re = new RegExp(`^\\s*global\\s+persist\\s+\\$${escapeRegExp(varName)}\\s*=\\s*([^\\r\\n]+)`, 'im')
+  return re.exec(text)?.[1]?.trim() || ''
+}
+
+function getCommandListValueHints(lines) {
+  const hints = new Map()
+  let section = null
+  let vars = new Map()
+  const save = () => {
+    if (section && vars.size) hints.set(section, new Map(vars))
+  }
+  for (const line of lines) {
+    const trimmed = line.trim()
+    const header = /^\[CommandList([^\]]+)\]/i.exec(trimmed)
+    if (header) {
+      save()
+      section = header[1].toLowerCase()
+      vars = new Map()
+      continue
+    }
+    if (/^\[/.test(trimmed)) {
+      save()
+      section = null
+      vars = new Map()
+      continue
+    }
+    if (!section) continue
+    const inc = /^\$(\w+)\s*=\s*\$\w+\s*\+\s*1/i.exec(trimmed)
+    if (inc && !vars.has(inc[1].toLowerCase())) vars.set(inc[1].toLowerCase(), null)
+    const max = /^if\s+\$(\w+)\s*>\s*(\d+)/i.exec(trimmed)
+    if (max && vars.has(max[1].toLowerCase())) {
+      const count = Number(max[2])
+      vars.set(max[1].toLowerCase(), Array.from({ length: count + 1 }, (_v, index) => String(index)))
+    }
+  }
+  save()
+  return hints
+}
+
 async function getModKeyBindings(dir) {
   const bindings = []
   for (const file of walkIniFiles(dir)) {
@@ -968,12 +1015,21 @@ async function getModKeyBindings(dir) {
     const lines = text.split(/\r?\n/)
     const persistComments = getPersistComments(lines, file)
     const commandListHints = getCommandListHints(lines)
+    const commandListValueHints = getCommandListValueHints(lines)
     let section = null
     let keyValue = null
     let hintName = null
     let lastBinding = null
+    const attachVariable = (binding, varName, values) => {
+      if (!binding || binding.varName) return
+      const cleanValues = Array.isArray(values) ? values.map((value) => String(value).trim()).filter(Boolean) : []
+      binding.varName = varName || ''
+      binding.values = cleanValues
+      binding.currentValue = readIniPersistValue(file, varName)
+      binding.initialValue = binding.currentValue
+    }
     for (const line of lines) {
-      const header = /^\[(Key\w+)\]/i.exec(line.trim())
+      const header = /^\[(Key[^\]]*)\]/i.exec(line.trim())
       if (header) {
         section = header[1]
         keyValue = null
@@ -994,6 +1050,10 @@ async function getModKeyBindings(dir) {
           lastBinding.description = await describeKeySection(hintName)
         }
       }
+      const valueMatch = /^\$(\w+)\s*=\s*([-\d,\s]+)$/i.exec(line.trim())
+      if (valueMatch && lastBinding) {
+        attachVariable(lastBinding, valueMatch[1], parseIniVariableValues(valueMatch[2]))
+      }
       const runMatch = /^run\s*=\s*CommandList(\w+)/i.exec(line.trim())
       if (runMatch && !hintName) {
         const commandHint = commandListHints.get(runMatch[1].toLowerCase()) || runMatch[1]
@@ -1003,6 +1063,11 @@ async function getModKeyBindings(dir) {
           lastBinding.rawDescription = stripKeySyntaxWords(hintName)
           lastBinding.description = await describeKeySection(hintName)
         }
+      }
+      if (runMatch && lastBinding && !lastBinding.varName) {
+        const vars = commandListValueHints.get(runMatch[1].toLowerCase())
+        const first = vars ? [...vars.entries()].find((entry) => Array.isArray(entry[1]) && entry[1].length) : null
+        if (first) attachVariable(lastBinding, first[0], first[1])
       }
       const match = /^(\s*;+\s*)?key\s*=\s*(.+)$/i.exec(line)
       if (match) {
@@ -1038,7 +1103,18 @@ function loadJsonDictionary(file) {
   }
 }
 
+function ensureJsonDictionaryFile(file, fallbackFile = '') {
+  if (fs.existsSync(file)) return
+  fs.mkdirSync(path.dirname(file), { recursive: true })
+  if (fallbackFile && fs.existsSync(fallbackFile)) {
+    fs.copyFileSync(fallbackFile, file)
+    return
+  }
+  fs.writeFileSync(file, '{}', 'utf8')
+}
+
 function saveJsonDictionary(file, data) {
+  fs.mkdirSync(path.dirname(file), { recursive: true })
   const ordered = {}
   for (const key of Object.keys(data || {}).sort((a, b) => a.localeCompare(b, 'zh-Hans'))) {
     ordered[key] = data[key]
@@ -1106,6 +1182,7 @@ function mergeDictionaryFile(source, target) {
 }
 
 function updateLocalDictionary(key, translation, source = 'builtin', sourcePath = '') {
+  ensureJsonDictionaryFile(LOCAL_DICT_FILE, DEFAULT_LOCAL_DICT_FILE)
   const normalizedKey = normalizeKeyHintName(key)
   if (!String(translation || '').trim()) return false
   const cleaned = cleanKeyDescription(translation)
@@ -1120,6 +1197,7 @@ function updateLocalDictionary(key, translation, source = 'builtin', sourcePath 
 }
 
 function recordUntranslatedDictionaryKey(key, text = '', sourcePath = '') {
+  ensureJsonDictionaryFile(LOCAL_DICT_FILE, DEFAULT_LOCAL_DICT_FILE)
   const normalizedKey = normalizeKeyHintName(key)
   const value = String(text || key || '').trim()
   if (!normalizedKey || !value || /[\u4e00-\u9fff]/.test(value)) return false
@@ -1167,8 +1245,11 @@ function getDictionaryTextWithVariants(dictionary, key) {
 }
 
 function getKeyHintDictionaries() {
+  ensureJsonDictionaryFile(LOCAL_DICT_FILE, DEFAULT_LOCAL_DICT_FILE)
+  ensureJsonDictionaryFile(CORRECTION_DICT_FILE, DEFAULT_CORRECTION_DICT_FILE)
   if (!keyHintDictionaryCache) {
     keyHintDictionaryCache = {
+      corrections: loadJsonDictionary(CORRECTION_DICT_FILE),
       local: loadJsonDictionary(LOCAL_DICT_FILE),
       words: loadJsonDictionary(WORD_DICT_FILE),
     }
@@ -1295,7 +1376,7 @@ function cleanDisplayKey(key) {
 const KEY_NO_MODIFIERS = new Set(['no_modifiers', 'no_alt', 'no_ctrl', 'no_shift'])
 const KEY_MODIFIERS = { alt: 'alt', ctrl: 'ctrl', control: 'ctrl', shift: 'shift' }
 const KEY_MODIFIER_RANK = { ctrl: 1, alt: 2, shift: 3 }
-const KEY_REGION = { main: 0, edit: 1, numpad: 2, fn: 3, other: 4 }
+const KEY_REGION = { main: 0, edit: 1, fn: 2, other: 3, numpad: 4 }
 const KEY_VK_MAP = {
   VK_UP: 'up', UP: 'up',
   VK_DOWN: 'down', DOWN: 'down',
@@ -1319,16 +1400,16 @@ const KEY_VK_MAP = {
   VK_OEM_2: '/', OEM_2: '/',
   VK_OEM_3: '`', OEM_3: '`',
   VK_OEM_8: '`', OEM_8: '`',
-  VK_NUMPAD0: '0', NUMPAD0: '0',
-  VK_NUMPAD1: '1', NUMPAD1: '1',
-  VK_NUMPAD2: '2', NUMPAD2: '2',
-  VK_NUMPAD3: '3', NUMPAD3: '3',
-  VK_NUMPAD4: '4', NUMPAD4: '4',
-  VK_NUMPAD5: '5', NUMPAD5: '5',
-  VK_NUMPAD6: '6', NUMPAD6: '6',
-  VK_NUMPAD7: '7', NUMPAD7: '7',
-  VK_NUMPAD8: '8', NUMPAD8: '8',
-  VK_NUMPAD9: '9', NUMPAD9: '9',
+  VK_NUMPAD0: 'numpad0', NUMPAD0: 'numpad0',
+  VK_NUMPAD1: 'numpad1', NUMPAD1: 'numpad1',
+  VK_NUMPAD2: 'numpad2', NUMPAD2: 'numpad2',
+  VK_NUMPAD3: 'numpad3', NUMPAD3: 'numpad3',
+  VK_NUMPAD4: 'numpad4', NUMPAD4: 'numpad4',
+  VK_NUMPAD5: 'numpad5', NUMPAD5: 'numpad5',
+  VK_NUMPAD6: 'numpad6', NUMPAD6: 'numpad6',
+  VK_NUMPAD7: 'numpad7', NUMPAD7: 'numpad7',
+  VK_NUMPAD8: 'numpad8', NUMPAD8: 'numpad8',
+  VK_NUMPAD9: 'numpad9', NUMPAD9: 'numpad9',
 }
 const KEY_SYMBOL_ORDER = '~`!@#$%^&*()-_=+[]{}\\|;:\'",<.>/?'
 const KEY_EDIT_ORDER = {
@@ -1378,10 +1459,11 @@ function classifyBindingKey(key) {
 
 function keyBindingSortKey(binding) {
   const parsed = parseBindingKey(binding?.displayKey || binding?.key)
+  const isNumpad = parsed.key.startsWith('numpad') ? 1 : 0
   const isCombo = parsed.mods.size ? 1 : 0
   const modRank = [...parsed.mods].reduce((sum, mod) => sum + (KEY_MODIFIER_RANK[mod] || 0), 0)
   const [region, order] = classifyBindingKey(parsed.key)
-  return [isCombo, modRank, region, order]
+  return [isNumpad, isCombo, modRank, region, order]
 }
 
 function compareKeyBindings(a, b) {
@@ -1467,7 +1549,9 @@ async function describeKeySection(section) {
     updateLocalDictionary(lookup, cleaned, source)
     return cleaned
   }
-  const { local, words } = getKeyHintDictionaries()
+  const { corrections, local, words } = getKeyHintDictionaries()
+  const correctionLookup = getDictionaryTextWithVariants(corrections, lookup)
+  if (correctionLookup) return cleanKeyDescription(correctionLookup)
   const localLookup = getDictionaryTextWithVariants(local, lookup)
   if (localLookup) return cleanKeyDescription(localLookup)
 
@@ -1476,6 +1560,8 @@ async function describeKeySection(section) {
   const normalized = raw.toLowerCase().replace(/\s+/g, '_')
   const knownEnglish = translateKnownEnglishDescription(raw)
   if (knownEnglish) return remember(knownEnglish, 'file_context')
+  const chineseLabel = /[\u4e00-\u9fff][\u4e00-\u9fffA-Za-z0-9 _+\-（）()【】]*/u.exec(raw)?.[0]?.trim()
+  if (chineseLabel) return remember(chineseLabel, 'file_context')
   if (/[\u4e00-\u9fff]/.test(raw) && !/[a-z0-9]/i.test(raw)) return remember(raw, 'file_context')
   const alphaNumeric = /^([a-z]+)(\d+)$/i.exec(normalized)
   if (alphaNumeric) {
@@ -1497,6 +1583,8 @@ async function describeKeySection(section) {
   }
   if (exact[normalized]) return remember(exact[normalized])
   const localNormalized = getDictionaryTextWithVariants(local, normalized)
+  const correctionNormalized = getDictionaryTextWithVariants(corrections, normalized)
+  if (correctionNormalized) return cleanKeyDescription(correctionNormalized)
   if (localNormalized) return cleanKeyDescription(localNormalized)
   const wordsNormalized = getDictionaryTextWithVariants(words, normalized)
   if (wordsNormalized) return remember(wordsNormalized)
@@ -1523,7 +1611,7 @@ async function describeKeySection(section) {
     .filter(Boolean)
   const hasToggleWord = parts.some((part) => ['swap', 'swapvar', 'toggle'].includes(part))
   const translated = parts
-    .map((part) => wordMap[part] || getDictionaryTextWithVariants(words, part) || getDictionaryTextWithVariants(local, part) || part)
+    .map((part) => getDictionaryTextWithVariants(corrections, part) || wordMap[part] || getDictionaryTextWithVariants(words, part) || getDictionaryTextWithVariants(local, part) || part)
     .filter((part) => !['swapvar', 'swap', 'toggle', 'var'].includes(String(part).toLowerCase()))
     .filter(Boolean)
     .join('')
@@ -1551,7 +1639,7 @@ async function setModKey(rel, binding, nextKey) {
   let section = null
   let changed = false
   const next = lines.map((line) => {
-    const header = /^\[(Key\w+)\]/i.exec(line.trim())
+    const header = /^\[(Key[^\]]*)\]/i.exec(line.trim())
     if (header) {
       section = header[1]
       return line
@@ -2013,8 +2101,7 @@ async function setOverviewPreview(groupPath) {
 function openOverviewFolder(groupPath) {
   const target = path.join(MODS_ROOT, groupPath)
   if (!isInsideRoot(path.resolve(target), path.resolve(MODS_ROOT))) throw new Error('Invalid path')
-  spawn('explorer.exe', [target])
-  return { ok: true }
+  return openDirectory(target)
 }
 
 async function renameOverviewGroup(groupPath, nextName) {
@@ -2104,6 +2191,23 @@ function quoteCmdArg(value) {
   return `"${String(value).replace(/(["^&|<>])/g, '^$1')}"`
 }
 
+function quoteVBScriptString(value) {
+  return `"${String(value).replace(/"/g, '""')}"`
+}
+
+async function openDirectory(target) {
+  const error = await shell.openPath(target)
+  if (!error) return { ok: true, opener: 'system' }
+
+  const child = spawn('explorer.exe', [target], {
+    windowsHide: true,
+    detached: true,
+    stdio: 'ignore',
+  })
+  child.unref()
+  return { ok: true, opener: 'explorer', warning: error }
+}
+
 function findPythonRunner() {
   const candidates = [
     { exe: 'python', prefix: [] },
@@ -2131,17 +2235,32 @@ function ensurePythonToolCompatibility() {
   )
 }
 
-function writePythonRunner(script, target, runner, requireAdmin = false) {
+function writePythonRunner(script, target, runner, requireAdmin = false, pinWindow = false, extraArgs = [], pauseOnError = true) {
   script = unpackedPath(script)
   const scriptDir = path.dirname(script)
   const prefix = runner.prefix.map(quoteCmdArg).join(' ')
-  const pythonArgs = [quoteCmdArg(runner.exe), prefix, '-u', quoteCmdArg(script), quoteCmdArg(target)]
+  const pythonArgs = [quoteCmdArg(runner.exe), prefix, '-u', quoteCmdArg(script), quoteCmdArg(target), ...extraArgs.map(quoteCmdArg)]
     .filter(Boolean)
     .join(' ')
+  const pinWindowScript = `
+Add-Type -AssemblyName System.Windows.Forms
+Add-Type -Namespace Win32 -Name Native -MemberDefinition '[DllImport("kernel32.dll")] public static extern IntPtr GetConsoleWindow(); [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);'
+$hwnd=[Win32.Native]::GetConsoleWindow()
+if ($hwnd -ne [IntPtr]::Zero) {
+  $area=[System.Windows.Forms.Screen]::PrimaryScreen.WorkingArea
+  $width=[Math]::Min(860,[Math]::Max(560,[int]($area.Width*0.38)))
+  $height=[Math]::Min(520,[Math]::Max(360,[int]($area.Height*0.55)))
+  $x=$area.Left
+  $y=[int]($area.Top+($area.Height-$height)/2)
+  [Win32.Native]::SetWindowPos($hwnd,[IntPtr](-1),$x,$y,$width,$height,0x0040) | Out-Null
+}
+`.trim()
+  const pinWindowCommand = `powershell.exe -NoProfile -ExecutionPolicy Bypass -EncodedCommand ${Buffer.from(pinWindowScript, 'utf16le').toString('base64')}`
   const lines = [
     '@echo off',
     'chcp 65001 >nul',
     `title WWMI ${path.basename(script)}`,
+    ...(pinWindow ? [pinWindowCommand] : []),
     ...(requireAdmin ? [
       'net session >nul 2>&1',
       'if not "%ERRORLEVEL%"=="0" (',
@@ -2157,7 +2276,7 @@ function writePythonRunner(script, target, runner, requireAdmin = false) {
     'set EXITCODE=%ERRORLEVEL%',
     'echo.',
     'if not "%EXITCODE%"=="0" echo [ERROR] Script exited with code %EXITCODE%',
-    'if not "%EXITCODE%"=="0" pause',
+    ...(pauseOnError ? ['if not "%EXITCODE%"=="0" pause'] : []),
   ]
   const runnersDir = path.join(app.getPath('userData'), 'script-runners')
   fs.mkdirSync(runnersDir, { recursive: true })
@@ -2167,12 +2286,35 @@ function writePythonRunner(script, target, runner, requireAdmin = false) {
   return runnerPath
 }
 
+function writeElevatedScriptRunner(targetPath, windowStyle = 1) {
+  const runnersDir = path.join(app.getPath('userData'), 'script-runners')
+  fs.mkdirSync(runnersDir, { recursive: true })
+  const runnerPath = path.join(runnersDir, `elevate-${Date.now()}.vbs`)
+  const lines = [
+    'Set shell = CreateObject("Shell.Application")',
+    `shell.ShellExecute ${quoteVBScriptString(targetPath)}, "", "", "runas", ${windowStyle}`,
+  ]
+  fs.writeFileSync(runnerPath, lines.join('\r\n'), 'utf8')
+  return runnerPath
+}
+
 function launchPythonScript(script, target, elevated = false) {
   ensurePythonToolCompatibility()
   const runner = findPythonRunner()
   if (!runner) return { ok: false, err: '未找到 Python，请先安装 Python 3' }
 
-  const runnerPath = writePythonRunner(script, target, runner, elevated)
+  const runnerPath = writePythonRunner(script, target, runner, false, elevated)
+
+  if (elevated) {
+    const elevatePath = writeElevatedScriptRunner(runnerPath)
+    const child = spawn('wscript.exe', [elevatePath], {
+      windowsHide: true,
+      detached: true,
+      stdio: 'ignore',
+    })
+    child.unref()
+    return { ok: true }
+  }
 
   const child = spawn('cmd.exe', ['/c', 'start', '', runnerPath], {
     windowsHide: true,
@@ -2183,10 +2325,50 @@ function launchPythonScript(script, target, elevated = false) {
   return { ok: true }
 }
 
+function launchWatcherProcess(target, eventFile, stopFile, stopToken) {
+  const script = unpackedPath(WATCHER_PS_SCRIPT)
+  if (!fs.existsSync(script)) return { ok: false, err: '监听脚本缺失，请重新安装正式版' }
+  const logFile = eventFile.replace(/\.jsonl$/i, '.log')
+  const child = spawn('powershell.exe', [
+    '-NoProfile',
+    '-ExecutionPolicy', 'Bypass',
+    '-WindowStyle', 'Hidden',
+    '-File', script,
+    '-Target', target,
+    '-Events', eventFile,
+    '-StopFile', stopFile,
+    '-StopToken', stopToken,
+  ], {
+    cwd: path.dirname(script),
+    windowsHide: true,
+    stdio: ['ignore', 'pipe', 'pipe'],
+  })
+  let out = ''
+  let err = ''
+  child.stdout.on('data', (data) => {
+    out += data.toString()
+    try { fs.appendFileSync(logFile, data) } catch {}
+  })
+  child.stderr.on('data', (data) => {
+    err += data.toString()
+    try { fs.appendFileSync(logFile, data) } catch {}
+  })
+  child.on('error', (error) => {
+    if (keyWatchState?.eventFile === eventFile) keyWatchState.error = `监听进程启动失败：${error.message}`
+  })
+  child.on('exit', (code) => {
+    if (keyWatchState?.eventFile !== eventFile) return
+    if (keyWatchState.listening) keyWatchState.error = `监听进程已退出：${code ?? 'unknown'}`
+    else keyWatchState.error = (err || out || `监听进程启动失败：${code ?? 'unknown'}`).trim()
+  })
+  keyWatchProcess = child
+  return { ok: true }
+}
+
 function runPythonScript(script, targets) {
   ensurePythonToolCompatibility()
   const runner = findPythonRunner()
-  if (!runner) return Promise.resolve({ ok: false, err: '未找到 Python，请先安装 Python 3' })
+  if (!runner) return Promise.resolve({ ok: false, err: '当前功能需要 Python 3。请安装 Python 3 并勾选 Add Python to PATH，安装后重启管理器。ini 热键监听修改不需要 Python。' })
 
   const runnableScript = unpackedPath(script)
   const args = [...runner.prefix, '-u', runnableScript, ...normalizeOrderList(targets)]
@@ -2194,7 +2376,7 @@ function runPythonScript(script, targets) {
     const child = spawn(runner.exe, args, {
       cwd: path.dirname(runnableScript),
       windowsHide: true,
-      env: { ...process.env, PYTHONUTF8: '1', PYTHONIOENCODING: 'utf-8' },
+      env: { ...process.env, PYTHONUTF8: '1', PYTHONIOENCODING: 'utf-8', WWMI_LOCAL_DICT_FILE: LOCAL_DICT_FILE },
     })
     let out = ''
     let err = ''
@@ -2217,50 +2399,170 @@ async function translateModIni(rel) {
   if (!isInsideRoot(path.resolve(target), path.resolve(MODS_ROOT))) return { ok: false, err: 'Invalid target' }
   const files = walkIniFiles(target)
   if (!files.length) return { ok: false, err: '未找到 ini 文件' }
-  const result = await runPythonScript(TRANSLATE_SCRIPT, files)
-  if (result.ok) {
-    keyHintDictionaryCache = null
-    scheduleRescan()
-  }
-  return { ...result, files: files.length }
+  let changed = 0
+  for (const file of files) changed += await translateIniFileInProcess(file)
+  keyHintDictionaryCache = null
+  scheduleRescan()
+  return { ok: true, files: files.length, changed, out: `已整理 ${changed} 个键位说明` }
 }
 
 function updateToolFiles() {
-  const copied = []
-  const missing = []
-  for (const file of TOOL_UPDATE_FILES) {
-    const candidates = SKILL_ROOT_CANDIDATES
-      .flatMap((root) => file.sourceDirs.map((dir) => path.join(root, dir, file.name)))
-      .filter((candidate) => fs.existsSync(candidate))
-      .sort((a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs)
-    const source = candidates[0]
-    const target = toolPath(file.name)
-    if (!source) {
-      missing.push(file.name)
-      continue
-    }
-    try {
-      if (file.name === 'local_dict.json' || file.name === 'word_dict.json') {
-        const changed = mergeDictionaryFile(source, target)
-        copied.push(`${file.name}:${changed}`)
-        continue
-      }
-      fs.copyFileSync(source, toolPath(file.name))
-      copied.push(file.name)
-    } catch (error) {
-      return { ok: false, copied, missing, error: `${file.name}: ${error.message}` }
-    }
-  }
   ensurePythonToolCompatibility()
   keyHintDictionaryCache = null
-  return { ok: copied.length > 0, copied, missing }
+  return { ok: true, copied: [], missing: [], skipped: true }
 }
 
 function clearLocalDictionary() {
+  ensureJsonDictionaryFile(LOCAL_DICT_FILE, DEFAULT_LOCAL_DICT_FILE)
   const current = loadJsonDictionary(LOCAL_DICT_FILE)
   saveJsonDictionary(LOCAL_DICT_FILE, {})
   keyHintDictionaryCache = null
   return { ok: true, cleared: Object.keys(current).length }
+}
+
+function clearCorrectionDictionary() {
+  ensureJsonDictionaryFile(CORRECTION_DICT_FILE, DEFAULT_CORRECTION_DICT_FILE)
+  const current = loadJsonDictionary(CORRECTION_DICT_FILE)
+  saveJsonDictionary(CORRECTION_DICT_FILE, {})
+  keyHintDictionaryCache = null
+  return { ok: true, cleared: Object.keys(current).length }
+}
+
+function setTranslationCorrection(rawKey, translation) {
+  ensureJsonDictionaryFile(CORRECTION_DICT_FILE, DEFAULT_CORRECTION_DICT_FILE)
+  const normalizedKey = normalizeKeyHintName(rawKey)
+  if (!normalizedKey) return { ok: false, err: '原词为空' }
+  const dict = loadJsonDictionary(CORRECTION_DICT_FILE)
+  const value = String(translation || '').trim()
+  if (!value) {
+    const existed = Object.prototype.hasOwnProperty.call(dict, normalizedKey)
+    delete dict[normalizedKey]
+    saveJsonDictionary(CORRECTION_DICT_FILE, dict)
+    keyHintDictionaryCache = null
+    return { ok: true, removed: existed }
+  }
+  const cleaned = cleanKeyDescription(value)
+  if (!isValidKeyDescription(cleaned)) return { ok: false, err: '请输入有效中文翻译' }
+  dict[normalizedKey] = makeDictionaryEntry(cleaned, 'user_correction')
+  saveJsonDictionary(CORRECTION_DICT_FILE, dict)
+  keyHintDictionaryCache = null
+  return { ok: true, key: normalizedKey, translation: cleaned }
+}
+
+function normalizeIniKeyValue(raw) {
+  return cleanDisplayKey(String(raw || '')
+    .replace(/\bcontrol\b/ig, 'ctrl')
+    .replace(/\+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim())
+}
+
+function makeIniKeyComment(description, binding = '', values = '') {
+  const parts = ['; ']
+  if (binding) parts.push(`【${binding}】 `)
+  parts.push(description)
+  if (values) parts.push(` （${values}）`)
+  return `${parts.join('')}\n`
+}
+
+function scanIniKeyVariables(lines) {
+  const keyMap = new Map()
+  const commandListValueHints = getCommandListValueHints(lines)
+  let section = null
+  let keyValue = ''
+  for (const line of lines) {
+    const trimmed = line.trim()
+    const header = /^\[(Key[^\]]*)\]/i.exec(trimmed)
+    if (header) {
+      section = header[1]
+      keyValue = ''
+      continue
+    }
+    if (section && /^\[/.test(trimmed)) {
+      section = null
+      keyValue = ''
+      continue
+    }
+    if (!section) continue
+    const keyLine = /^key\s*=\s*(.+)$/i.exec(trimmed)
+    if (keyLine) {
+      keyValue = normalizeIniKeyValue(keyLine[1])
+      continue
+    }
+    const valueLine = /^\$(\w+)\s*=\s*([-\d,\s]+)$/i.exec(trimmed)
+    if (keyValue && valueLine) {
+      keyMap.set(valueLine[1].toLowerCase(), {
+        binding: keyValue,
+        values: valueLine[2].replace(/\s+/g, ''),
+      })
+      continue
+    }
+    const runLine = /^run\s*=\s*CommandList(\w+)/i.exec(trimmed)
+    if (keyValue && runLine) {
+      const vars = commandListValueHints.get(runLine[1].toLowerCase())
+      if (!vars) continue
+      for (const [varName, values] of vars.entries()) {
+        if (Array.isArray(values) && values.length) {
+          keyMap.set(varName.toLowerCase(), {
+            binding: keyValue,
+            values: values.join(','),
+          })
+        }
+      }
+    }
+  }
+  return keyMap
+}
+
+async function translateIniFileInProcess(file) {
+  const text = await fsp.readFile(file, 'utf8')
+  const lines = text.split(/(?<=\n)/)
+  const keyMap = scanIniKeyVariables(lines)
+  const blocks = []
+  const removed = new Set()
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i]
+    const match = /^(\s*global\s+persist\s+\$(\w+)\s*=.*)$/i.exec(line.trimEnd())
+    if (!match) continue
+    const varName = match[2].toLowerCase()
+    const meta = keyMap.get(varName)
+    if (!meta) continue
+    const description = await describeKeySection(varName)
+    if (i > 0 && /^;\s*.*(?:【|样式)/u.test(lines[i - 1].trimEnd())) removed.add(i - 1)
+    if (!isValidKeyDescription(description)) continue
+    blocks.push({
+      varName,
+      persistLine: line,
+      commentLine: makeIniKeyComment(description, meta.binding, meta.values),
+      displayKey: meta.binding,
+      description,
+    })
+    removed.add(i)
+  }
+  if (!blocks.length) return 0
+  blocks.sort(compareKeyBindings)
+  const insertPos = Math.min(...removed)
+  const output = []
+  let written = false
+  for (let i = 0; i < lines.length; i += 1) {
+    if (removed.has(i)) continue
+    if (!written && i > insertPos) {
+      for (const block of blocks) {
+        output.push(block.commentLine)
+        output.push(block.persistLine)
+      }
+      written = true
+    }
+    output.push(lines[i])
+  }
+  if (!written) {
+    for (const block of blocks) {
+      output.push(block.commentLine)
+      output.push(block.persistLine)
+    }
+  }
+  await fsp.writeFile(file, output.join(''), 'utf8')
+  return blocks.length
 }
 
 function findInterfaceIni(target) {
@@ -2515,15 +2817,183 @@ async function trashMods(rels) {
   return { ok: true, deleted }
 }
 
-function sendF10() {
+function sendF10(combo = 'Ctrl+Alt+F10') {
   return new Promise((resolve) => {
     const script = unpackedPath(path.join(__dirname, 'send-f10.ps1'))
-    const child = spawn('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', script], { windowsHide: true })
+    const child = spawn('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', script, '-Combo', combo], { windowsHide: true })
     let out = '', err = ''
     child.stdout.on('data', (d) => (out += d))
     child.stderr.on('data', (d) => (err += d))
     child.on('close', (code) => resolve({ ok: code === 0, out: out.trim(), err: err.trim() }))
   })
+}
+
+function getGamePermissionState() {
+  const script = unpackedPath(path.join(__dirname, 'check-game-permission.ps1'))
+  try {
+    const result = spawnSync('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', script], {
+      windowsHide: true,
+      encoding: 'utf8',
+      timeout: 5000,
+    })
+    const text = String(result.stdout || '').trim()
+    if (!text) return { ok: false, err: String(result.stderr || '').trim() || '权限检测无输出' }
+    return { ok: true, ...JSON.parse(text) }
+  } catch (err) {
+    return { ok: false, err: err.message || '权限检测失败' }
+  }
+}
+
+function getGamePermissionBlockMessage() {
+  if (process.platform !== 'win32') return ''
+  const state = getGamePermissionState()
+  if (!state.ok) return ''
+  if (!state.currentAdmin) return '权限不足：请用管理员权限重启管理器后再使用 ini 热键监听修改'
+  if (!state.gameFound) return ''
+  if (state.gameIntegrity === 'High/Admin' && !state.currentAdmin) {
+    return '权限不足：游戏正在以管理员运行，请用管理员权限重启管理器后再监听'
+  }
+  return ''
+}
+
+function getAdminLaunchTargets() {
+  if (app.isPackaged) return [process.execPath]
+  const rootLauncherCandidates = [
+    path.join(app.getAppPath(), 'WWMI-ModManager.exe'),
+    path.join(process.cwd(), 'WWMI-ModManager.exe'),
+    path.join(path.dirname(process.execPath), 'WWMI-ModManager.exe'),
+  ]
+  const targets = []
+  for (const rootLauncher of rootLauncherCandidates) {
+    if (fs.existsSync(rootLauncher) && !targets.includes(rootLauncher)) targets.push(rootLauncher)
+  }
+  return targets
+}
+
+function getElevatedRelaunchTarget(targets) {
+  if (app.isPackaged && targets[0]) return { target: targets[0], args: [], cwd: path.dirname(targets[0]) }
+  return { target: process.execPath, args: [app.getAppPath()], cwd: app.getAppPath() }
+}
+
+function quoteProcessArg(value) {
+  return `"${String(value).replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`
+}
+
+function setRunAsAdminDefault(targets) {
+  if (!targets.length) return { ok: false, err: '未找到项目启动器 WWMI-ModManager.exe' }
+  const key = 'HKCU\\Software\\Microsoft\\Windows NT\\CurrentVersion\\AppCompatFlags\\Layers'
+  for (const target of targets) {
+    const result = spawnSync('reg.exe', ['add', key, '/v', target, '/t', 'REG_SZ', '/d', '~ RUNASADMIN', '/f'], {
+      windowsHide: true,
+      encoding: 'utf8',
+    })
+    if (result.status !== 0) {
+      return { ok: false, err: String(result.stderr || result.stdout || '').trim() || `写入管理员启动配置失败：${target}` }
+    }
+  }
+  return { ok: true }
+}
+
+function relaunchElevated(target, args = [], cwd = path.dirname(target)) {
+  const scriptPath = path.join(app.getPath('userData'), `relaunch-admin-${Date.now()}.vbs`)
+  const argText = args.map(quoteProcessArg).join(' ')
+  const lines = [
+    'Set shell = CreateObject("Shell.Application")',
+    `shell.ShellExecute ${quoteVBScriptString(target)}, ${quoteVBScriptString(argText)}, ${quoteVBScriptString(cwd)}, "runas", 1`,
+  ]
+  fs.writeFileSync(scriptPath, lines.join('\r\n'), 'utf8')
+  const result = spawnSync('wscript.exe', [scriptPath], {
+    windowsHide: true,
+    encoding: 'utf8',
+    timeout: 10000,
+  })
+  if (result.status !== 0) {
+    return { ok: false, err: String(result.stderr || result.stdout || '').trim() || '管理员重启命令执行失败' }
+  }
+  setTimeout(() => app.exit(0), 1200)
+  return { ok: true }
+}
+
+async function ensureKeyWatchAdminPermission() {
+  if (process.platform !== 'win32') return { ok: true }
+  const state = getGamePermissionState()
+  if (state.ok && state.currentAdmin) return { ok: true }
+
+  const detail = state.ok
+    ? 'ini 热键监听修改需要全局监听游戏按键，并在切换后向游戏发送 Ctrl+Alt+F10。当前管理器不是管理员权限，Windows 会拦截这些操作，所以不能打开监听界面。'
+    : `无法确认管理员权限：${state.err || '权限检测失败'}`
+  const response = await dialog.showMessageBox(mainWindow, {
+    type: 'warning',
+    title: '需要管理员权限',
+    message: 'ini 热键监听修改需要管理员权限',
+    detail,
+    buttons: ['以管理员身份重启并设为默认', '取消'],
+    defaultId: 0,
+    cancelId: 1,
+    noLink: true,
+  })
+  if (response.response !== 0) return { ok: false, err: '已取消管理员重启' }
+
+  const targets = getAdminLaunchTargets()
+  const saved = setRunAsAdminDefault(targets)
+  if (!saved.ok) {
+    await dialog.showMessageBox(mainWindow, {
+      type: 'error',
+      title: '设置失败',
+      message: '无法设置默认管理员启动',
+      detail: saved.err || '',
+      buttons: ['确定'],
+      noLink: true,
+    })
+    return { ok: false, err: saved.err || '设置默认管理员启动失败' }
+  }
+  const relaunch = getElevatedRelaunchTarget(targets)
+  const launched = relaunchElevated(relaunch.target, relaunch.args, relaunch.cwd)
+  if (!launched.ok) {
+    await dialog.showMessageBox(mainWindow, {
+      type: 'error',
+      title: '重启失败',
+      message: '管理员重启失败',
+      detail: launched.err || '',
+      buttons: ['确定'],
+      noLink: true,
+    })
+    return { ok: false, err: launched.err || '管理员重启失败' }
+  }
+  return { ok: false, err: '正在以管理员权限重启' }
+}
+
+let gameReloadQueue = Promise.resolve()
+let gameReloadRunning = 0
+function triggerGameReload() {
+  gameReloadRunning += 1
+  if (keyWatchState) keyWatchState.reloadPending = gameReloadRunning
+  const task = gameReloadQueue.then(async () => {
+    const result = await sendF10()
+    if (keyWatchState) {
+      keyWatchState.reloadStatus = result.ok ? '配置已落盘，已发送 Ctrl+Alt+F10' : (result.err || result.out || '发送 Ctrl+Alt+F10 失败')
+    }
+    return result
+  }).finally(() => {
+    gameReloadRunning = Math.max(0, gameReloadRunning - 1)
+    if (keyWatchState) keyWatchState.reloadPending = gameReloadRunning
+  })
+  gameReloadQueue = task.catch(() => {})
+  return task
+}
+
+function restartApp() {
+  closeKeyWatchWindow()
+  app.relaunch()
+  app.exit(0)
+  return { ok: true }
+}
+
+function showMainAppWindow() {
+  if (!mainWindow || mainWindow.isDestroyed()) return
+  mainWindow.show()
+  if (mainWindow.isMinimized()) mainWindow.restore()
+  mainWindow.focus()
 }
 
 // ---------- IPC ----------
@@ -2536,6 +3006,8 @@ function registerIpc() {
   ipcMain.handle('tools:update', () => updateToolFiles())
   ipcMain.handle('tools:syncCharacters', () => fetchCharacterAvatars(true))
   ipcMain.handle('tools:clearLocalDictionary', () => clearLocalDictionary())
+  ipcMain.handle('tools:clearCorrectionDictionary', () => clearCorrectionDictionary())
+  ipcMain.handle('tools:setTranslationCorrection', (_e, rawKey, translation) => setTranslationCorrection(rawKey, translation))
   ipcMain.handle('mods:toggle', async (_e, rel, enable) => {
     return withModOperationLock(rel, async () => {
       await toggleDisabled(rel, enable)
@@ -2611,6 +3083,7 @@ function registerIpc() {
     scheduleRescan()
     return result
   })
+  ipcMain.handle('app:restart', () => restartApp())
   ipcMain.handle('mods:setLocked', async (_e, rel, locked) => {
     return withModOperationLock(rel, async () => {
       const result = await setModLocked(rel, locked)
@@ -2632,11 +3105,24 @@ function registerIpc() {
     return withModOperationLock(rel, async () => translateModIni(rel))
   })
   ipcMain.handle('mods:watchIni', async (_e, rel) => {
-    const target = path.join(MODS_ROOT, rel)
-    return launchPythonScript(WATCHER_SCRIPT, target, true)
+    return showKeyWatchWindow(rel)
   })
   ipcMain.handle('keyPopup:show', (_e, payload) => {
+    if (payload?.rel) return showKeyWatchWindow(payload.rel, payload)
     showKeyPopupWindow(payload)
+    return { ok: true }
+  })
+  ipcMain.handle('keyWatch:getState', () => getKeyWatchPublicState())
+  ipcMain.handle('keyWatch:resetRow', (_e, rowId) => resetKeyWatchRow(rowId))
+  ipcMain.handle('keyWatch:setValue', (_e, rowId, value) => setKeyWatchRowValue(rowId, value))
+  ipcMain.handle('keyWatch:reloadGame', () => triggerGameReload())
+  ipcMain.handle('keyWatch:close', () => {
+    closeKeyWatchWindow()
+    return { ok: true }
+  })
+  ipcMain.handle('keyWatch:return', () => {
+    closeKeyWatchWindow()
+    showMainAppWindow()
     return { ok: true }
   })
   ipcMain.handle('keyPopup:close', (event) => {
@@ -2727,8 +3213,7 @@ function registerIpc() {
     if (!isInsideRoot(path.resolve(target), path.resolve(MODS_ROOT)) || !fs.existsSync(target)) {
       return { ok: false, error: '目录不存在或正在重命名，请刷新后重试' }
     }
-    spawn('explorer.exe', [target])
-    return { ok: true }
+    return openDirectory(target)
   })
   ipcMain.handle('mods:chooseRoot', async () => {
     const res = await dialog.showOpenDialog(mainWindow, {
@@ -2909,6 +3394,583 @@ function positionPopupLeftCenter(win, width, height) {
   win.setPosition(Math.max(area.x + 12, Math.min(x, maxX)), Math.max(area.y + 12, Math.min(y, maxY)), false)
 }
 
+function getKeyWatchEventsDir() {
+  return path.join(app.getPath('userData'), 'watch-events')
+}
+
+function getScriptRunnersDir() {
+  return path.join(app.getPath('userData'), 'script-runners')
+}
+
+function getStopTokenFromEventFile(file) {
+  try {
+    const lines = fs.readFileSync(file, 'utf8').split(/\r?\n/)
+    for (const line of lines) {
+      if (!line.trim()) continue
+      const event = JSON.parse(line)
+      if (event?.stopToken) return String(event.stopToken)
+    }
+  } catch {
+    // ignore unreadable or old event files
+  }
+  return ''
+}
+
+function stopStaleKeyWatchSessions(exceptBase = '') {
+  const dir = getKeyWatchEventsDir()
+  if (!fs.existsSync(dir)) return
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    if (!entry.isFile() || !entry.name.endsWith('.jsonl')) continue
+    const base = entry.name.slice(0, -'.jsonl'.length)
+    if (base === exceptBase) continue
+    try {
+      const token = getStopTokenFromEventFile(path.join(dir, entry.name))
+      fs.writeFileSync(path.join(dir, `${base}.stop`), token || String(Date.now()), 'utf8')
+    } catch {
+      // ignore stale session cleanup failures
+    }
+  }
+}
+
+function cleanupKeyWatchArtifacts(maxAgeMs = 24 * 60 * 60 * 1000) {
+  const cutoff = Date.now() - maxAgeMs
+  const eventsDir = getKeyWatchEventsDir()
+  if (fs.existsSync(eventsDir)) {
+    for (const entry of fs.readdirSync(eventsDir, { withFileTypes: true })) {
+      if (!entry.isFile() || !/\.(jsonl|stop)$/i.test(entry.name)) continue
+      const file = path.join(eventsDir, entry.name)
+      try {
+        if (fs.statSync(file).mtimeMs < cutoff) fs.unlinkSync(file)
+      } catch {
+        // ignore
+      }
+    }
+  }
+  const runnersDir = getScriptRunnersDir()
+  if (fs.existsSync(runnersDir)) {
+    for (const entry of fs.readdirSync(runnersDir, { withFileTypes: true })) {
+      if (!entry.isFile() || !/^(watcher|elevate)-/i.test(entry.name)) continue
+      const file = path.join(runnersDir, entry.name)
+      try {
+        if (fs.statSync(file).mtimeMs < cutoff) fs.unlinkSync(file)
+      } catch {
+        // ignore
+      }
+    }
+  }
+}
+
+function normalizeWatchPath(value) {
+  return path.resolve(String(value || '')).toLowerCase()
+}
+
+function normalizeWatchVar(value) {
+  return String(value || '').toLowerCase().replace(/[^a-z0-9\u4e00-\u9fff]/g, '')
+}
+
+function watchRowKey(file, varName) {
+  return `${normalizeWatchPath(file)}::${normalizeWatchVar(varName)}`
+}
+
+function findKeyWatchRowByEvent(event) {
+  if (!keyWatchState?.rows?.length) return null
+  const eventKey = watchRowKey(event.file, event.varName)
+  let row = keyWatchState.rows.find((item) => item.watchKey === eventKey)
+  if (row) return row
+
+  const eventVar = normalizeWatchVar(event.varName)
+  const sameVarRows = keyWatchState.rows.filter((item) => item.varKey === eventVar)
+  if (sameVarRows.length === 1) return sameVarRows[0]
+
+  const eventBase = normalizeWatchPath(path.basename(String(event.file || '')))
+  row = sameVarRows.find((item) => normalizeWatchPath(path.basename(item.absFile)) === eventBase)
+  return row || null
+}
+
+function syncKeyWatchRowsFromIni(countExternalChange = false) {
+  if (!keyWatchState?.rows?.length) return
+  for (const row of keyWatchState.rows) {
+    const value = readIniPersistValue(row.absFile, row.varName)
+    if (!value || String(value) === String(row.currentValue || '')) continue
+    row.currentValue = String(value)
+    if (countExternalChange) row.triggerCount = (row.triggerCount || 0) + 1
+  }
+}
+
+function writeUtf8FileFlushed(file, text) {
+  const fd = fs.openSync(file, 'w')
+  try {
+    fs.writeFileSync(fd, text, 'utf8')
+    fs.fsyncSync(fd)
+  } finally {
+    fs.closeSync(fd)
+  }
+}
+
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+async function waitForIniPersistValue(file, varName, value, timeoutMs = 800) {
+  const deadline = Date.now() + timeoutMs
+  const expected = String(value)
+  while (Date.now() <= deadline) {
+    if (String(readIniPersistValue(file, varName)) === expected) return true
+    await delay(25)
+  }
+  return false
+}
+
+function getCycleStepCount(row, targetValue) {
+  const values = (row.values || []).map(String)
+  const currentValue = String(readIniPersistValue(row.absFile, row.varName) || row.currentValue || '')
+  const from = values.indexOf(currentValue)
+  const to = values.indexOf(String(targetValue))
+  if (from < 0 || to < 0) return -1
+  return (to - from + values.length) % values.length
+}
+
+async function applyKeyWatchValueByHotkey(row, targetValue) {
+  const steps = getCycleStepCount(row, targetValue)
+  const combo = row.displayKey || row.key
+  if (steps < 0 || !combo) return { ok: false, err: '无法计算热键循环次数' }
+  const values = (row.values || []).map(String)
+  let current = String(readIniPersistValue(row.absFile, row.varName) || row.currentValue || '')
+  for (let i = 0; i < steps; i += 1) {
+    const currentIndex = values.indexOf(current)
+    const expected = values[(currentIndex + 1) % values.length]
+    const sent = await sendF10(combo)
+    if (!sent.ok) return sent
+    if (!await waitForIniPersistValue(row.absFile, row.varName, expected, 1200)) return { ok: false, err: '热键触发后配置未同步' }
+    current = expected
+  }
+  if (!await waitForIniPersistValue(row.absFile, row.varName, targetValue, 1200)) return { ok: false, err: '热键触发后配置未同步' }
+  pollKeyWatchEvents()
+  row.currentValue = String(targetValue)
+  return { ok: true }
+}
+
+function syncD3dxUserValue(file, varName, value) {
+  const parts = path.normalize(file).split(path.sep)
+  const modsIndex = parts.findIndex((part) => part.toLowerCase() === 'mods')
+  if (modsIndex < 0) return
+  const userIni = path.join(parts.slice(0, modsIndex).join(path.sep), 'd3dx_user.ini')
+  if (!fs.existsSync(userIni)) return
+  let lines = []
+  try {
+    lines = fs.readFileSync(userIni, 'utf8').split(/\r?\n/)
+  } catch {
+    return
+  }
+  const rel = parts.slice(modsIndex + 1).join(path.sep).toLowerCase()
+  const key = `$\\mods\\${rel}\\${varName}`
+  let found = false
+  lines = lines.map((line) => {
+    if (line.trimStart().toLowerCase().startsWith(key.toLowerCase())) {
+      found = true
+      return `${key} = ${value}`
+    }
+    return line
+  })
+  if (!found) lines.push(`${key} = ${value}`)
+  try {
+    writeUtf8FileFlushed(userIni, lines.join('\r\n'))
+  } catch {
+    // ignore sync failures; the mod ini has already been restored
+  }
+}
+
+function setIniPersistValue(file, varName, value) {
+  if (!file || !varName) return false
+  const text = fs.readFileSync(file, 'utf8')
+  const re = new RegExp(`^(\\s*global\\s+persist\\s+\\$${escapeRegExp(varName)}\\s*=\\s*)([^\\r\\n]+)`, 'im')
+  let changed = false
+  const next = text.replace(re, (_match, prefix) => {
+    changed = true
+    return `${prefix}${value}`
+  })
+  if (!changed) return false
+  writeUtf8FileFlushed(file, next)
+  syncD3dxUserValue(file, varName, value)
+  return true
+}
+
+function getKeyWatchPublicState() {
+  if (!keyWatchState) return { ok: false }
+  return {
+    ok: true,
+    title: keyWatchState.title,
+    listening: !!keyWatchState.listening,
+    launched: !!keyWatchState.launched,
+    error: keyWatchState.error || '',
+    rows: keyWatchState.rows.map((row) => ({
+      id: row.id,
+      key: row.displayKey || row.key,
+      description: cleanPopupText(row.description || ''),
+      rawDescription: cleanPopupText(row.rawDescription || ''),
+      values: row.values || [],
+      currentValue: row.currentValue || '',
+      initialValue: row.initialValue || '',
+      triggerCount: row.triggerCount || 0,
+    })),
+    failedHotkeys: keyWatchState.failedHotkeys || [],
+    reloadStatus: keyWatchState.reloadStatus || '',
+    reloadPending: keyWatchState.reloadPending || 0,
+  }
+}
+
+function pollKeyWatchEvents() {
+  if (!keyWatchState?.eventFile || !fs.existsSync(keyWatchState.eventFile)) {
+    if (keyWatchState?.launched && !keyWatchState.listening && Date.now() - (keyWatchState.startedAt || 0) > 8000) {
+      keyWatchState.error = '监听启动超时'
+    }
+    return
+  }
+  let text = ''
+  try {
+    text = fs.readFileSync(keyWatchState.eventFile, 'utf8')
+  } catch {
+    return
+  }
+  const lines = text.split(/\r?\n/)
+  const completeLineCount = text ? (/\r?\n$/.test(text) ? lines.length - 1 : lines.length) : 0
+  let handledChange = false
+  for (let i = keyWatchState.eventLineIndex || 0; i < completeLineCount; i += 1) {
+    const line = lines[i].trim()
+    if (!line) continue
+    let event = null
+    try {
+      event = JSON.parse(line)
+    } catch {
+      continue
+    }
+    if (event.type === 'error') keyWatchState.error = event.message || '监听失败'
+    if (event.type === 'ready') {
+      keyWatchState.listening = true
+      keyWatchState.error = event.failed ? `部分热键注册失败：${event.failed}` : ''
+      continue
+    }
+    if (event.type === 'registerError') {
+      const failed = {
+        key: cleanPopupText(event.key || ''),
+        description: cleanPopupText(event.varName || ''),
+        message: cleanPopupText(event.message || '注册失败'),
+      }
+      const exists = keyWatchState.failedHotkeys.some((item) => item.key === failed.key && item.description === failed.description)
+      if (!exists) keyWatchState.failedHotkeys.push(failed)
+      keyWatchState.error = event.message || '部分热键注册失败'
+      continue
+    }
+    if (event.type !== 'change') continue
+    const row = findKeyWatchRowByEvent(event)
+    if (!row) continue
+    row.currentValue = String(event.value ?? '')
+    row.triggerCount = (row.triggerCount || 0) + 1
+    handledChange = true
+  }
+  keyWatchState.eventLineIndex = completeLineCount
+  syncKeyWatchRowsFromIni(!handledChange)
+  if (keyWatchState.launched && !keyWatchState.listening && !keyWatchState.error && Date.now() - (keyWatchState.startedAt || 0) > 8000) {
+    keyWatchState.error = '监听启动超时'
+  }
+}
+
+function closeKeyWatchWindow(cancelPendingOpen = true) {
+  if (cancelPendingOpen) keyWatchOpenToken += 1
+  if (keyWatchPoller) {
+    clearInterval(keyWatchPoller)
+    keyWatchPoller = null
+  }
+  if (keyWatchState?.stopFile) {
+    try {
+      fs.writeFileSync(keyWatchState.stopFile, keyWatchState.stopToken || String(Date.now()), 'utf8')
+    } catch {
+      // ignore
+    }
+  }
+  stopStaleKeyWatchSessions()
+  keyWatchProcess = null
+  if (keyWatchWindow && !keyWatchWindow.isDestroyed()) keyWatchWindow.close()
+  keyWatchWindow = null
+  keyWatchState = null
+}
+
+async function resetKeyWatchRow(rowId) {
+  if (!keyWatchState) return { ok: false, err: '窗口未打开' }
+  const row = keyWatchState.rows.find((item) => item.id === rowId)
+  if (!row) return { ok: false, err: '绑定不存在' }
+  try {
+    const applied = await applyKeyWatchValueByHotkey(row, row.initialValue)
+    if (!applied.ok) {
+      if (!setIniPersistValue(row.absFile, row.varName, row.initialValue)) return { ok: false, err: applied.err || '还原失败' }
+      if (!await waitForIniPersistValue(row.absFile, row.varName, row.initialValue)) return { ok: false, err: '还原后配置未落盘' }
+      const reload = await triggerGameReload()
+      if (!reload?.ok) return { ok: true, reload }
+    }
+    row.currentValue = row.initialValue
+    row.triggerCount = 0
+    return { ok: true }
+  } catch (err) {
+    return { ok: false, err: err.message || '还原失败' }
+  }
+}
+
+async function setKeyWatchRowValue(rowId, value) {
+  if (!keyWatchState) return { ok: false, err: '窗口未打开' }
+  const row = keyWatchState.rows.find((item) => item.id === rowId)
+  if (!row) return { ok: false, err: '绑定不存在' }
+  const nextValue = String(value ?? '')
+  if (!row.values.map(String).includes(nextValue)) return { ok: false, err: 'value 不存在' }
+  const previousCount = row.triggerCount || 0
+  try {
+    const applied = await applyKeyWatchValueByHotkey(row, nextValue)
+    if (!applied.ok) {
+      if (!setIniPersistValue(row.absFile, row.varName, nextValue)) return { ok: false, err: applied.err || '修改失败' }
+      if (!await waitForIniPersistValue(row.absFile, row.varName, nextValue)) return { ok: false, err: '修改后配置未落盘' }
+      row.currentValue = nextValue
+      const reload = await triggerGameReload()
+      if (!reload?.ok) return { ok: true, reload }
+    }
+    row.currentValue = nextValue
+    row.triggerCount = previousCount + 1
+    return { ok: true }
+  } catch (err) {
+    return { ok: false, err: err.message || '修改失败' }
+  }
+}
+
+async function showKeyWatchWindow(rel, payload = {}) {
+  if (keyWatchWindow && !keyWatchWindow.isDestroyed() && keyWatchState?.rel === rel) {
+    keyWatchOpenToken += 1
+    keyWatchWindow.show()
+    keyWatchWindow.focus()
+    return { ok: true }
+  }
+
+  const openToken = ++keyWatchOpenToken
+  const isCurrentOpen = () => openToken === keyWatchOpenToken
+
+  const admin = await ensureKeyWatchAdminPermission()
+  if (!isCurrentOpen()) return { ok: true, skipped: true }
+  if (!admin.ok) return admin
+
+  const target = path.join(MODS_ROOT, rel)
+  if (!isInsideRoot(path.resolve(target), path.resolve(MODS_ROOT))) return { ok: false, err: 'Invalid target' }
+  let bindings = []
+  try {
+    bindings = await getModKeyBindings(target)
+  } catch (err) {
+    if (!isCurrentOpen()) return { ok: true, skipped: true }
+    return { ok: false, err: err.message || '读取键位失败' }
+  }
+  if (!isCurrentOpen()) return { ok: true, skipped: true }
+
+  closeKeyWatchWindow(false)
+  stopStaleKeyWatchSessions()
+  cleanupKeyWatchArtifacts()
+  const rows = sortKeyBindings(bindings).filter((binding) => binding.varName && Array.isArray(binding.values) && binding.values.length)
+    .map((binding, index) => {
+      const file = path.join(target, binding.file || '')
+      const currentValue = readIniPersistValue(file, binding.varName) || binding.currentValue || ''
+      return {
+        ...binding,
+        id: `${index}-${crypto.createHash('sha1').update(`${file}:${binding.varName}:${binding.key}`).digest('hex').slice(0, 8)}`,
+        absFile: file,
+        watchKey: watchRowKey(file, binding.varName),
+        varKey: normalizeWatchVar(binding.varName),
+        currentValue,
+        initialValue: currentValue,
+        triggerCount: 0,
+      }
+    })
+  const eventsDir = getKeyWatchEventsDir()
+  fs.mkdirSync(eventsDir, { recursive: true })
+  const stamp = `${Date.now()}-${crypto.randomBytes(4).toString('hex')}`
+  const eventFile = path.join(eventsDir, `${stamp}.jsonl`)
+  const stopFile = path.join(eventsDir, `${stamp}.stop`)
+  const stopToken = crypto.randomBytes(12).toString('hex')
+  fs.writeFileSync(eventFile, '', 'utf8')
+
+  keyWatchState = {
+    rel,
+    target,
+    title: cleanPopupText(payload?.name || path.basename(target)),
+    rows,
+    eventFile,
+    stopFile,
+    stopToken,
+    eventLineIndex: 0,
+    failedHotkeys: [],
+    listening: false,
+    launched: false,
+    startedAt: Date.now(),
+    error: rows.length ? '' : '未找到可监听 Key 绑定',
+    reloadStatus: '',
+    reloadPending: 0,
+  }
+
+  if (rows.length) {
+    const launched = launchWatcherProcess(target, eventFile, stopFile, stopToken)
+    keyWatchState.launched = !!launched.ok
+    if (!launched.ok) keyWatchState.error = launched.err || '启动监听失败'
+  }
+  keyWatchPoller = setInterval(pollKeyWatchEvents, 300)
+  const area = getPopupWorkArea()
+  const baseWatchWidth = 880
+  const baseHeaderHeight = 74
+  const baseRowHeight = 52
+  const basePaddingHeight = 42
+  const desiredHeight = baseHeaderHeight + basePaddingHeight + Math.max(rows.length, 1) * baseRowHeight
+  const maxPopupWidth = Math.max(520, area.width - 24)
+  const maxPopupHeight = Math.max(220, area.height - 24)
+  const watchScale = desiredHeight > maxPopupHeight
+    ? Math.max(0.48, Math.min(1, maxPopupHeight / desiredHeight))
+    : 1
+  const popupWidth = Math.min(maxPopupWidth, Math.max(560, Math.round(baseWatchWidth * Math.max(watchScale, 0.72))))
+  const popupHeight = Math.min(maxPopupHeight, Math.max(220, Math.round(desiredHeight * watchScale)))
+
+  const html = `<!doctype html>
+<html><head><meta charset="utf-8"><style>
+html,body{margin:0;width:100%;height:100%;background:transparent;overflow:hidden;font-family:"Segoe UI","Microsoft YaHei UI",sans-serif;color:#302231;--watch-scale:${watchScale.toFixed(3)}}
+body{-webkit-app-region:drag}
+.panel{position:absolute;inset:10px;border:1px solid #ff9ccc;background:#fff1f8;box-shadow:0 14px 34px rgba(88,31,61,.22);display:flex;flex-direction:column;overflow:hidden}
+.header{display:flex;align-items:center;gap:calc(12px * var(--watch-scale));padding:calc(14px * var(--watch-scale)) calc(16px * var(--watch-scale));border-bottom:1px solid #f3c8dc}
+.title{font-weight:900;font-size:calc(18px * var(--watch-scale));overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1}
+.status{font-size:calc(12px * var(--watch-scale));color:#8f7482;white-space:nowrap}
+.header-actions{display:flex;align-items:center;gap:calc(8px * var(--watch-scale))}
+.watch-action{-webkit-app-region:no-drag;border:1px solid #ff9ccc;background:#ffe3f0;color:#302231;border-radius:8px;padding:calc(7px * var(--watch-scale)) calc(12px * var(--watch-scale));font-size:calc(13px * var(--watch-scale));font-weight:800;cursor:pointer;white-space:nowrap}
+.body{-webkit-app-region:no-drag;overflow:auto;padding:calc(12px * var(--watch-scale)) calc(16px * var(--watch-scale)) calc(16px * var(--watch-scale))}
+table{width:100%;border-collapse:collapse;table-layout:auto}
+th,td{border-bottom:1px solid #f1d2df;padding:calc(9px * var(--watch-scale)) calc(8px * var(--watch-scale));text-align:left;vertical-align:middle;font-size:calc(13px * var(--watch-scale))}
+th{font-weight:900;color:#4a3544}
+.key{border:1px solid #ff9ccc;background:#fff8fb;border-radius:8px;min-height:calc(34px * var(--watch-scale));display:flex;align-items:center;justify-content:center;font-weight:900;white-space:nowrap}
+.desc{display:flex;align-items:center;gap:calc(7px * var(--watch-scale));min-width:0;flex-wrap:wrap}.main{white-space:normal;word-break:break-word;overflow-wrap:anywhere}.raw{color:#9b7689;border:1px solid #e7b7cd;background:#f8ddea;border-radius:6px;padding:calc(2px * var(--watch-scale)) calc(6px * var(--watch-scale));white-space:normal;word-break:break-word;overflow-wrap:anywhere}
+.values{display:flex;flex-wrap:wrap;gap:calc(5px * var(--watch-scale));align-items:center}.value{border:1px solid #e8bfd1;background:#fff8fb;border-radius:6px;padding:calc(2px * var(--watch-scale)) calc(7px * var(--watch-scale));color:#806172;font-weight:700;white-space:nowrap;cursor:pointer}.value:hover{background:#f2d3e2;border-color:#e58db4}.value.active{background:#ff78b7;border-color:#ff5fa9;color:white}
+.count{font-weight:900;text-align:center}.reset{border:1px solid #ff9ccc;background:#ffe3f0;color:#302231;border-radius:8px;padding:calc(6px * var(--watch-scale)) calc(10px * var(--watch-scale));font-size:calc(13px * var(--watch-scale));font-weight:800;cursor:pointer}.empty{padding:22px 4px;color:#8f7482}
+.failed-list{margin-top:calc(12px * var(--watch-scale));border:1px solid #f0bfd4;background:#fff8fb;padding:calc(10px * var(--watch-scale));font-size:calc(12px * var(--watch-scale));color:#6e4b5c}.failed-title{font-weight:900;margin-bottom:calc(6px * var(--watch-scale))}.failed-item{display:flex;gap:calc(8px * var(--watch-scale));flex-wrap:wrap;padding:calc(3px * var(--watch-scale)) 0}.failed-key{font-weight:900;color:#d84e91}
+::-webkit-scrollbar{width:10px}::-webkit-scrollbar-thumb{background:#ff9ccc;border-radius:8px}
+</style></head><body>
+<div class="panel">
+  <div class="header"><div class="title"></div><div class="status"></div><div class="header-actions"><button class="watch-action reload-game">发送 Ctrl+Alt+F10</button><button class="watch-action close-only">关闭</button><button class="watch-action return-main">返回</button></div></div>
+  <div class="body"><div class="empty">正在读取...</div></div>
+</div>
+<script>
+const esc = (v) => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let renderBusy = false;
+let actionBusy = false;
+function rowHtml(row) {
+  const raw = row.rawDescription && row.rawDescription.toLowerCase() !== String(row.description || '').toLowerCase()
+    ? '<span class="raw">' + esc(row.rawDescription) + '</span>' : '';
+  const values = (row.values || []).map(value => '<button type="button" class="value ' + (String(value) === String(row.currentValue) ? 'active' : '') + '" data-id="' + esc(row.id) + '" data-value="' + esc(value) + '">' + esc(value) + '</button>').join('');
+  return '<tr><td><div class="key">' + esc(row.key) + '</div></td><td><div class="desc"><span class="main">' + esc(row.description) + '</span>' + raw + '</div></td><td><div class="values">' + values + '</div></td><td class="count">' + esc(row.triggerCount) + '</td><td><button class="reset" data-id="' + esc(row.id) + '">还原</button></td></tr>';
+}
+function textWidth(value, unit = 8) {
+  return Array.from(String(value || '')).reduce((width, char) => width + (char.charCodeAt(0) > 255 ? unit * 1.75 : unit), 0);
+}
+function getTableColGroup(rows) {
+  const scale = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--watch-scale')) || 1;
+  const bodyWidth = Math.max(520, document.querySelector('.body')?.clientWidth || 760);
+  const keyWidth = Math.round(120 * scale);
+  const countWidth = Math.round(78 * scale);
+  const resetWidth = Math.round(78 * scale);
+  const spare = Math.max(260, bodyWidth - keyWidth - countWidth - resetWidth - Math.round(68 * scale));
+  const descNeed = Math.max(...rows.map(row => textWidth((row.description || '') + ' ' + (row.rawDescription || ''), 7 * scale)), 140 * scale);
+  const valueNeed = Math.max(...rows.map(row => (row.values || []).reduce((sum, value) => sum + textWidth(value, 7 * scale) + 24 * scale, 0)), 150 * scale);
+  let descWidth = Math.min(descNeed + 38 * scale, spare * 0.52);
+  let valueWidth = Math.min(valueNeed + 22 * scale, spare * 0.58);
+  if (descWidth + valueWidth > spare) {
+    const ratio = spare / (descWidth + valueWidth);
+    descWidth *= ratio;
+    valueWidth *= ratio;
+  }
+  descWidth = Math.max(140 * scale, Math.round(descWidth));
+  valueWidth = Math.max(150 * scale, Math.round(valueWidth));
+  return '<colgroup><col style="width:' + keyWidth + 'px"><col style="width:' + descWidth + 'px"><col style="width:' + valueWidth + 'px"><col style="width:' + countWidth + 'px"><col style="width:' + resetWidth + 'px"></colgroup>';
+}
+function failedHotkeysHtml(items) {
+  if (!items || !items.length) return '';
+  return '<div class="failed-list"><div class="failed-title">注册失败热键</div>' + items.map(item =>
+    '<div class="failed-item"><span class="failed-key">' + esc(item.key || '空') + '</span><span>' + esc(item.description || '') + '</span><span>' + esc(item.message || '') + '</span></div>'
+  ).join('') + '</div>';
+}
+async function render() {
+  if (renderBusy || actionBusy) return;
+  renderBusy = true;
+  try {
+  const state = await window.api.getKeyWatchState();
+  document.querySelector('.title').textContent = state.title || 'MOD 的按键绑定';
+  const reloadText = state.reloadPending ? ' · 刷新队列 ' + state.reloadPending : (state.reloadStatus ? ' · ' + state.reloadStatus : '');
+  document.querySelector('.status').textContent = (state.error || (state.listening ? '监听中' : (state.launched ? '启动中' : '未监听'))) + reloadText;
+  const body = document.querySelector('.body');
+  if (!state.rows || !state.rows.length) {
+    body.innerHTML = '<div class="empty">' + esc(state.error || '未找到 Key 绑定') + '</div>';
+    return;
+  }
+  body.innerHTML = '<table>' + getTableColGroup(state.rows) + '<thead><tr><th>按键</th><th>说明</th><th>所有 value</th><th>触发次数</th><th>还原</th></tr></thead><tbody>' + state.rows.map(rowHtml).join('') + '</tbody></table>' + failedHotkeysHtml(state.failedHotkeys);
+  } finally {
+    renderBusy = false;
+  }
+}
+document.querySelector('.body').addEventListener('pointerdown', async (event) => {
+  const button = event.target.closest('.value, .reset');
+  if (!button || actionBusy) return;
+  event.preventDefault();
+  actionBusy = true;
+  try {
+    if (button.classList.contains('reset')) {
+      await window.api.resetKeyWatchRow(button.dataset.id);
+    } else {
+      await window.api.setKeyWatchValue(button.dataset.id, button.dataset.value);
+    }
+  } finally {
+    actionBusy = false;
+    await render();
+  }
+});
+document.querySelector('.close-only').addEventListener('click', () => window.api.closeKeyWatch());
+document.querySelector('.return-main').addEventListener('click', () => window.api.returnKeyWatch());
+document.querySelector('.reload-game').addEventListener('click', async () => {
+  if (actionBusy) return;
+  actionBusy = true;
+  try {
+    await window.api.reloadKeyWatchGame();
+  } finally {
+    actionBusy = false;
+    await render();
+  }
+});
+setInterval(render, 350);
+render();
+</script></body></html>`
+  keyWatchWindow = new BrowserWindow({
+    width: popupWidth,
+    height: popupHeight,
+    minWidth: 520,
+    minHeight: 220,
+    frame: false,
+    transparent: true,
+    resizable: true,
+    alwaysOnTop: true,
+    skipTaskbar: false,
+    backgroundColor: '#00000000',
+    icon: APP_ICON_FILE,
+    webPreferences: {
+      preload: path.join(__dirname, '..', 'preload', 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  })
+  keyWatchWindow.setAlwaysOnTop(true, 'screen-saver')
+  positionPopupLeftCenter(keyWatchWindow, popupWidth, popupHeight)
+  keyWatchWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html))
+  const createdWindow = keyWatchWindow
+  keyWatchWindow.on('closed', () => {
+    if (keyWatchWindow !== createdWindow) return
+    closeKeyWatchWindow()
+  })
+  return { ok: true }
+}
+
 function showKeyPopupWindow(payload) {
   const bindings = sortKeyBindings(Array.isArray(payload?.keyBindings) ? payload.keyBindings : [])
   const rows = bindings.length
@@ -3054,6 +4116,8 @@ app.whenReady().then(() => {
     return net.fetch(pathToFileURL(resolved).toString())
   })
   registerIpc()
+  stopStaleKeyWatchSessions()
+  cleanupKeyWatchArtifacts()
   startWatcher()
   createWindow()
   app.on('activate', () => {
@@ -3062,6 +4126,7 @@ app.whenReady().then(() => {
 })
 
 app.on('window-all-closed', () => {
+  closeKeyWatchWindow()
   stopWatcher()
   saveConfig()
   if (process.platform !== 'darwin') app.quit()

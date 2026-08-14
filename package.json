@@ -1,6 +1,6 @@
 {
   "name": "wwmi-mod-manager",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "WWMI Mod Manager",
   "main": "src/main/main.js",
   "scripts": {
@@ -26,7 +26,10 @@
       "src/main/*.ps1"
     ],
     "files": [
-      "src/**/*"
+      "src/**/*",
+      "!src/tools/local_dict.json",
+      "!src/tools/translation_corrections.json",
+      "!src/tools/__pycache__/**"
     ],
     "win": {
       "target": [

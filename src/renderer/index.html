@@ -9,7 +9,7 @@
 <body>
   <header class="app-titlebar">
     <div class="app-brand">
-      <button id="btnAppSettings" class="app-logo-button" type="button" title="设置">
+      <button id="btnAppSettings" class="app-logo-button" type="button" title="设置；右键一次提示，短时间内再右键退出重启">
         <span class="app-logo-star">☆</span>
       </button>
       <div class="app-brand-name">
@@ -132,6 +132,15 @@
               <div class="settings-path">清空后会重新记录新遇到的词条</div>
             </div>
             <button id="btnClearDictionary" class="btn btn-ghost" type="button">清空词典</button>
+          </div>
+        </div>
+        <div class="settings-field settings-danger-field">
+          <div class="settings-field-head">
+            <div>
+              <div class="settings-label">修正翻译词典</div>
+              <div class="settings-path">优先于本地词典，用于覆盖键位说明翻译</div>
+            </div>
+            <button id="btnClearCorrectionDictionary" class="btn btn-ghost" type="button">清空修正</button>
           </div>
         </div>
       </div>

@@ -1,16 +1,32 @@
-import re, sys, os, json
-from wwmi_ini_util import sp, VK_MAP, MOD_MAP, NO_MAP, parse_key, normalize_key as _nk
-import translate_dict
-import image_ocr
-import net_translate
+﻿import re, sys, os, json, urllib.parse, urllib.request
+from wwmi_ini_util import sp, VK_MAP, MOD_MAP, NO_MAP, parse_key, normalize_key as _nk, binding_sort_key
 
-# 本地词典路径（与脚本同目录）
-LOCAL_DICT = os.path.join(os.path.dirname(__file__), "local_dict.json")
-# 词条库路径：单个单词/拼音 → 中文（由用户翻译填充，合并进词库后优先查询）
-WORD_DICT = os.path.join(os.path.dirname(__file__), "word_dict.json")
-# 记录词典路径：每个执行过的英文 key → 中文 + 来源 + 来源路径
-RECORD_DICT = os.path.join(os.path.dirname(__file__), "record_dict.json")
-_word_tokens = None
+# 鏈湴璇嶅吀璺緞锛堜笌鑴氭湰鍚岀洰褰曪級
+LOCAL_DICT = os.environ.get("WWMI_LOCAL_DICT_FILE") or os.path.join(os.path.dirname(__file__), "local_dict.json")
+SOURCE_PRIORITY = {
+    "image": 30,
+    "file_context": 20,
+    "pinyin": 15,
+    "online_query": 10,
+    "builtin": 0,
+    "untranslated": -10,
+    "legacy": -20,
+}
+IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".bmp"}
+EDGE_SYMBOLS = " \t\r\n;:：+-_—–`'\"“”‘’?,，。\\|!！?？*·"
+WRAPPER_SYMBOLS = "[]【】{}<>《》"
+INVALID_TRANSLATION_LABELS = {
+    "榛樿鍙橀噺",
+    "鍙橀噺",
+    "鎸夐敭",
+    "閿綅",
+    "鏍峰紡",
+    "鍒囨崲",
+}
+AMBIGUOUS_PINYIN_TRANSLATIONS = {
+    "xiaban": "下半；下摆",
+    "yinwen": "淫纹；阴纹",
+}
 
 
 def load_local_dict() -> dict:
@@ -21,218 +37,406 @@ def load_local_dict() -> dict:
         return {}
 
 
-def load_word_dict() -> dict:
-    global _word_tokens
-    if _word_tokens is None:
-        try:
-            with open(WORD_DICT, "r", encoding="utf-8") as f:
-                _word_tokens = json.load(f)
-        except Exception:
-            _word_tokens = {}
-    return _word_tokens
+def normalize_dict_entry(value) -> dict:
+    if isinstance(value, dict):
+        translation = sanitize_translation(value.get("translation", ""))
+        sources = []
+        raw_sources = value.get("sources", [])
+        if isinstance(raw_sources, list):
+            for source in raw_sources:
+                if not isinstance(source, dict):
+                    continue
+                source_translation = sanitize_translation(source.get("translation", ""))
+                if not source_translation:
+                    continue
+                sources.append({
+                    "translation": source_translation,
+                    "source": str(source.get("source", "") or ""),
+                    "source_path": str(source.get("source_path", "") or ""),
+                })
+        entry = {
+            "translation": translation,
+            "source": str(value.get("source", "") or ""),
+            "source_path": str(value.get("source_path", "") or ""),
+            "sources": sources,
+        }
+        if not translation and entry["source"] not in ("untranslated", ""):
+            entry["source"] = "untranslated"
+            entry["source_path"] = ""
+        return entry
+    translation = sanitize_translation(value)
+    return {
+        "translation": translation,
+        "source": "legacy" if translation else "untranslated",
+        "source_path": "",
+        "sources": [],
+    }
 
 
-def save_to_local_dict(var_name: str, chinese: str):
+def get_local_translation(var_name: str) -> str:
+    entry = normalize_dict_entry(load_local_dict().get(var_name.lower(), ""))
+    return entry.get("translation", "")
+
+
+def save_local_dict(d: dict):
+    ordered = {k: d[k] for k in sorted(d, key=lambda x: x.lower())}
+    try:
+        with open(LOCAL_DICT, "w", encoding="utf-8") as f:
+            json.dump(ordered, f, ensure_ascii=False, indent=2)
+    except Exception:
+        pass
+
+
+def source_identity(candidate: dict) -> tuple:
+    return (
+        candidate.get("source", ""),
+        candidate.get("source_path", ""),
+        candidate.get("translation", ""),
+    )
+
+
+def save_to_local_dict(var_name: str, chinese: str, source: str = "file_context", source_path: str = ""):
+    update_local_dict(var_name, [{
+        "translation": chinese,
+        "source": source,
+        "source_path": source_path,
+    }])
+
+
+def update_local_dict(var_name: str, candidates: list) -> str:
+    key = var_name.lower()
     d = load_local_dict()
-    if var_name not in d:
-        d[var_name] = chinese
+    entry = normalize_dict_entry(d.get(key, ""))
+    seen = {source_identity(s) for s in entry["sources"] if isinstance(s, dict)}
+
+    for candidate in candidates:
+        candidate = {
+            "translation": sanitize_translation(candidate.get("translation", "")),
+            "source": str(candidate.get("source", "") or "untranslated"),
+            "source_path": str(candidate.get("source_path", "") or ""),
+        }
+        ident = source_identity(candidate)
+        if ident not in seen:
+            entry["sources"].append(candidate)
+            seen.add(ident)
+
+        current_rank = SOURCE_PRIORITY.get(entry.get("source", ""), -99)
+        candidate_rank = SOURCE_PRIORITY.get(candidate["source"], -99)
+        current_text = entry.get("translation", "")
+        candidate_text = candidate.get("translation", "")
+        if candidate_text and (not current_text or candidate_rank > current_rank):
+            entry["translation"] = candidate_text
+            entry["source"] = candidate["source"]
+            entry["source_path"] = candidate["source_path"]
+
+    if not entry.get("source"):
+        entry["source"] = "untranslated"
+    d[key] = entry
+    save_local_dict(d)
+    return entry.get("translation", "")
+
+
+def iter_context_dirs(filepath: str) -> list:
+    base = os.path.dirname(filepath)
+    dirs = []
+    for d in (base, os.path.dirname(base)):
+        if d and d != os.path.dirname(d) and d not in dirs:
+            dirs.append(d)
+    return dirs
+
+
+def extract_chinese(text: str) -> str:
+    m = re.search(r"[\u4e00-\u9fff][\u4e00-\u9fffA-Za-z0-9 _+\-锛堬級()銆愩€慮*", text or "")
+    return sanitize_translation(m.group(0)) if m else ""
+
+
+def sanitize_translation(text: str) -> str:
+    text = re.sub(r"\s+", " ", str(text or "")).strip(EDGE_SYMBOLS)
+    text = text.strip(WRAPPER_SYMBOLS).strip(EDGE_SYMBOLS)
+    text = re.sub(r"^(?:璇存槑|鎻忚堪|缈昏瘧|涓枃|鍚嶇О|閫夐」)\s*[:锛?]\s*", "", text).strip(EDGE_SYMBOLS)
+    text = re.sub(r"^[锛?]\s*[\d\s,锛屻€?|;锛?-]+\s*[)锛塢\s*", "", text).strip(EDGE_SYMBOLS)
+    text = re.sub(r"\s*[锛?]\s*[\d\s,锛屻€?|;锛?-]+\s*[)锛塢\s*$", "", text).strip(EDGE_SYMBOLS)
+    text = text.strip(WRAPPER_SYMBOLS).strip(EDGE_SYMBOLS)
+    text = re.sub(r"\s*(?:#|//).*$", "", text).strip(EDGE_SYMBOLS)
+    return text if is_valid_translation(text) else ""
+
+
+def is_valid_translation(text: str) -> bool:
+    if not text or not re.search(r"[\u4e00-\u9fff]", text):
+        return False
+    compact = re.sub(r"\s+", "", text)
+    if compact in INVALID_TRANSLATION_LABELS:
+        return False
+    if compact.startswith("榛樿鍙橀噺"):
+        return False
+    if re.search(r"\b(?:global|persist|key|type|condition|namespace)\b\s*=", text, re.IGNORECASE):
+        return False
+    if len(text) > 40:
+        return False
+    return True
+
+
+def scan_image_sidecar(image_path: str, var_name: str) -> str:
+    key = var_name.lower()
+    for sidecar in (image_path + ".json", os.path.splitext(image_path)[0] + ".json"):
+        if not os.path.isfile(sidecar):
+            continue
         try:
-            with open(LOCAL_DICT, "w", encoding="utf-8") as f:
-                json.dump(d, f, ensure_ascii=False, indent=2)
+            data = json.load(open(sidecar, "r", encoding="utf-8"))
         except Exception:
-            pass
+            continue
+        maps = data.get("mappings", data) if isinstance(data, dict) else {}
+        if isinstance(maps, dict):
+            value = maps.get(key) or maps.get(var_name)
+            if isinstance(value, dict):
+                value = value.get("translation") or value.get("chinese")
+            if value:
+                return sanitize_translation(value)
+    return ""
 
 
-# ── 拼音/常见变量名 → 中文释义 ──
+def scan_image_ocr(image_path: str, var_name: str) -> str:
+    try:
+        import pytesseract
+        from PIL import Image
+    except Exception:
+        return ""
+    try:
+        text = pytesseract.image_to_string(Image.open(image_path), lang="chi_sim+eng")
+    except Exception:
+        return ""
+    pattern = re.escape(var_name)
+    m = re.search(pattern + r"\s*[:锛?\-]\s*([^\r\n]+)", text, re.IGNORECASE)
+    return extract_chinese(m.group(1)) if m else ""
+
+
+def scan_image_translation(filepath: str, var_name: str) -> tuple:
+    key = var_name.lower()
+    for d in iter_context_dirs(filepath):
+        try:
+            names = os.listdir(d)
+        except Exception:
+            continue
+        for fn in names:
+            image_path = os.path.join(d, fn)
+            stem, ext = os.path.splitext(fn)
+            if ext.lower() not in IMAGE_EXTS:
+                continue
+            chinese = scan_image_sidecar(image_path, key)
+            if not chinese and key in stem.lower():
+                chinese = extract_chinese(stem)
+            if not chinese:
+                chinese = scan_image_ocr(image_path, key)
+            if chinese:
+                return (chinese, image_path)
+    return ("", "")
+
+
+def query_online_translation(var_name: str) -> str:
+    query = urllib.parse.urlencode({
+        "q": var_name,
+        "langpair": "en|zh-CN",
+    })
+    url = "https://api.mymemory.translated.net/get?" + query
+    try:
+        with urllib.request.urlopen(url, timeout=5) as resp:
+            data = json.loads(resp.read().decode("utf-8", "ignore"))
+        text = data.get("responseData", {}).get("translatedText", "")
+        return text.strip() if extract_chinese(text) else ""
+    except Exception:
+        return ""
+
+
+# 鈹€鈹€ 鎷奸煶/甯歌鍙橀噺鍚?鈫?涓枃閲婁箟 鈹€鈹€
 PINYIN_MAP = {
-    "xiongbu": "胸部", "xiong": "胸部", "ru": "乳房",
-    "shoubi": "手臂", "shouwan": "手腕",
-    "lingdai": "项圈", "xiangquan": "项圈",
-    "neiku": "内裤", "waiku": "外裤",
-    "xiezi": "鞋子", "tunv": "臀部",
-    "maozi": "帽子", "tuer": "兔耳",
-    "erzhui": "耳坠", "fashi": "发饰",
-    "jiaohuan": "脚环", "tuwei": "腿围",
-    "suolian": "锁链", "xiaban": "下摆",
-    "yuan": "圆",
-    "lingzi": "领子",
-    "yousi": "油丝", "youguang": "油光",
-    "siwa": "丝袜", "dingziku": "丁字裤",
-    "xiangzi": "箱子", "shoutao": "手套",
-    "yanjing": "眼睛", "toufa": "头发",
-    "weiba": "尾巴", "chibang": "翅膀",
-    "mianju": "面具", "hudiejie": "蝴蝶结",
-    "bozi": "脖子", "jingquan": "颈圈",
-    "yaobu": "腰部", "yaodai": "腰带",
-    "datui": "大腿", "xiaotui": "小腿",
-    "jiaomo": "脚部", "jiaozhi": "脚趾",
-    "toujin": "头巾", "weijin": "围巾",
-    "yumao": "羽毛", "erhuan": "耳环",
-    "xianglian": "项链", "jie": "戒指",
-    "yangju": "阳具", "yindi": "阴蒂",
-    "yinchun": "阴唇", "yindao": "阴道",
-    "gangmen": "肛门", "ruyun": "乳晕",
-    "maofa": "毛发", "gongbu": "工部",
-    "xiongzhao": "胸罩", "kuzi": "裤子",
-    "qunzi": "裙子", "changqun": "长裙",
-    "duanqun": "短裙", "neiyi": "内衣",
-    "waiyi": "外衣", "waitao": "外套",
-    "maoyi": "毛衣", "chenshan": "衬衫",
-    "xifu": "西服", "tongzhuang": "童装",
-    "lianshenyi": "连体衣", "yongzhuang": "泳装",
-    "kuzhao": "裤袜", "huoban": "伙伴",
-    "zhua": "爪", "long": "龙",
-    "hu": "虎", "laohu": "虎",
-    "gou": "狗", "mao": "猫",
-    "tu": "兔", "huli": "狐",
-    "lu": "鹿", "niao": "鸟",
-    "yu": "鱼", "chong": "虫",
-    # 常见复合词（拼音连写）
-    "datuibangdai": "大腿绑带",
-    "maozituer": "帽子兔耳",
-    "lingdaixiangquan": "领带项圈",
-    "jiaohuantuwei": "脚环腿围",
-    "erzhuifashi": "耳坠发饰",
-    "jiantou": "肩头",
-    "jianbu": "肩部",
-    "yaobu": "腰部",
-    "dantian": "丹田",
-    "fubu": "腹部",
-    "beibu": "背部",
-    "gezhiwo": "腋窝",
-    "tuiwan": "腿弯",
-    "xigai": "膝盖",
-    "jiaohuai": "脚踝",
-    "yinmao": "阴毛",
-    "ys": "外套",
-    "yx": "裙摆",
+    "xiongbu": "鑳搁儴", "xiong": "鑳搁儴", "ru": "涔虫埧",
+    "shoubi": "鎵嬭噦", "shouwan": "鎵嬭厱",
+    "lingdai": "椤瑰湀", "xiangquan": "椤瑰湀",
+    "neiku": "鍐呰￥", "waiku": "澶栬￥",
+    "xiezi": "闉嬪瓙", "tunv": "鑷€閮?,
+    "maozi": "甯藉瓙", "tuer": "鍏旇€?,
+    "erzhui": "鑰冲潬", "fashi": "鍙戦グ",
+    "jiaohuan": "鑴氱幆", "tuwei": "鑵垮洿",
+    "suolian": "閿侀摼", "shangban": "涓婂崐", "xiaban": "涓嬫憜",
+    "yuan": "鍦?, "yuang": "鍦?, "yuangxiongbu": "鍦嗚兏閮?,
+    "lingzi": "棰嗗瓙",
+    "yousi": "娌逛笣", "youguang": "娌瑰厜",
+    "siwa": "涓濊", "dingziku": "涓佸瓧瑁?,
+    "xiangzi": "绠卞瓙", "shoutao": "鎵嬪",
+    "yanjing": "鐪肩潧", "toufa": "澶村彂",
+    "weiba": "灏惧反", "chibang": "缈呰唨",
+    "mianju": "闈㈠叿", "hudiejie": "铦磋澏缁?,
+    "bozi": "鑴栧瓙", "jingquan": "棰堝湀",
+    "yaobu": "鑵伴儴", "yaodai": "鑵板甫",
+    "datui": "澶ц吙", "xiaotui": "灏忚吙",
+    "jiaomo": "鑴氶儴", "jiaozhi": "鑴氳毒",
+    "toujin": "澶村肪", "weijin": "鍥村肪",
+    "yumao": "缇芥瘺", "erhuan": "鑰崇幆",
+    "xianglian": "椤归摼", "jie": "鎴掓寚",
+    "yangju": "闃冲叿", "yindi": "闃磋拏",
+    "yinchun": "闃村攪", "yindao": "闃撮亾",
+    "gangmen": "鑲涢棬", "ruyun": "涔虫檿",
+    "maofa": "姣涘彂", "gongbu": "宸ラ儴",
+    "xiongzhao": "鑳哥僵", "kuzi": "瑁ゅ瓙",
+    "qunzi": "瑁欏瓙", "changqun": "闀胯",
+    "duanqun": "鐭", "neiyi": "鍐呰。",
+    "waiyi": "澶栬。", "waitao": "澶栧",
+    "maoyi": "姣涜。", "chenshan": "琛～",
+    "xifu": "瑗挎湇", "tongzhuang": "绔ヨ",
+    "lianshenyi": "杩炰綋琛?, "yongzhuang": "娉宠",
+    "kuzhao": "瑁よ", "huoban": "浼欎即",
+    "zhua": "鐖?, "long": "榫?,
+    "hu": "铏?, "laohu": "铏?,
+    "gou": "鐙?, "mao": "鐚?,
+    "tu": "鍏?, "huli": "鐙?,
+    "lu": "楣?, "niao": "楦?,
+    "yu": "楸?, "chong": "铏?,
+    # 甯歌澶嶅悎璇嶏紙鎷奸煶杩炲啓锛?    "datuibangdai": "澶ц吙缁戝甫",
+    "maozituer": "甯藉瓙鍏旇€?,
+    "lingdaixiangquan": "棰嗗甫椤瑰湀",
+    "jiaohuantuwei": "鑴氱幆鑵垮洿",
+    "erzhuifashi": "鑰冲潬鍙戦グ",
+    "jiantou": "鑲╁ご",
+    "jianbu": "鑲╅儴",
+    "yaobu": "鑵伴儴",
+    "dantian": "涓圭敯",
+    "fubu": "鑵归儴",
+    "beibu": "鑳岄儴",
+    "gezhiwo": "鑵嬬獫",
+    "tuiwan": "鑵垮集",
+    "xigai": "鑶濈洊",
+    "jiaohuai": "鑴氳笣",
+    "yinmao": "闃存瘺",
+    "ys": "澶栧",
+    "yx": "瑁欐憜",
 }
-# ── 变量名→中文释义（精确匹配优先） ──
+# 鈹€鈹€ 鍙橀噺鍚嶁啋涓枃閲婁箟锛堢簿纭尮閰嶄紭鍏堬級 鈹€鈹€
 VAR_GLOSSARY = {
-    "bodytex": "身体皮肤纹理", "skin": "皮肤纹理", "body": "身体纹理",
-    "head": "头部纹理", "face": "面部纹理", "facepaint": "面妆",
-    "e": "眼睛样式", "eyes": "眼睛样式", "f": "面部样式", "h": "头发样式",
-    "hair": "头发样式", "eyebrow": "眉毛样式", "brow": "眉毛样式",
-    "eyelash": "睫毛样式", "lash": "睫毛样式", "iris": "虹膜样式", "pupil": "瞳孔样式",
-    "boobsize": "胸部大小", "breast": "胸部大小", "bust": "胸部大小",
-    "butt": "臀部大小", "ass": "臀部大小", "hip": "臀部大小",
-    "waist": "腰部粗细", "thicc": "大腿粗细", "thigh": "大腿粗细",
-    "legs": "腿部粗细", "leg": "腿部样式", "armsize": "手臂粗细",
-    "arm": "手臂样式", "arms": "手臂样式", "muscle": "肌肉线条",
-    "pubes": "下体毛发样式", "pubic": "下体毛发样式",
-    "shine": "皮肤光泽度", "gloss": "皮肤光泽度",
-    "wet": "湿润效果", "sweat": "汗液效果", "oily": "油光效果",
-    "tattoos": "纹身样式", "tattoo": "纹身样式", "scar": "伤疤样式",
-    "nails": "指甲样式", "nail": "指甲样式", "toenail": "脚指甲样式",
-    "tail": "尾巴样式", "ears": "耳朵样式", "horn": "角样式",
-    "wing": "翅膀样式", "halo": "光环样式",
-    "headacc": "头饰样式", "headwear": "头饰样式", "hat": "帽子样式",
-    "glasses": "眼镜样式", "eyepatch": "眼罩",
-    "choker": "项圈样式", "necklace": "项链样式", "collar": "项圈样式",
-    "diaodai": "吊带样式",
-    "earring": "耳环样式", "earrings": "耳环样式",
-    "anklet": "脚链样式", "bracelet": "手链样式", "ring": "戒指样式",
-    "belt": "腰带样式", "charm": "挂饰样式", "mask": "面具样式",
-    "top": "上衣样式", "front": "前侧样式", "back": "背部样式",
-    "makeup": "妆容样式", "bra": "胸罩样式", "shirt": "衬衫样式",
-    "blouse": "上衣样式", "jacket": "外套样式", "coat": "外套样式",
-    "cloak": "披风样式", "cape": "披风样式", "sweater": "毛衣样式",
-    "vest": "背心样式", "corset": "束腰样式",
-    "panties": "内裤样式", "underwear": "内裤样式", "bottom": "下装样式",
-    "pants": "裤子样式", "skirt": "裙子样式", "shorts": "短裤样式",
-    "leotard": "连体衣样式", "bodysuit": "连体衣样式",
-    "garter": "吊袜带样式", "straps": "肩带样式",
-    "stockings": "丝袜样式", "socks": "袜子样式",
-    "tights": "连裤袜样式", "pantyhose": "连裤袜样式",
-    "thong": "丁字裤样式", "gstring": "丁字裤样式",
-    "sleeve": "袖子样式", "sleeves": "袖子样式",
-    "glove": "手套样式", "gloves": "手套样式",
-    "cuffs": "袖套样式", "cuff": "袖套样式",
-    "bracer": "护腕样式", "gauntlet": "臂铠样式",
-    "armlet": "臂环样式", "armband": "臂环样式",
-    "dress": "连衣裙样式", "uniform": "制服样式",
-    "swimsuit": "泳装样式", "bikini": "比基尼样式",
-    "lingerie": "内衣样式", "armor": "盔甲样式", "armour": "盔甲样式",
-    "robe": "长袍样式",
-    "shoes": "鞋子样式", "boot": "靴子样式", "boots": "靴子样式",
-    "heel": "高跟鞋样式", "heels": "高跟鞋样式",
-    "sandals": "凉鞋样式", "slipper": "拖鞋样式", "slippers": "拖鞋样式",
-    "nipples": "乳头样式", "nipple": "乳头样式",
-    "penis": "阴茎样式", "vagina": "阴道样式",
-    "labia": "阴唇样式", "anus": "肛门样式",
-    "piercing": "穿孔样式", "piercings": "穿孔样式",
-    "tentacle": "触手样式",
-    "cum": "体液效果", "sperm": "精液效果", "semen": "精液效果",
-    "drool": "口水效果", "slime": "黏液效果",
-    "alpha": "透明度", "opacity": "不透明度",
-    "color": "颜色选择", "pattern": "图案样式",
-    "style": "风格样式", "variant": "变体选择",
-    "version": "版本选择", "detail": "细节程度",
-    "quality": "质量等级", "lod": "细节级别",
-    "veil": "面纱样式", "cross": "十字架样式",
-    "shangyi": "上衣样式", "liushui": "流水效果", "youguang": "油光效果",
-    "youguangsiwa": "油光丝袜样式", "zhuangrong": "妆容样式", "jiaohuan": "脚环样式",
-    "toushi": "透视样式", "toufa": "头发样式", "yanjing": "眼镜样式",
-    "texiao": "特效样式", "siwa": "丝袜样式", "qunbai": "裙摆样式",
-    "xiezi": "鞋子样式", "waitao": "外套样式", "qunzi": "裙子样式", "bozi": "脖子样式", "xiuzi": "袖子样式",
-    "xiongxing": "胸型样式", "hudiejie": "蝴蝶结样式", "fashi": "发饰样式",
-    "mianju": "面具样式", "lian": "脸型样式", "meimao": "眉毛样式",
-    "jie": "戒指样式", "xianglian": "项链样式", "erhuan": "耳环样式",
-    "bao": "包样式", "weijin": "围巾样式", "maozi": "帽子样式",
-    "cloth": "布料样式", "fabric": "布料样式",
-    "weiba": "尾巴样式", "fubu": "腹部样式", "toujin": "头巾样式",
-    "jingji": "颈饰样式", "kuijia": "盔甲样式", "xiongyi": "胸衣样式",
-    "chibang": "翅膀样式", "huan": "环饰样式", "lian": "链饰样式",
-    "lace": "蕾丝样式", "ribbon": "丝带样式",
-    "bow": "蝴蝶结样式", "flower": "花朵样式",
-    "crown": "皇冠样式", "tiara": "头冠样式",
-    "bell": "铃铛样式", "heart": "爱心样式",
-    "star": "星星样式", "moon": "月亮样式",
-    "cat": "猫耳样式", "bear": "熊耳样式",
-    "bunny": "兔耳样式", "fox": "狐耳样式",
-    "devil": "恶魔样式", "angel": "天使样式",
-    "demon": "恶魔样式", "gothic": "哥特样式",
-    "plain": "素体样式", "nude": "裸体样式",
-    "t5": "丝袜材质样式",
-    "swapvar_a": "丝袜图案样式",
+    "bodytex": "韬綋鐨偆绾圭悊", "skin": "鐨偆绾圭悊", "body": "韬綋绾圭悊",
+    "head": "澶撮儴绾圭悊", "face": "闈㈤儴绾圭悊", "facepaint": "闈㈠",
+    "e": "鐪肩潧鏍峰紡", "eyes": "鐪肩潧鏍峰紡", "f": "闈㈤儴鏍峰紡", "h": "澶村彂鏍峰紡",
+    "hair": "澶村彂鏍峰紡", "eyebrow": "鐪夋瘺鏍峰紡", "brow": "鐪夋瘺鏍峰紡",
+    "eyelash": "鐫瘺鏍峰紡", "lash": "鐫瘺鏍峰紡", "iris": "铏硅啘鏍峰紡", "pupil": "鐬冲瓟鏍峰紡",
+    "boobsize": "鑳搁儴澶у皬", "breast": "鑳搁儴澶у皬", "bust": "鑳搁儴澶у皬",
+    "butt": "鑷€閮ㄥぇ灏?, "ass": "鑷€閮ㄥぇ灏?, "hip": "鑷€閮ㄥぇ灏?,
+    "waist": "鑵伴儴绮楃粏", "thicc": "澶ц吙绮楃粏", "thigh": "澶ц吙绮楃粏",
+    "legs": "鑵块儴绮楃粏", "leg": "鑵块儴鏍峰紡", "armsize": "鎵嬭噦绮楃粏",
+    "arm": "鎵嬭噦鏍峰紡", "arms": "鎵嬭噦鏍峰紡", "muscle": "鑲岃倝绾挎潯",
+    "pubes": "涓嬩綋姣涘彂鏍峰紡", "pubic": "涓嬩綋姣涘彂鏍峰紡",
+    "shine": "鐨偆鍏夋辰搴?, "gloss": "鐨偆鍏夋辰搴?,
+    "wet": "婀挎鼎鏁堟灉", "sweat": "姹楁恫鏁堟灉", "oily": "娌瑰厜鏁堟灉",
+    "tattoos": "绾硅韩鏍峰紡", "tattoo": "绾硅韩鏍峰紡", "scar": "浼ょ枻鏍峰紡",
+    "nails": "鎸囩敳鏍峰紡", "nail": "鎸囩敳鏍峰紡", "toenail": "鑴氭寚鐢叉牱寮?,
+    "tail": "灏惧反鏍峰紡", "ears": "鑰虫湹鏍峰紡", "horn": "瑙掓牱寮?,
+    "wing": "缈呰唨鏍峰紡", "halo": "鍏夌幆鏍峰紡",
+    "headacc": "澶撮グ鏍峰紡", "headwear": "澶撮グ鏍峰紡", "hat": "甯藉瓙鏍峰紡",
+    "glasses": "鐪奸暅鏍峰紡", "eyepatch": "鐪肩僵",
+    "choker": "椤瑰湀鏍峰紡", "necklace": "椤归摼鏍峰紡", "collar": "椤瑰湀鏍峰紡",
+    "diaodai": "鍚婂甫鏍峰紡",
+    "earring": "鑰崇幆鏍峰紡", "earrings": "鑰崇幆鏍峰紡",
+    "anklet": "鑴氶摼鏍峰紡", "bracelet": "鎵嬮摼鏍峰紡", "ring": "鎴掓寚鏍峰紡",
+    "belt": "鑵板甫鏍峰紡", "charm": "鎸傞グ鏍峰紡", "mask": "闈㈠叿鏍峰紡",
+    "top": "涓婅。鏍峰紡", "front": "鍓嶄晶鏍峰紡", "back": "鑳岄儴鏍峰紡",
+    "mouse_clicked": "榧犳爣鐐瑰嚮",
+    "makeup": "濡嗗鏍峰紡", "bra": "鑳哥僵鏍峰紡", "shirt": "琛～鏍峰紡",
+    "blouse": "涓婅。鏍峰紡", "jacket": "澶栧鏍峰紡", "coat": "澶栧鏍峰紡",
+    "cloak": "鎶鏍峰紡", "cape": "鎶鏍峰紡", "sweater": "姣涜。鏍峰紡",
+    "vest": "鑳屽績鏍峰紡", "corset": "鏉熻叞鏍峰紡",
+    "panties": "鍐呰￥鏍峰紡", "underwear": "鍐呰￥鏍峰紡", "bottom": "涓嬭鏍峰紡",
+    "pants": "瑁ゅ瓙鏍峰紡", "skirt": "瑁欏瓙鏍峰紡", "shorts": "鐭￥鏍峰紡",
+    "leotard": "杩炰綋琛ｆ牱寮?, "bodysuit": "杩炰綋琛ｆ牱寮?,
+    "garter": "鍚婅甯︽牱寮?, "straps": "鑲╁甫鏍峰紡",
+    "stockings": "涓濊鏍峰紡", "socks": "琚滃瓙鏍峰紡",
+    "tights": "杩炶￥琚滄牱寮?, "pantyhose": "杩炶￥琚滄牱寮?,
+    "thong": "涓佸瓧瑁ゆ牱寮?, "gstring": "涓佸瓧瑁ゆ牱寮?,
+    "sleeve": "琚栧瓙鏍峰紡", "sleeves": "琚栧瓙鏍峰紡",
+    "glove": "鎵嬪鏍峰紡", "gloves": "鎵嬪鏍峰紡",
+    "cuffs": "琚栧鏍峰紡", "cuff": "琚栧鏍峰紡",
+    "bracer": "鎶よ厱鏍峰紡", "gauntlet": "鑷傞摖鏍峰紡",
+    "armlet": "鑷傜幆鏍峰紡", "armband": "鑷傜幆鏍峰紡",
+    "dress": "杩炶。瑁欐牱寮?, "uniform": "鍒舵湇鏍峰紡",
+    "swimsuit": "娉宠鏍峰紡", "bikini": "姣斿熀灏兼牱寮?,
+    "lingerie": "鍐呰。鏍峰紡", "armor": "鐩旂敳鏍峰紡", "armour": "鐩旂敳鏍峰紡",
+    "robe": "闀胯鏍峰紡",
+    "shoes": "闉嬪瓙鏍峰紡", "boot": "闈村瓙鏍峰紡", "boots": "闈村瓙鏍峰紡",
+    "heel": "楂樿窡闉嬫牱寮?, "heels": "楂樿窡闉嬫牱寮?,
+    "sandals": "鍑夐瀷鏍峰紡", "slipper": "鎷栭瀷鏍峰紡", "slippers": "鎷栭瀷鏍峰紡",
+    "nipples": "涔冲ご鏍峰紡", "nipple": "涔冲ご鏍峰紡",
+    "penis": "闃磋寧鏍峰紡", "vagina": "闃撮亾鏍峰紡",
+    "labia": "闃村攪鏍峰紡", "anus": "鑲涢棬鏍峰紡",
+    "piercing": "绌垮瓟鏍峰紡", "piercings": "绌垮瓟鏍峰紡",
+    "tentacle": "瑙︽墜鏍峰紡",
+    "cum": "浣撴恫鏁堟灉", "sperm": "绮炬恫鏁堟灉", "semen": "绮炬恫鏁堟灉",
+    "drool": "鍙ｆ按鏁堟灉", "slime": "榛忔恫鏁堟灉",
+    "alpha": "閫忔槑搴?, "opacity": "涓嶉€忔槑搴?,
+    "color": "棰滆壊閫夋嫨", "pattern": "鍥炬鏍峰紡",
+    "style": "椋庢牸鏍峰紡", "variant": "鍙樹綋閫夋嫨",
+    "version": "鐗堟湰閫夋嫨", "detail": "缁嗚妭绋嬪害",
+    "quality": "璐ㄩ噺绛夌骇", "lod": "缁嗚妭绾у埆",
+    "veil": "闈㈢罕鏍峰紡", "cross": "鍗佸瓧鏋舵牱寮?,
+    "shangyi": "涓婅。鏍峰紡", "liushui": "娴佹按鏁堟灉", "youguang": "娌瑰厜鏁堟灉",
+    "youguangsiwa": "娌瑰厜涓濊鏍峰紡", "zhuangrong": "濡嗗鏍峰紡", "jiaohuan": "鑴氱幆鏍峰紡",
+    "toushi": "閫忚鏍峰紡", "toufa": "澶村彂鏍峰紡", "yanjing": "鐪奸暅鏍峰紡",
+    "texiao": "鐗规晥鏍峰紡", "siwa": "涓濊鏍峰紡", "qunbai": "瑁欐憜鏍峰紡",
+    "xiezi": "闉嬪瓙鏍峰紡", "waitao": "澶栧鏍峰紡", "qunzi": "瑁欏瓙鏍峰紡", "bozi": "鑴栧瓙鏍峰紡", "xiuzi": "琚栧瓙鏍峰紡",
+    "xiongxing": "鑳稿瀷鏍峰紡", "hudiejie": "铦磋澏缁撴牱寮?, "fashi": "鍙戦グ鏍峰紡",
+    "mianju": "闈㈠叿鏍峰紡", "lian": "鑴稿瀷鏍峰紡", "meimao": "鐪夋瘺鏍峰紡",
+    "jie": "鎴掓寚鏍峰紡", "xianglian": "椤归摼鏍峰紡", "erhuan": "鑰崇幆鏍峰紡",
+    "bao": "鍖呮牱寮?, "weijin": "鍥村肪鏍峰紡", "maozi": "甯藉瓙鏍峰紡",
+    "cloth": "甯冩枡鏍峰紡", "fabric": "甯冩枡鏍峰紡",
+    "weiba": "灏惧反鏍峰紡", "fubu": "鑵归儴鏍峰紡", "toujin": "澶村肪鏍峰紡",
+    "jingji": "棰堥グ鏍峰紡", "kuijia": "鐩旂敳鏍峰紡", "xiongyi": "鑳歌。鏍峰紡",
+    "chibang": "缈呰唨鏍峰紡", "huan": "鐜グ鏍峰紡", "lian": "閾鹃グ鏍峰紡",
+    "lace": "钑句笣鏍峰紡", "ribbon": "涓濆甫鏍峰紡",
+    "bow": "铦磋澏缁撴牱寮?, "flower": "鑺辨湹鏍峰紡",
+    "crown": "鐨囧啝鏍峰紡", "tiara": "澶村啝鏍峰紡",
+    "bell": "閾冮摏鏍峰紡", "heart": "鐖卞績鏍峰紡",
+    "star": "鏄熸槦鏍峰紡", "moon": "鏈堜寒鏍峰紡",
+    "cat": "鐚€虫牱寮?, "bear": "鐔婅€虫牱寮?,
+    "bunny": "鍏旇€虫牱寮?, "fox": "鐙愯€虫牱寮?,
+    "devil": "鎭堕瓟鏍峰紡", "angel": "澶╀娇鏍峰紡",
+    "demon": "鎭堕瓟鏍峰紡", "gothic": "鍝ョ壒鏍峰紡",
+    "plain": "绱犱綋鏍峰紡", "nude": "瑁镐綋鏍峰紡",
+    "t5": "涓濊鏉愯川鏍峰紡",
+    "swapvar_a": "涓濊鍥炬鏍峰紡",
 }
 
 FALLBACK = {
-    "body": "身体", "head": "头部", "face": "面部", "hair": "头发",
-    "eye": "眼睛", "ear": "耳朵", "nose": "鼻子", "mouth": "嘴巴",
-    "lip": "嘴唇", "tongue": "舌头", "neck": "脖子", "chest": "胸部",
-    "breast": "胸部", "bust": "胸部", "back": "背部", "shoulder": "肩膀",
-    "arm": "手臂", "hand": "手", "finger": "手指", "nail": "指甲",
-    "waist": "腰部", "hip": "臀部", "butt": "臀部", "leg": "腿",
-    "thigh": "大腿", "knee": "膝盖", "calf": "小腿", "foot": "脚",
-    "ankle": "脚踝", "wrist": "手腕",
-    "top": "上衣", "front": "前侧", "bottom": "下装", "pantie": "内裤", "bra": "胸罩",
-    "waitao": "外套", "qunzi": "裙子", "siwa": "丝袜", "yanjing": "眼镜", "xiongxing": "胸型", "diaodai": "吊带",
-    "shirt": "衬衫", "blouse": "上衣", "jacket": "外套", "coat": "外套",
-    "vest": "背心", "sweater": "毛衣", "hoodie": "连帽衫",
-    "dress": "连衣裙", "skirt": "裙子", "pants": "裤子", "short": "短裤",
-    "tight": "紧身", "legging": " leggings", "stocking": "丝袜",
-    "sock": "袜子", "shoe": "鞋子", "boot": "靴子", "sandal": "凉鞋",
-    "slipper": "拖鞋", "glove": "手套", "hat": "帽子", "cap": "帽子",
-    "hood": "兜帽", "belt": "腰带", "collar": "领子", "necklace": "项链",
-    "choker": "项圈", "ring": "戒指", "earring": "耳环", "bracelet": "手链",
-    "garter": "吊袜带", "strap": "带子", "lace": "蕾丝",
-    "ribbon": "丝带", "bow": "蝴蝶结", "veil": "面纱", "mask": "面具",
-    "crown": "皇冠", "tiara": "头冠",
-    "tail": "尾巴", "wing": "翅膀", "horn": "角", "halo": "光环",
-    "piercing": "穿孔", "tattoo": "纹身", "scar": "伤疤", "cross": "十字架",
-    "shine": "光泽", "gloss": "光泽", "wet": "湿润", "sweat": "汗液",
-    "oily": "油光", "pube": "阴毛", "nipple": "乳头",
-    "penis": "阴茎", "vagina": "阴道", "anus": "肛门",
-    "makeup": "妆容", "size": "大小", "color": "颜色", "style": "样式", "type": "类型",
-    "mode": "模式", "tex": "纹理", "skin": "皮肤",
-    "alpha": "透明度", "detail": "细节",
+    "body": "韬綋", "head": "澶撮儴", "face": "闈㈤儴", "hair": "澶村彂",
+    "eye": "鐪肩潧", "ear": "鑰虫湹", "nose": "榧诲瓙", "mouth": "鍢村反",
+    "lip": "鍢村攪", "tongue": "鑸屽ご", "neck": "鑴栧瓙", "chest": "鑳搁儴",
+    "breast": "鑳搁儴", "bust": "鑳搁儴", "back": "鑳岄儴", "shoulder": "鑲╄唨",
+    "arm": "鎵嬭噦", "hand": "鎵?, "finger": "鎵嬫寚", "nail": "鎸囩敳",
+    "waist": "鑵伴儴", "hip": "鑷€閮?, "butt": "鑷€閮?, "leg": "鑵?,
+    "thigh": "澶ц吙", "knee": "鑶濈洊", "calf": "灏忚吙", "foot": "鑴?,
+    "ankle": "鑴氳笣", "wrist": "鎵嬭厱",
+    "top": "涓婅。", "front": "鍓嶄晶", "bottom": "涓嬭", "pantie": "鍐呰￥", "bra": "鑳哥僵",
+    "waitao": "澶栧", "qunzi": "瑁欏瓙", "siwa": "涓濊", "yanjing": "鐪奸暅", "xiongxing": "鑳稿瀷", "diaodai": "鍚婂甫",
+    "shirt": "琛～", "blouse": "涓婅。", "jacket": "澶栧", "coat": "澶栧",
+    "vest": "鑳屽績", "sweater": "姣涜。", "hoodie": "杩炲附琛?,
+    "dress": "杩炶。瑁?, "skirt": "瑁欏瓙", "pants": "瑁ゅ瓙", "short": "鐭￥",
+    "tight": "绱ц韩", "legging": " leggings", "stocking": "涓濊",
+    "sock": "琚滃瓙", "shoe": "闉嬪瓙", "boot": "闈村瓙", "sandal": "鍑夐瀷",
+    "slipper": "鎷栭瀷", "glove": "鎵嬪", "hat": "甯藉瓙", "cap": "甯藉瓙",
+    "hood": "鍏滃附", "belt": "鑵板甫", "collar": "棰嗗瓙", "necklace": "椤归摼",
+    "choker": "椤瑰湀", "ring": "鎴掓寚", "earring": "鑰崇幆", "bracelet": "鎵嬮摼",
+    "garter": "鍚婅甯?, "strap": "甯﹀瓙", "lace": "钑句笣",
+    "ribbon": "涓濆甫", "bow": "铦磋澏缁?, "veil": "闈㈢罕", "mask": "闈㈠叿",
+    "crown": "鐨囧啝", "tiara": "澶村啝",
+    "tail": "灏惧反", "wing": "缈呰唨", "horn": "瑙?, "halo": "鍏夌幆",
+    "piercing": "绌垮瓟", "tattoo": "绾硅韩", "scar": "浼ょ枻", "cross": "鍗佸瓧鏋?,
+    "shine": "鍏夋辰", "gloss": "鍏夋辰", "wet": "婀挎鼎", "sweat": "姹楁恫",
+    "oily": "娌瑰厜", "pube": "闃存瘺", "nipple": "涔冲ご",
+    "penis": "闃磋寧", "vagina": "闃撮亾", "anus": "鑲涢棬",
+    "makeup": "濡嗗", "size": "澶у皬", "color": "棰滆壊", "style": "鏍峰紡", "type": "绫诲瀷",
+    "mode": "妯″紡", "tex": "绾圭悊", "skin": "鐨偆",
+    "alpha": "閫忔槑搴?, "detail": "缁嗚妭",
 }
 
 
 def split_var(name: str) -> list:
-    """将变量名拆分为有意义的小写词条"""
-    # 去除常见前缀
+    """灏嗗彉閲忓悕鎷嗗垎涓烘湁鎰忎箟鐨勫皬鍐欒瘝鏉?""
+    # 鍘婚櫎甯歌鍓嶇紑
     for prefix in ["swapvar_", "swap_", "var_", "tex_"]:
         if name.startswith(prefix):
             name = name[len(prefix):]
@@ -240,34 +444,96 @@ def split_var(name: str) -> list:
     return re.findall(r"[a-z]+", name, re.IGNORECASE)
 
 
-def guess_chinese(var_name: str) -> str:
-    v = var_name.lower()
+def strip_var_prefix(name: str) -> str:
+    name = name.lower()
     for prefix in ["swapvar_", "swap_", "var_", "tex_"]:
-        if v.startswith(prefix):
-            v = v[len(prefix):]
-            break
+        if name.startswith(prefix):
+            return name[len(prefix):]
+    return name
 
-    # 1. 精确匹配
+
+def split_known_terms(text: str) -> list:
+    keys = sorted(set(PINYIN_MAP) | set(VAR_GLOSSARY) | set(FALLBACK), key=len, reverse=True)
+    result = []
+    i = 0
+    while i < len(text):
+        if not text[i].isalpha():
+            i += 1
+            continue
+        hit = ""
+        for key in keys:
+            if text.startswith(key, i):
+                hit = key
+                break
+        if hit:
+            result.append(hit)
+            i += len(hit)
+        else:
+            j = i + 1
+            while j < len(text) and text[j].isalpha() and not any(text.startswith(k, j) for k in keys):
+                j += 1
+            result.append(text[i:j])
+            i = j
+    return result
+
+
+def query_pinyin_translation(var_name: str) -> str:
+    v = strip_var_prefix(var_name)
+    if v in AMBIGUOUS_PINYIN_TRANSLATIONS:
+        return AMBIGUOUS_PINYIN_TRANSLATIONS[v]
     if v in VAR_GLOSSARY:
         return VAR_GLOSSARY[v]
     if v in PINYIN_MAP:
-        return PINYIN_MAP[v] + "样式"
+        return PINYIN_MAP[v] + "鏍峰紡"
     if v in FALLBACK:
-        return FALLBACK[v] + "样式"
+        return FALLBACK[v] + "鏍峰紡"
 
-    # 2. 拆分匹配
+    tokens = [t for t in re.split(r"[_\W]+", v) if t]
+    if len(tokens) > 1 and all(t in PINYIN_MAP for t in tokens):
+        result = "".join(PINYIN_MAP[t] for t in tokens)
+        return result if result.endswith("鏍峰紡") else result + "鏍峰紡"
+
+    parts = split_known_terms(v)
+    if len(parts) > 1 and any(p in PINYIN_MAP for p in parts):
+        cn_parts = []
+        for part in parts:
+            if part in PINYIN_MAP:
+                cn_parts.append(PINYIN_MAP[part])
+            elif part in VAR_GLOSSARY:
+                cn_parts.append(VAR_GLOSSARY[part])
+            elif part in FALLBACK:
+                cn_parts.append(FALLBACK[part])
+            else:
+                return ""
+        result = "".join(cn_parts)
+        return result if result.endswith("鏍峰紡") else result + "鏍峰紡"
+    return ""
+
+
+def guess_chinese(var_name: str) -> str:
+    v = strip_var_prefix(var_name)
+
+    # 0. 鏈湴璇嶅吀浼樺厛
+    local = get_local_translation(v)
+    if local:
+        return local
+
+    # 1. 绮剧‘鍖归厤
+    if v in VAR_GLOSSARY:
+        return VAR_GLOSSARY[v]
+    if v in PINYIN_MAP:
+        return PINYIN_MAP[v] + "鏍峰紡"
+
+    # 2. 鎷嗗垎鍖归厤
     words = split_var(v)
     if not words:
         return ""
 
     cn_parts = []
     unknown = []
-    wd = load_word_dict()
     for w in words:
         wl = w.lower()
-        if wl in wd:
-            cn_parts.append(wd[wl])
-        elif wl in PINYIN_MAP:
+        if wl in PINYIN_MAP:
             cn_parts.append(PINYIN_MAP[wl])
         elif wl in VAR_GLOSSARY:
             cn_parts.append(VAR_GLOSSARY[wl])
@@ -278,17 +544,16 @@ def guess_chinese(var_name: str) -> str:
 
     if cn_parts:
         result = "".join(cn_parts)
-        if not result.endswith("样式"):
-            result += "样式"
+        if not result.endswith("鏍峰紡"):
+            result += "鏍峰紡"
         return result
 
-    # 3. 部分匹配：混合中英文（untranslated words kept as-is）
-    if unknown:
-        label = " + ".join(unknown) + "样式"
+    # 3. 閮ㄥ垎鍖归厤锛氭贩鍚堜腑鑻辨枃锛坲ntranslated words kept as-is锛?    if unknown:
+        label = " + ".join(unknown) + "鏍峰紡"
         return label
 
-    # 4. 完全无法翻译 → 用变量名本身
-    return v + "样式"
+    # 4. 瀹屽叏鏃犳硶缈昏瘧 鈫?鐢ㄥ彉閲忓悕鏈韩
+    return v + "鏍峰紡"
 
 
 from wwmi_ini_util import PERSIST_RE as PERSIST_PATTERN, KEY_SECTION_RE as KEY_SECTION, KEY_LINE_RE as KEY_LINE, VAR_LINE_RE as VAR_LINE
@@ -296,7 +561,7 @@ from wwmi_ini_util import PERSIST_RE as PERSIST_PATTERN, KEY_SECTION_RE as KEY_S
 EXISTING_COMMENT = re.compile(r"^;\s*[^\r\n]*(?:\u3010|\u6837\u5f0f)")
 
 def parse_binding(raw: str) -> tuple:
-    """解析 WWMI 绑定字符串 -> (modifiers_set, base_key)"""
+    """瑙ｆ瀽 WWMI 缁戝畾瀛楃涓?-> (modifiers_set, base_key)"""
     if not raw:
         return (set(), "")
     raw = raw.strip()
@@ -319,8 +584,7 @@ def make_comment(chinese: str, binding: str = "", values: str = "") -> str:
     if values:
         parts.append(f" \uff08{values}\uff09")
     comment = "".join(parts)
-    # 如果注释除了"; "没有有意义的内容，跳过
-    if comment.strip() in (";", "; "):
+    # 濡傛灉娉ㄩ噴闄や簡"; "娌℃湁鏈夋剰涔夌殑鍐呭锛岃烦杩?    if comment.strip() in (";", "; "):
         return ""
     return comment + "\n"
 
@@ -329,7 +593,7 @@ normalize_key = _nk
 
 
 def scan_key_sections(lines: list) -> tuple:
-    """返回 (var→(key,vals), key→var) 两个映射"""
+    """杩斿洖 (var鈫?key,vals), key鈫抳ar) 涓や釜鏄犲皠"""
     result = {}
     key_to_var = {}
     current_var = None
@@ -366,63 +630,56 @@ def scan_key_sections(lines: list) -> tuple:
     return (result, key_to_var)
 
 
-# 键盘区域编号
-REGION_MAIN = 0       # 主键盘区（数字→字母→符号）
-REGION_EDIT = 1       # 编辑控制键区
-REGION_NUMPAD = 2     # 数字键区
-REGION_FN = 3         # 功能键区
-REGION_OTHER = 4      # 其他
+# 閿洏鍖哄煙缂栧彿
+REGION_MAIN = 0       # 涓婚敭鐩樺尯锛堟暟瀛椻啋瀛楁瘝鈫掔鍙凤級
+REGION_EDIT = 1       # 缂栬緫鎺у埗閿尯
+REGION_NUMPAD = 4     # 鏁板瓧閿尯
+REGION_FN = 2         # 鍔熻兘閿尯
+REGION_OTHER = 3      # 鍏朵粬
 
-# 修饰符权重（越小越靠前）
+# 淇グ绗︽潈閲嶏紙瓒婂皬瓒婇潬鍓嶏級
 MOD_RANK = {"ctrl": 1, "alt": 2, "shift": 3}
 
-# 主键盘符号顺序（半角→全角挨着）
-MAIN_SYMBOL_ORDER = "~`！!@＠#＃$＄%％^＾&＆*＊(（)）_-－=＝+＋[【]】{｛}｝|｜\\、;；:：'＇\"＂,，<＜.。>＞/？?  "
+# 涓婚敭鐩樼鍙烽『搴忥紙鍗婅鈫掑叏瑙掓尐鐫€锛?MAIN_SYMBOL_ORDER = "~`锛?@锛?锛?锛?锛區锛?锛?锛?锛?锛塤-锛?锛?锛媅銆怾銆憑锝泒锝潀锝淺\銆?锛?锛?锛嘰"锛?锛?锛?銆?锛?锛?  "
 
-# 编辑控制键顺序
-EDIT_ORDER = {
+# 缂栬緫鎺у埗閿『搴?EDIT_ORDER = {
     "up": 0, "down": 1, "left": 2, "right": 3,
     "home": 10, "end": 11, "page up": 12, "page down": 13,
     "insert": 20, "delete": 21, "backspace": 22,
     "space": 30, "enter": 31, "tab": 32, "esc": 33,
 }
 
-# 功能键顺序
-FN_ORDER = {f"f{i}": i for i in range(1, 25)}
+# 鍔熻兘閿『搴?FN_ORDER = {f"f{i}": i for i in range(1, 25)}
 
 
 def classify_key(key: str) -> tuple:
-    """返回 (region, order)"""
+    """杩斿洖 (region, order)"""
     if not key:
         return (REGION_OTHER, 999)
 
-    # 数字键 → main区域
+    # 鏁板瓧閿?鈫?main鍖哄煙
     if key in "0123456789":
         return (REGION_MAIN, int(key))
 
-    # 字母键 → main区域
+    # 瀛楁瘝閿?鈫?main鍖哄煙
     if key.isalpha() and len(key) == 1:
         return (REGION_MAIN, 100 + (ord(key.lower()) - ord("a")))
 
-    # 主键盘符号
-    idx = MAIN_SYMBOL_ORDER.find(key)
+    # 涓婚敭鐩樼鍙?    idx = MAIN_SYMBOL_ORDER.find(key)
     if idx >= 0:
         return (REGION_MAIN, 200 + idx)
 
-    # 编辑控制键
-    if key in EDIT_ORDER:
+    # 缂栬緫鎺у埗閿?    if key in EDIT_ORDER:
         return (REGION_EDIT, EDIT_ORDER[key])
 
-    # 功能键
-    if key in FN_ORDER:
+    # 鍔熻兘閿?    if key in FN_ORDER:
         return (REGION_FN, FN_ORDER[key])
 
-    # 数字键区（numpad）
-    if key.startswith("numpad"):
+    # 鏁板瓧閿尯锛坣umpad锛?    if key.startswith("numpad"):
         num = key[len("numpad"):]
         if num.isdigit():
             return (REGION_NUMPAD, int(num))
-        # numpad 符号
+        # numpad 绗﹀彿
         sym_order = {"+": 0, "-": 1, "*": 2, "/": 3, ".": 4}
         return (REGION_NUMPAD, 100 + sym_order.get(num, 99))
 
@@ -430,26 +687,19 @@ def classify_key(key: str) -> tuple:
 
 
 def persist_sort_key(item: tuple) -> tuple:
-    """排序键：(是否组合, 修饰符权重, 区域, 区内序号)"""
+    """鎺掑簭閿細(鏄惁缁勫悎, 淇グ绗︽潈閲? 鍖哄煙, 鍖哄唴搴忓彿)"""
     var_name, persist_line, comment_line, binding, values = item
-    mods, key = parse_binding(binding)
-
-    is_combo = 1 if mods else 0
-    mod_rank = sum(MOD_RANK.get(m, 0) for m in mods)
-    region, order = classify_key(key)
-
-    return (is_combo, mod_rank, region, order)
+    return binding_sort_key(binding)
 
 
-# 中文方向箭头 → 英文
-DIR_MAP = {"↑": "up", "↓": "down", "←": "left", "→": "right"}
+# 涓枃鏂瑰悜绠ご 鈫?鑻辨枃
+DIR_MAP = {"鈫?: "up", "鈫?: "down", "鈫?: "left", "鈫?: "right"}
 
 
 def normalize_readme_key(raw: str) -> str:
-    """将说明文件中的按键描述转为标准格式
-    "ctrl + ↑" → "ctrl up"
-    "shift + →" → "shift right"
-    "ctrl+R"   → "ctrl r"
+    """灏嗚鏄庢枃浠朵腑鐨勬寜閿弿杩拌浆涓烘爣鍑嗘牸寮?    "ctrl + 鈫? 鈫?"ctrl up"
+    "shift + 鈫? 鈫?"shift right"
+    "ctrl+R"   鈫?"ctrl r"
     """
     raw = raw.strip()
     for cn, en in DIR_MAP.items():
@@ -459,26 +709,32 @@ def normalize_readme_key(raw: str) -> str:
     return normalize_key(raw)
 
 
+def read_text_with_fallback(filepath: str) -> str:
+    for enc in ("utf-8-sig", "utf-8", "gbk", "gb18030"):
+        try:
+            with open(filepath, "r", encoding=enc) as f:
+                return f.read()
+        except Exception:
+            pass
+    return ""
+
+
 def scan_readme(filepath: str) -> tuple:
-    """扫描目录及父目录下的 readme/说明 文件，返回 (var→cn, key→cn, var→src文件, key→src文件) 四种映射"""
+    """鎵弿鐩綍鍙婄埗鐩綍涓嬬殑 readme/璇存槑 鏂囦欢锛岃繑鍥?(var鈫抍n, key鈫抍n) 涓や釜鏄犲皠"""
     var_map = {}
     key_map = {}
-    var_src = {}
-    key_src = {}
     candidates = []
     base = os.path.dirname(filepath)
-    # 当前目录 + 父目录
-    for d in (base, os.path.dirname(base)):
+    # 褰撳墠鐩綍 + 鐖剁洰褰?    for d in (base, os.path.dirname(base)):
         if d == os.path.dirname(d):
-            continue  # 根目录跳过
-        try:
+            continue  # 鏍圭洰褰曡烦杩?        try:
             for fn in os.listdir(d):
                 low = fn.lower()
-                if low.startswith("说明") or "readme" in low:
+                if "璇存槑" in low or "readme" in low:
                     candidates.append(os.path.join(d, fn))
         except Exception:
             pass
-    # 去重
+    # 鍘婚噸
     seen = set()
     unique = []
     for fp in candidates:
@@ -487,71 +743,93 @@ def scan_readme(filepath: str) -> tuple:
             unique.append(fp)
     for fp in unique:
         try:
-            with open(fp, "r", encoding="utf-8") as f:
-                content = f.read()
-            # $var : / = 中文
-            for m in re.finditer(r'[＄$](\w+)\s*[:：=]\s*([^\n\r]+)', content):
-                key = m.group(1).lower()
-                if key not in var_map:
-                    var_map[key] = m.group(2).strip()
-                    var_src[key] = fp
+            content = read_text_with_fallback(fp)
+            if not content:
+                continue
+            # $var : / = 涓枃
+            for m in re.finditer(r'[锛?](\w+)\s*[:锛?]\s*([^\n\r]+)', content):
+                desc = sanitize_translation(m.group(2))
+                if desc:
+                    var_map[m.group(1).lower()] = desc
             # "key" description  (both Chinese and ASCII quotes)
-            # 只保留第一条匹配（中文说明在前），跳过后续重复
-            for m in re.finditer(r'[\u201c"]([^"\u201d]+)[\u201d"]\s*([^\n\r]+)', content):
-                key_raw = m.group(1).strip()
-                desc = m.group(2).strip()
-                if desc and key_raw:
-                    nk = normalize_readme_key(key_raw)
-                    if nk and nk not in key_map:
-                        key_map[nk] = desc
-                        key_src[nk] = fp
+            # 鍙繚鐣欑涓€鏉″尮閰嶏紙涓枃璇存槑鍦ㄥ墠锛夛紝璺宠繃鍚庣画閲嶅
+            key_patterns = [
+                r'[\u201c"]([^"\u201d]+)[\u201d"]\s*([^\n\r]+)',
+                r"['\u2018]([^'\u2019]+)['\u2019]\s*([^\n\r]+)",
+                r"^\s*([A-Za-z0-9_+ ]+)\s*[:锛?\-鈥斺€揮\s*([^\n\r]+)",
+            ]
+            for pattern in key_patterns:
+                for m in re.finditer(pattern, content, re.MULTILINE):
+                    key_raw = m.group(1).strip()
+                    desc = m.group(2).strip()
+                    if desc and key_raw:
+                        nk = normalize_readme_key(key_raw)
+                        desc = sanitize_translation(desc)
+                        if nk and desc and nk not in key_map:
+                            key_map[nk] = desc
         except Exception:
             pass
-    return (var_map, key_map, var_src, key_src)
+    return (var_map, key_map)
+
+
+def resolve_dict_translation(filepath: str, var_name: str, binding: str, readme_var: dict, readme_key: dict) -> str:
+    candidates = []
+
+    image_chinese, image_path = scan_image_translation(filepath, var_name)
+    image_chinese = sanitize_translation(image_chinese)
+    candidates.append({
+        "translation": image_chinese,
+        "source": "image",
+        "source_path": image_path,
+    })
+
+    context_chinese = sanitize_translation(readme_var.get(var_name, "") or readme_key.get(binding, ""))
+    candidates.append({
+        "translation": context_chinese,
+        "source": "file_context",
+        "source_path": filepath,
+    })
+
+    online_chinese = ""
+    pinyin_chinese = ""
+    if not image_chinese and not context_chinese:
+        pinyin_chinese = query_pinyin_translation(var_name)
+        candidates.append({
+            "translation": pinyin_chinese,
+            "source": "pinyin",
+            "source_path": __file__,
+        })
+
+    if not image_chinese and not context_chinese and not pinyin_chinese:
+        online_chinese = query_online_translation(var_name)
+        candidates.append({
+            "translation": online_chinese,
+            "source": "online_query",
+            "source_path": "https://api.mymemory.translated.net/get",
+        })
+
+    chosen = update_local_dict(var_name, candidates)
+    if chosen:
+        return chosen
+
+    builtin = guess_chinese(var_name)
+    update_local_dict(var_name, [{
+        "translation": builtin,
+        "source": "builtin" if builtin else "untranslated",
+        "source_path": __file__ if builtin else filepath,
+    }])
+    return builtin
 
 
 def process_file(filepath: str) -> int:
     if not os.path.isfile(filepath):
-        sp(f"[ERR] 文件不存在 - {os.path.basename(filepath)}")
+        sp(f"[ERR] 鏂囦欢涓嶅瓨鍦?- {os.path.basename(filepath)}")
         return -1
-    readme_var, readme_key, readme_var_src, readme_key_src = scan_readme(filepath)
+    readme_var, readme_key = scan_readme(filepath)
 
     with open(filepath, "r", encoding="utf-8") as f:
         lines = f.readlines()
     key_map, key_to_var = scan_key_sections(lines)
-
-    # 记录词典：加载并合并旧 local_dict 遗留词条
-    rec = translate_dict.load()
-    translate_dict.seed_from(rec, load_local_dict(), LOCAL_DICT)
-
-    # 图片来源（最高优先级）：扫描本文件目录下的图片映射
-    img_map = image_ocr.build_image_map(os.path.dirname(filepath))
-
-    def image_cb(key: str):
-        res = img_map.get(key.lower())
-        return (res[0], res[1]) if res else None
-
-    def file_cb(key: str, binding: str):
-        # 1) ini 说明文件里的 变量名 释义
-        if key in readme_var:
-            return (readme_var[key], readme_var_src.get(key, ""))
-        # 2) ini 说明文件里的 快捷键 释义
-        if binding and binding in readme_key:
-            return (readme_key[binding], readme_key_src.get(binding, ""))
-        # 3) 本地词典（用户手动维护的历史翻译，属文件上下文）
-        if key in load_local_dict():
-            return (load_local_dict()[key], LOCAL_DICT)
-        # 4) 词库/拆分直译（word_dict.json + 内置 MAP，属文件上下文）
-        # 排除完全没翻译成功的兜底回显（v+"样式"），避免污染词典
-        cn = guess_chinese(key)
-        if cn and cn != key.lower() + "样式":
-            return (cn, WORD_DICT)
-        return None
-
-    def online_cb(key: str):
-        cn = net_translate.translate(key)
-        # 网查来源没有"文件路径"，用固定标记表示来源
-        return (cn, "web") if cn else None
 
     blocks = []
     removed = set()
@@ -564,32 +842,22 @@ def process_file(filepath: str) -> int:
         var_name = m.group(2).lower()
 
         binding, values = key_map.get(var_name, ("", ""))
-        # 无论翻译成败都记录该 key（后续由 resolve 按来源优先级决定取值）
-        cn, src, src_path = translate_dict.resolve(
-            rec, var_name,
-            image_cb,
-            lambda k, b=binding: file_cb(k, b),
-            online_cb,
-        )
-        rec[var_name] = translate_dict.entry(cn, src, src_path)
+        chinese = resolve_dict_translation(filepath, var_name, binding, readme_var, readme_key)
 
-        # 无论能否翻译，先清理旧注释
-        if i > 0 and EXISTING_COMMENT.match(lines[i - 1].rstrip()):
+        # 鏃犺鑳藉惁缈昏瘧锛屽厛娓呯悊鏃ф敞閲?        if i > 0 and EXISTING_COMMENT.match(lines[i - 1].rstrip()):
             removed.add(i - 1)
 
-        if not cn:
-            # 旧注释已清理掉，保留原 persist 行（不添加中文注释）
+        if not chinese:
+            # 鏃ф敞閲婂凡娓呯悊鎺夛紝淇濈暀鍘?persist 琛岋紙涓嶆坊鍔犱腑鏂囨敞閲婏級
             continue
 
-        new_comment = make_comment(cn, binding, values)
+        new_comment = make_comment(chinese, binding, values)
 
         blocks.append((var_name, line, new_comment, binding, values))
         removed.add(i)
 
-    translate_dict.save(rec)
-
     if not blocks:
-        sp(f"[--] 无待翻译行或已全部注释 -> {os.path.basename(filepath)}")
+        sp(f"[--] 鏃犲緟缈昏瘧琛屾垨宸插叏閮ㄦ敞閲?-> {os.path.basename(filepath)}")
         return 0
 
     blocks.sort(key=persist_sort_key)
@@ -615,22 +883,16 @@ def process_file(filepath: str) -> int:
 
     with open(filepath, "w", encoding="utf-8") as f:
         f.writelines(output)
-    sp(f"[OK] 已翻译 {len(blocks)} 行 -> {os.path.basename(filepath)}")
+    sp(f"[OK] 宸茬炕璇?{len(blocks)} 琛?-> {os.path.basename(filepath)}")
     return len(blocks)
 
 
 def main():
     args = sys.argv[1:]
     if not args:
-        sp("用法: python translate.py <file1> [file2 ...]")
-        sp("示例: python translate.py D:\\path\\to\\Interface.ini")
+        sp("鐢ㄦ硶: python translate.py <file1> [file2 ...]")
+        sp("绀轰緥: python translate.py D:\\path\\to\\Interface.ini")
         sys.exit(1)
-    # 迁移旧 local_dict 到记录词典（幂等，只在记录词典缺词条时补）
-    legacy = load_local_dict()
-    if legacy:
-        seed = translate_dict.load()
-        translate_dict.seed_from(seed, legacy, LOCAL_DICT)
-        translate_dict.save(seed)
     for fp in args:
         process_file(fp)
 

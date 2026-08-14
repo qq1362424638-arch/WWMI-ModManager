@@ -72,16 +72,16 @@ VK_MAP = {
     "VK_OEM_2": "/", "OEM_2": "/",
     "VK_OEM_3": "`", "OEM_3": "`",
     "VK_OEM_8": "`", "OEM_8": "`",
-    "VK_NUMPAD0": "0", "NUMPAD0": "0",
-    "VK_NUMPAD1": "1", "NUMPAD1": "1",
-    "VK_NUMPAD2": "2", "NUMPAD2": "2",
-    "VK_NUMPAD3": "3", "NUMPAD3": "3",
-    "VK_NUMPAD4": "4", "NUMPAD4": "4",
-    "VK_NUMPAD5": "5", "NUMPAD5": "5",
-    "VK_NUMPAD6": "6", "NUMPAD6": "6",
-    "VK_NUMPAD7": "7", "NUMPAD7": "7",
-    "VK_NUMPAD8": "8", "NUMPAD8": "8",
-    "VK_NUMPAD9": "9", "NUMPAD9": "9",
+    "VK_NUMPAD0": "numpad0", "NUMPAD0": "numpad0",
+    "VK_NUMPAD1": "numpad1", "NUMPAD1": "numpad1",
+    "VK_NUMPAD2": "numpad2", "NUMPAD2": "numpad2",
+    "VK_NUMPAD3": "numpad3", "NUMPAD3": "numpad3",
+    "VK_NUMPAD4": "numpad4", "NUMPAD4": "numpad4",
+    "VK_NUMPAD5": "numpad5", "NUMPAD5": "numpad5",
+    "VK_NUMPAD6": "numpad6", "NUMPAD6": "numpad6",
+    "VK_NUMPAD7": "numpad7", "NUMPAD7": "numpad7",
+    "VK_NUMPAD8": "numpad8", "NUMPAD8": "numpad8",
+    "VK_NUMPAD9": "numpad9", "NUMPAD9": "numpad9",
 }
 SYM_MAP = {
     ",": "comma",
@@ -134,6 +134,70 @@ def normalize_key(raw: str) -> str:
     return " ".join(out)
 
 # ── 正则 ──
+# Hotkey display sort order. Keep this aligned with translate.py persist_sort_key.
+REGION_MAIN = 0
+REGION_EDIT = 1
+REGION_FN = 2
+REGION_OTHER = 3
+REGION_NUMPAD = 4
+
+MOD_RANK = {"ctrl": 1, "alt": 2, "shift": 3}
+MAIN_SYMBOL_ORDER = "~`!@#$%^&*()-_=+[{]}\\|;:'\",<.>/?"
+EDIT_ORDER = {
+    "up": 0, "down": 1, "left": 2, "right": 3,
+    "home": 10, "end": 11, "page up": 12, "page down": 13,
+    "insert": 20, "delete": 21, "backspace": 22,
+    "space": 30, "enter": 31, "tab": 32, "esc": 33,
+}
+FN_ORDER = {f"f{i}": i for i in range(1, 25)}
+
+def parse_binding_for_sort(raw: str) -> tuple:
+    if not raw:
+        return (set(), "")
+    raw = raw.strip().replace("+", " ")
+    mods = set()
+    keys = []
+    for token in raw.split():
+        tlow = token.lower()
+        if tlow in NO_MAP:
+            continue
+        if tlow in MOD_MAP:
+            mods.add(MOD_MAP[tlow])
+            continue
+        keys.append(token)
+    key = convert_key(" ".join(keys))
+    return (mods, key)
+
+def classify_key_for_sort(key: str) -> tuple:
+    if not key:
+        return (REGION_OTHER, 999)
+    if key in "0123456789":
+        return (REGION_MAIN, int(key))
+    if key.isalpha() and len(key) == 1:
+        return (REGION_MAIN, 100 + (ord(key.lower()) - ord("a")))
+    idx = MAIN_SYMBOL_ORDER.find(key)
+    if idx >= 0:
+        return (REGION_MAIN, 200 + idx)
+    if key in EDIT_ORDER:
+        return (REGION_EDIT, EDIT_ORDER[key])
+    if key in FN_ORDER:
+        return (REGION_FN, FN_ORDER[key])
+    if key.startswith("numpad"):
+        num = key[len("numpad"):]
+        if num.isdigit():
+            return (REGION_NUMPAD, int(num))
+        sym_order = {"+": 0, "-": 1, "*": 2, "/": 3, ".": 4}
+        return (REGION_NUMPAD, 100 + sym_order.get(num, 99))
+    return (REGION_OTHER, 990)
+
+def binding_sort_key(binding: str) -> tuple:
+    mods, key = parse_binding_for_sort(binding)
+    is_numpad = 1 if key.startswith("numpad") else 0
+    is_combo = 1 if mods else 0
+    mod_rank = sum(MOD_RANK.get(m, 0) for m in mods)
+    region, order = classify_key_for_sort(key)
+    return (is_numpad, is_combo, mod_rank, region, order, key)
+
 PERSIST_RE = re.compile(
     r"^(global\s+persist\s+\$)(\w+)(\s*=\s*(-?\d+))?", re.IGNORECASE
 )
@@ -269,6 +333,7 @@ DEBOUNCE_MS = 300  # 同一变量 300ms 内忽略重复触发
 
 def _cycle_allowed(var_name: str, filepath: str) -> bool:
     """锁内部调用（已持有 _GLOBAL_LOCK）"""
+    return True
     key = (var_name, os.path.normcase(os.path.normpath(filepath)))
     now = time.time()
     last = _debounce.get(key, 0)

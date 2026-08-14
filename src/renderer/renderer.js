@@ -60,6 +60,9 @@ const SHORTCUTS = [
 const SHORTCUT_KEY_ORDER = ['Tab', 'Tab Tab', 'Enter', 'Esc', 'F2', 'Delete', 'Ctrl+A', 'Ctrl+C', 'Ctrl+V', 'Ctrl+X', 'Ctrl+点击', 'Shift+点击']
 const THEME_STORAGE_KEY = 'wwmi-modora-theme'
 const APP_THEMES = new Set(['dark', 'light', 'pink'])
+const APP_RESTART_RIGHT_CLICK_WINDOW_MS = 3000
+let appRestartRightClickArmed = false
+let appRestartRightClickTimer = null
 
 function getSortedShortcuts() {
   const weight = (key) => {
@@ -127,6 +130,7 @@ const dom = {
   overviewTitle: $('#overviewTitle'),
   btnUpdateTools: $('#btnUpdateTools'),
   btnClearDictionary: $('#btnClearDictionary'),
+  btnClearCorrectionDictionary: $('#btnClearCorrectionDictionary'),
   btnAddOverviewSection: $('#btnAddOverviewSection'),
   // detail
   detailPage: $('#page-detail'),
@@ -168,6 +172,11 @@ function isModBusy(rel) {
 
 function getModByRel(rel) {
   return activeGroup?.mods?.find((mod) => mod.rel === rel) || null
+}
+
+function getModConfirmLabel(rel) {
+  const mod = getModByRel(rel)
+  return String(mod?.name || rel).replace(/\s+/g, ' ').trim()
 }
 
 function getEffectiveModDisabled(modOrRel) {
@@ -1625,7 +1634,8 @@ async function trashSelectedMods() {
     showToast('请等当前操作完成', 'err')
     return
   }
-  if (!confirm(`将选中的 ${rels.length} 个 mod 放入回收站。\n此操作可在系统回收站恢复，是否继续？`)) return
+  const itemList = rels.map((rel) => `- ${getModConfirmLabel(rel)}`).join('\n')
+  if (!confirm(`将以下 mod 放入回收站：\n${itemList}\n此操作可在系统回收站恢复，是否继续？`)) return
   const result = await window.api.trashMods(rels)
   if (!result.ok) {
     showToast('删除失败：' + (result.error || result.err || '未知错误'), 'err')
@@ -2130,14 +2140,13 @@ function renderDetailPanel(mod) {
         <button data-detail-action="preview" title="为当前 mod 指定预览图">指定预览图</button>
         <button data-detail-action="open" title="在资源管理器中打开当前 mod 目录">打开目录</button>
       </div>
-      <div class="detail-actions detail-danger-actions">
-        <button class="danger-action" data-detail-action="translate" title="整理并为 Interface.ini 添加中文键位说明">ini键位翻译整理</button>
-        <button class="danger-action" data-detail-action="watch" title="监听 ini 文件并按热键切换参数">ini热键监听修改</button>
-      </div>
       <div class="key-section">
         <div class="key-section-header">
           <div class="key-section-title">MOD 的按键绑定</div>
-          <button data-detail-action="keyPopup" title="打开独立置顶窗口查看按键绑定">弹窗置顶</button>
+          <div class="key-section-actions">
+            <button data-detail-action="translate" title="整理并修改 ini 热键中文说明">ini热键翻译修改</button>
+            <button data-detail-action="watch" title="打开统一置顶窗口监听并修改 ini 热键">ini热键监听修改</button>
+          </div>
         </div>
         ${keys}
       </div>
@@ -2187,7 +2196,7 @@ function renderKeyLabel(binding) {
   return `
     <span class="key-label-wrap">
       <span class="key-label">${escapeHtml(label)}</span>
-      ${showRaw ? `<span class="key-original">${escapeHtml(raw)}</span>` : ''}
+      ${showRaw ? `<button class="key-original" type="button" data-translation-raw="${escapeAttr(raw)}" data-translation-current="${escapeAttr(label)}" title="修正这个原词的翻译">${escapeHtml(raw)}</button>` : ''}
     </span>
   `
 }
@@ -2214,7 +2223,6 @@ function bindDetailPanel(mod) {
         if (result && !result.ok) showToast(result.error || '打开目录失败', 'err')
       }
       if (action === 'translate') {
-        if (!confirm('键位整理翻译会修改该 mod 的 ini，并更新中文注释。\n请确认文件可恢复，是否继续？')) return
         setModBusy(mod.rel, true)
         button.disabled = true
         const oldText = button.textContent
@@ -2234,14 +2242,32 @@ function bindDetailPanel(mod) {
         }
       }
       if (action === 'watch') {
-        if (!confirm('监听 ini 会启动脚本，并在按键触发时实时改写该 mod 的 ini。\n请确认文件可恢复，是否继续？')) return
         const result = await window.api.watchIni(mod.rel)
         if (!result.ok) showToast(result.err || '启动监听失败', 'err')
       }
       if (action === 'keyPopup') window.api.showKeyPopup({
+        rel: mod.rel,
         name: mod.name,
         keyBindings: mod.keyBindings || [],
       })
+    })
+  })
+  dom.previewName.querySelectorAll('[data-translation-raw]').forEach((button) => {
+    button.addEventListener('click', async () => {
+      const raw = button.dataset.translationRaw || ''
+      const current = button.dataset.translationCurrent || ''
+      const next = prompt(`修正「${raw}」的翻译：\n留空会删除该修正。`, current)
+      if (next === null) return
+      const result = await window.api.setTranslationCorrection(raw, next)
+      if (!result?.ok) {
+        showToast(result?.err || '保存修正失败', 'err')
+        return
+      }
+      showToast(next.trim() ? '翻译修正已保存' : '翻译修正已删除', 'ok')
+      mod.keyBindingsLoaded = false
+      mod.keyBindingsLoading = true
+      renderDetailPanel(mod)
+      loadModKeyBindings(mod, ++previewRenderToken)
     })
   })
   dom.previewName.querySelectorAll('[data-key-index]').forEach((button) => {
@@ -2725,11 +2751,11 @@ dom.btnUpdateTools.addEventListener('click', async () => {
   const originalText = dom.btnUpdateTools.textContent
   dom.btnUpdateTools.disabled = true
   try {
-    setUpdateProgress('tools', 'running', '正在更新脚本文件')
+    setUpdateProgress('tools', 'running', '正在检查内置脚本')
     const tools = await window.api.updateTools()
     if (!tools.ok) {
-      showToast(tools.error || '没有找到可更新的技能文件', 'err')
-      finishUpdateProgress('error', tools.error || '没有找到可更新的技能文件')
+      showToast(tools.error || '内置脚本检查失败', 'err')
+      finishUpdateProgress('error', tools.error || '内置脚本检查失败')
       return
     }
     setUpdateProgress('characters', 'running', '正在同步角色配置')
@@ -2738,8 +2764,8 @@ dom.btnUpdateTools.addEventListener('click', async () => {
     await loadData({ quiet: true })
     const suffix = tools.missing?.length ? `，缺少 ${tools.missing.join('、')}` : ''
     const avatarText = chars.ok ? `，头像配置 ${chars.count} 项` : `，头像配置沿用缓存 ${chars.count || 0} 项`
-    showToast(`配置已更新：脚本 ${tools.copied.length} 个文件${avatarText}${suffix}`, 'ok')
-    finishUpdateProgress('done', `完成：脚本 ${tools.copied.length} 个文件${avatarText}${suffix}`)
+    showToast(`配置已更新：内置脚本${avatarText}${suffix}`, 'ok')
+    finishUpdateProgress('done', `完成：内置脚本${avatarText}${suffix}`)
   } catch (error) {
     showToast('配置更新失败：' + error.message, 'err')
     finishUpdateProgress('error', '失败：' + error.message)
@@ -2769,6 +2795,33 @@ dom.btnClearDictionary.addEventListener('click', async () => {
   }
 })
 
+dom.btnClearCorrectionDictionary?.addEventListener('click', async () => {
+  if (!confirm('确定清空修正翻译词典？\n键位说明会重新回到本地词典或内置翻译结果。')) return
+  const originalText = dom.btnClearCorrectionDictionary.textContent
+  dom.btnClearCorrectionDictionary.disabled = true
+  dom.btnClearCorrectionDictionary.textContent = '清空中...'
+  try {
+    const result = await window.api.clearCorrectionDictionary()
+    if (!result?.ok) {
+      showToast(result?.error || '清空修正失败', 'err')
+      return
+    }
+    showToast(`修正词典已清空：${result.cleared || 0} 个词条`, 'ok')
+    const mod = getModByRel(selectedModRel)
+    if (mod) {
+      mod.keyBindingsLoaded = false
+      mod.keyBindingsLoading = true
+      renderDetailPanel(mod)
+      loadModKeyBindings(mod, ++previewRenderToken)
+    }
+  } catch (error) {
+    showToast('清空修正失败：' + error.message, 'err')
+  } finally {
+    dom.btnClearCorrectionDictionary.textContent = originalText
+    dom.btnClearCorrectionDictionary.disabled = false
+  }
+})
+
 document.addEventListener('click', (e) => {
   if (e.target?.id === 'btnAddOverviewSection') addOverviewSection()
 })
@@ -2780,6 +2833,23 @@ dom.themeSwitch?.addEventListener('click', (e) => {
 })
 
 dom.appSettings?.addEventListener('click', openSettingsModal)
+dom.appSettings?.addEventListener('contextmenu', (e) => e.preventDefault())
+dom.appSettings?.addEventListener('pointerdown', async (e) => {
+  if (e.button !== 2) return
+  e.preventDefault()
+  if (appRestartRightClickArmed) {
+    appRestartRightClickArmed = false
+    clearTimeout(appRestartRightClickTimer)
+    await window.api.appRestart()
+    return
+  }
+  appRestartRightClickArmed = true
+  showToast('再次右键星星将退出并重启', 'ok')
+  clearTimeout(appRestartRightClickTimer)
+  appRestartRightClickTimer = setTimeout(() => {
+    appRestartRightClickArmed = false
+  }, APP_RESTART_RIGHT_CLICK_WINDOW_MS)
+})
 dom.closeSettings?.addEventListener('click', closeSettingsModal)
 dom.settingsModal?.addEventListener('click', (e) => {
   if (e.target === dom.settingsModal) closeSettingsModal()
