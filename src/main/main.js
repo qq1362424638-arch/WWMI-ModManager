@@ -14,6 +14,7 @@ const DEFAULT_MODS_ROOT = 'D:\\0Temp\\mingchao\\WWMI\\Mods'
 const DEFAULT_WWMI_ROOT = path.dirname(DEFAULT_MODS_ROOT)
 const CONFIG_FILE = path.join(app.getPath('userData'), 'config.json')
 const PROJECT_ASSETS_ROOT = path.join(__dirname, '..', 'assets')
+const DEFAULT_CONFIG_FILE = path.join(PROJECT_ASSETS_ROOT, 'default-config.json')
 const APP_ICON_FILE = path.join(PROJECT_ASSETS_ROOT, 'app-icon.png')
 const DEFAULT_COVER_FILE = path.join(PROJECT_ASSETS_ROOT, 'default.png')
 const CHARACTER_AVATAR_DIR = path.join(PROJECT_ASSETS_ROOT, 'character-avatars')
@@ -110,11 +111,27 @@ const MODORA_OFFICIAL_CHARACTER_ASSETS = {
     names: ['Yangyang Xuanling', 'YangyangXuanling', 'yangyangxuanling', '秧秧·玄翎', '秧秧玄翎'],
   },
 }
+const MODORA_ROSTER_CHARACTER_ASSETS = [
+  // 来源：MODORA Preview renderer/assets/index-*.js 内的 Gp 清单，文件名显式记录，禁止按角色数组下标推断。
+  ['roster-01.jpg', 'Danjin', '丹瑾'], ['roster-02.jpg', 'Rebecca', '丽贝卡'], ['roster-03.jpg', 'Qiuyuan', '仇远'], ['roster-04.jpg', 'Lingyang', '凌阳'],
+  ['roster-05.jpg', 'Chisa', '千咲'], ['roster-06.jpg', 'Buling', '卜灵'], ['roster-07.jpg', 'Calcharo', '卡卡罗'], ['roster-08.jpg', 'Cartethyia', '卡提希娅'],
+  ['roster-09.jpg', 'Yinlin', '吟霖'], ['roster-10.jpg', 'Galbrena', '嘉贝莉娜'], ['roster-11.jpg', 'Ciaccona', '夏空'], ['roster-12.jpg', 'Augusta', '奥古斯塔'],
+  ['roster-13.jpg', 'Encore', '安可'], ['roster-14.jpg', 'Iuno', '尤诺'], ['roster-15.jpg', 'Brant', '布兰特'], ['roster-16.jpg', 'Phrolova', '弗洛洛'],
+  ['roster-17.jpg', 'Hsin', '心'], ['roster-18.jpg', 'Jiyan', '忌炎'], ['roster-19.jpg', 'Zhezhi', '折枝'], ['roster-20.jpg', 'Sanhua', '散华'],
+  ['roster-21.jpg', 'Jingran', '景燃'], ['roster-22.jpg', 'Taoqi', '桃祈'], ['roster-23.jpg', 'Roccia', '洛可可'], ['roster-24.jpg', 'Lucilla', '洛瑟菈'],
+  ['roster-25.jpg', 'Qingxiao', '清宵'], ['roster-26.jpg', 'Yuanwu', '渊武'], ['roster-27.jpg', 'Lumi', '灯灯'], ['roster-28.jpg', 'Chixia', '炽霞'],
+  ['roster-29.jpg', 'Aemeath', '爱弥斯'], ['roster-30.jpg', 'Carlotta', '珂莱塔'], ['roster-31.jpg', 'Lynae', '琳奈'], ['roster-32.jpg', 'Baizhi', '白芷'],
+  ['roster-33.jpg', 'Xiangli Yao', '相里要'], ['roster-34.jpg', 'Aalto', '秋水'], ['roster-35.jpg', 'Yangyang', '秧秧'], ['roster-36.jpg', 'Yangyang Xuanling', '秧秧·玄翎'],
+  ['roster-37.jpg', 'Suisui', '穗穗'], ['roster-38.jpg', 'Hiyuki', '绯雪'], ['roster-39.jpg', 'Verina', '维里奈'], ['roster-40.jpg', 'Mornye', '莫宁'],
+  ['roster-41.jpg', 'Mortefi', '莫特斐'], ['roster-42.jpg', 'Phoebe', '菲比'], ['roster-43.jpg', 'Sigrika', '西格莉卡'], ['roster-44.jpg', 'Zani', '赞妮'],
+  ['roster-45.jpg', 'Denia', '达妮娅'], ['roster-46.jpg', 'Youhu', '釉瑚'], ['roster-47.jpg', 'Jianxin', '鉴心'], ['roster-48.jpg', 'Suoming', '锁暝'],
+  ['roster-49.jpg', 'Changli', '长离'], ['roster-50.jpg', 'Luuk Herssen', '陆·赫斯'], ['roster-51.jpg', 'Lupa', '露帕'], ['roster-52.jpg', 'Lucy', '露西'],
+]
 const CHARACTER_AVATAR_ALIASES = {
   Phrolova: ['Floro', 'floro', '弗洛洛'],
   'Luuk Herssen': ['Luuk', 'luukherssen', '陆·赫斯', '陆赫斯'],
 }
-const PLACEHOLDER_ASSET_KEYS = new Set(['qingxiao', 'staytuned'])
+const PLACEHOLDER_ASSET_KEYS = new Set(['staytuned'])
 const ASSET_ROOTS = [
   path.join(JASM_WUWA_ROOT, 'Images'),
   JASM_ASSETS_ROOT,
@@ -263,6 +280,20 @@ function getReferenceCharacterImagePath(dirName) {
   return assetImageUrlToPath(getReferenceCharacterImage(dirName))
 }
 
+function getCharacterAvatarFilePath(dirName) {
+  const keys = [dirName, getChineseName(dirName)]
+  for (const key of keys) {
+    const base = safeAvatarFileBase(key)
+    for (const ext of ['.png', '.jpg', '.jpeg', '.webp', '.gif']) {
+      const filePath = path.join(CHARACTER_AVATAR_DIR, `${base}${ext}`)
+      if (imageFileExists(filePath) && isLikelyAvatarFile(filePath)) return filePath
+      const userPath = path.join(USER_CHARACTER_AVATAR_DIR, `${base}${ext}`)
+      if (imageFileExists(userPath) && isLikelyAvatarFile(userPath)) return userPath
+    }
+  }
+  return null
+}
+
 async function getWritableCharacterAvatarDir() {
   try {
     await fsp.mkdir(CHARACTER_AVATAR_DIR, { recursive: true })
@@ -281,6 +312,10 @@ async function copyCharacterAvatar(sourcePath, cacheKey) {
   if (!isLikelyAvatarFile(sourcePath)) return null
   const avatarDir = await getWritableCharacterAvatarDir()
   const ext = getImageExtensionFromPath(sourcePath, '.png')
+  for (const existingExt of ['.png', '.jpg', '.jpeg', '.webp', '.gif']) {
+    if (existingExt === ext) continue
+    await fsp.rm(path.join(avatarDir, `${safeAvatarFileBase(cacheKey)}${existingExt}`), { force: true })
+  }
   const dest = path.join(avatarDir, `${safeAvatarFileBase(cacheKey)}${ext}`)
   await fsp.copyFile(sourcePath, dest)
   return toAssetImageUrl(dest)
@@ -299,6 +334,35 @@ async function downloadCharacterAvatar(url, cacheKey) {
   return toAssetImageUrl(dest)
 }
 
+async function syncModoraRosterAvatars() {
+  let copied = 0
+  const syncedNames = new Set()
+  for (const [file, englishName, chineseName] of MODORA_ROSTER_CHARACTER_ASSETS) {
+    const imagePath = path.join(MODORA_RENDERER_ROOT, 'characters', 'roster', file)
+    if (!imageFileExists(imagePath) || !isLikelyAvatarFile(imagePath)) continue
+    try {
+      const avatarUrl = await copyCharacterAvatar(imagePath, englishName)
+      if (!avatarUrl) continue
+      characterAvatarCache[englishName] = avatarUrl
+      characterAvatarCache[chineseName] = avatarUrl
+      syncedNames.add(normalizeAssetKey(englishName))
+      syncedNames.add(normalizeAssetKey(chineseName))
+      copied++
+    } catch (error) {
+      console.error('复制 MODORA 角色头像失败:', englishName, error.message)
+    }
+  }
+  wuwaCharacterAssets = null
+  return { copied, syncedNames }
+}
+
+function hasUsableAvatarForNames(names) {
+  return names.some((name) => {
+    const avatar = characterAvatarCache[name]
+    return !!avatar && isLikelyAvatarUrl(avatar)
+  })
+}
+
 // 浠?Encore API 鑾峰彇瑙掕壊澶村儚
 async function fetchCharacterAvatars(force = false) {
   if (force) {
@@ -307,6 +371,8 @@ async function fetchCharacterAvatars(force = false) {
   }
   if (characterDataLoaded) return { ok: true, count: Object.keys(characterAvatarCache).length, cached: true }
   try {
+    const modora = await syncModoraRosterAvatars()
+    saveConfig()
     const response = await fetch('https://api-v2.encore.moe/api/en/character?v=Beta')
     if (!response.ok) throw new Error(`API request failed: ${response.status}`)
     const data = await response.json()
@@ -316,16 +382,8 @@ async function fetchCharacterAvatars(force = false) {
       const names = getAvatarCacheNames(item)
       if (!names.length) continue
       if (names.some((name) => PLACEHOLDER_ASSET_KEYS.has(normalizeAssetKey(name)))) continue
+      if (names.some((name) => modora.syncedNames.has(normalizeAssetKey(name))) || hasUsableAvatarForNames(names)) continue
       let avatarUrl = null
-      const localPath = names.map(getReferenceCharacterImagePath).find(Boolean)
-      if (localPath) {
-        try {
-          avatarUrl = await copyCharacterAvatar(localPath, names[0])
-          if (avatarUrl) localCount++
-        } catch (error) {
-          console.error('复制本地角色头像失败:', item.Name, error.message)
-        }
-      }
       if (!avatarUrl && item.RoleHeadIcon) {
         try {
           avatarUrl = await downloadCharacterAvatar(item.RoleHeadIcon, names[0])
@@ -340,7 +398,7 @@ async function fetchCharacterAvatars(force = false) {
     }
     characterDataLoaded = true
     saveConfig()
-    return { ok: true, count: Object.keys(characterAvatarCache).length, local: localCount, remote: remoteCount }
+    return { ok: true, count: Object.keys(characterAvatarCache).length, local: localCount, remote: remoteCount, modora: modora.copied }
   } catch (e) {
     console.error('鑾峰彇瑙掕壊澶村儚澶辫触:', e.message)
     return { ok: Object.keys(characterAvatarCache).length > 0, count: Object.keys(characterAvatarCache).length, error: e.message }
@@ -350,6 +408,8 @@ async function fetchCharacterAvatars(force = false) {
 // 鑾峰彇瑙掕壊澶村儚URL
 function getCharacterAvatar(dirName) {
   if (PLACEHOLDER_ASSET_KEYS.has(normalizeAssetKey(dirName))) return null
+  const localPath = getCharacterAvatarFilePath(dirName)
+  if (localPath) return toAssetImageUrl(localPath)
   // 鐩存帴鍖归厤
   if (characterAvatarCache[dirName] && isLikelyAvatarUrl(characterAvatarCache[dirName])) return characterAvatarCache[dirName]
   // 蹇界暐澶у皬鍐?
@@ -657,8 +717,16 @@ let appTheme = 'light'
 
 // ---------- 閰嶇疆鎸佷箙鍖?----------
 function loadConfig() {
+  let raw = {}
   try {
-    const raw = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'))
+    raw = JSON.parse(fs.readFileSync(DEFAULT_CONFIG_FILE, 'utf8'))
+  } catch {}
+  let userConfig = {}
+  try {
+    userConfig = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'))
+  } catch {}
+  raw = { ...raw, ...userConfig, sortOrder: { ...(raw.sortOrder || {}), ...(userConfig.sortOrder || {}) } }
+  try {
     if (raw.modsRoot) MODS_ROOT = raw.modsRoot
     if (raw.wwmiRoot) WWMI_ROOT = raw.wwmiRoot
     if (raw.detailViewMode === 'list' || raw.detailViewMode === 'card') detailViewMode = raw.detailViewMode
@@ -835,12 +903,25 @@ function normalizeFrameworkIsolationSession(value) {
   if (!value || typeof value !== 'object') return null
   const d3dxPath = typeof value.d3dxPath === 'string' ? value.d3dxPath : ''
   const originalIncludeBlock = typeof value.originalIncludeBlock === 'string' ? value.originalIncludeBlock : ''
-  const targetOrderKey = typeof value.targetOrderKey === 'string' ? normalizeOrderKey(value.targetOrderKey) : ''
-  const targetRel = typeof value.targetRel === 'string' ? value.targetRel : ''
-  const targetName = typeof value.targetName === 'string' ? value.targetName : ''
-  const targetIncludePath = typeof value.targetIncludePath === 'string' ? value.targetIncludePath : ''
-  if (!d3dxPath || !originalIncludeBlock || !targetOrderKey) return null
-  return { d3dxPath, originalIncludeBlock, targetOrderKey, targetRel, targetName, targetIncludePath }
+  const legacyTarget = typeof value.targetOrderKey === 'string'
+    ? [{
+        targetOrderKey: normalizeOrderKey(value.targetOrderKey),
+        targetRel: typeof value.targetRel === 'string' ? value.targetRel : '',
+        targetName: typeof value.targetName === 'string' ? value.targetName : '',
+        targetIncludePath: typeof value.targetIncludePath === 'string' ? value.targetIncludePath : '',
+      }]
+    : []
+  const targets = (Array.isArray(value.targets) ? value.targets : legacyTarget)
+    .map((target) => ({
+      targetOrderKey: typeof target?.targetOrderKey === 'string' ? normalizeOrderKey(target.targetOrderKey) : '',
+      targetRel: typeof target?.targetRel === 'string' ? target.targetRel : '',
+      targetName: typeof target?.targetName === 'string' ? target.targetName : '',
+      targetIncludePath: typeof target?.targetIncludePath === 'string' ? target.targetIncludePath : '',
+    }))
+    .filter((target) => target.targetOrderKey && target.targetIncludePath)
+    .filter((target, index, list) => list.findIndex((item) => item.targetOrderKey === target.targetOrderKey) === index)
+  if (!d3dxPath || !originalIncludeBlock || !targets.length) return null
+  return { d3dxPath, originalIncludeBlock, targets }
 }
 
 function applyOverviewMeta(group) {
@@ -898,6 +979,20 @@ async function scanCategory(categoryName) {
   const result = []
   const isIni = (f) => /\.ini$/i.test(f) && !/\.bak$/i.test(f) && !/\.BAK$/i.test(f)
 
+  async function containsIni(dir) {
+    let entries
+    try {
+      entries = await fsp.readdir(dir, { withFileTypes: true })
+    } catch {
+      return false
+    }
+    if (entries.some((entry) => entry.isFile() && isIni(entry.name))) return true
+    for (const entry of entries) {
+      if (entry.isDirectory() && await containsIni(path.join(dir, entry.name))) return true
+    }
+    return false
+  }
+
   async function collect(dir, groupPath, isCategoryRoot = false) {
     let entries
     try {
@@ -911,6 +1006,17 @@ async function scanCategory(categoryName) {
     if (files.some(isIni)) {
       result.push(await makeModEntry(categoryName, dir, groupPath, files))
       return
+    }
+
+    if (!isCategoryRoot && dirs.length >= 2) {
+      const childModDirs = []
+      for (const d of dirs) {
+        if (await containsIni(path.join(dir, d))) childModDirs.push(d)
+      }
+      if (childModDirs.length === dirs.length) {
+        result.push({ ...await makeModEntry(categoryName, dir, groupPath, files), wrap: true })
+        return
+      }
     }
 
     const hasShell = files.some((f) => f.toLowerCase().startsWith('.jasm_modconfig')) ||
@@ -1829,8 +1935,8 @@ async function buildOverviewGroups() {
         const mods = await scanCategory(path.join(entry.name, subEntry.name))
         const groupDir = path.join(dirPath, subEntry.name)
         const manualPreview = findLocalCoverSync(groupDir)
-        const artwork = getReferenceCharacterImage(subEntry.name)
         const avatar = getCharacterAvatar(subEntry.name)
+        const artwork = avatar || getReferenceCharacterImage(subEntry.name)
         const cover = manualPreview || artwork || (mods.length > 0 ? avatar : null)
         return {
           name: subEntry.name,
@@ -1846,7 +1952,7 @@ async function buildOverviewGroups() {
       }))
       const missingGroups = Array.from(getReferenceCharacterDirs(), ([dirName, avatar]) => {
         if (existingCharacterDirs.has(dirName)) return null
-        const artwork = getReferenceCharacterImage(dirName)
+        const artwork = avatar || getReferenceCharacterImage(dirName)
         return {
           name: dirName,
           chineseName: getChineseName(dirName),
@@ -2073,10 +2179,18 @@ function setModTagList(groupPath, tags, renames = {}, colors = {}, globals = [],
   const requestedGlobals = Array.from(new Set(normalizeOrderList(globals).map(normalizeModTagText).filter((tag) => tag !== DEFAULT_MOD_TAG && allowed.has(tag))))
   const explicitDeletedGlobals = new Set(normalizeOrderList(deletedGlobals).map(normalizeModTagText).filter((tag) => tag !== DEFAULT_MOD_TAG))
   const previousGroupOrder = getGroupTagOrder(groupKey)
-  const requestCoveredGlobals = previousGlobals.every((tag) => previousGroupOrder.includes(tag) && allowed.has(tag))
+  const normalizedRenames = {}
+  for (const [from, to] of Object.entries(renames || {})) {
+    const fromTag = normalizeModTagText(from)
+    const toTag = normalizeModTagText(to)
+    if (fromTag && toTag && fromTag !== toTag) normalizedRenames[fromTag] = toTag
+  }
+  const renamedPreviousGlobals = previousGlobals.map((tag) => normalizedRenames[tag] || tag)
+  const renamedPreviousGroupOrder = previousGroupOrder.map((tag) => normalizedRenames[tag] || tag)
+  const requestCoveredGlobals = renamedPreviousGlobals.every((tag) => renamedPreviousGroupOrder.includes(tag) && allowed.has(tag))
   const nextGlobals = requestCoveredGlobals
     ? requestedGlobals.filter((tag) => !explicitDeletedGlobals.has(tag))
-    : Array.from(new Set([...previousGlobals.filter((tag) => !explicitDeletedGlobals.has(tag)), ...requestedGlobals]))
+    : Array.from(new Set([...renamedPreviousGlobals.filter((tag) => !explicitDeletedGlobals.has(tag)), ...requestedGlobals]))
   const globalRenameSources = new Set(previousGlobals)
   const groupTags = modTags[groupKey] || {}
   for (const key of Object.keys(groupTags)) {
@@ -2646,6 +2760,30 @@ function launchWatcherProcess(target, eventFile, stopFile, stopToken) {
   return { ok: true }
 }
 
+function stopKeyWatchProcess(processToStop = keyWatchProcess) {
+  if (!processToStop || processToStop.killed) return
+  try {
+    processToStop.kill()
+  } catch {
+    // stop file cleanup remains as a fallback
+  }
+}
+
+function stopKeyWatchPid(pid) {
+  if (process.platform !== 'win32') return
+  const value = Number(pid)
+  if (!Number.isInteger(value) || value <= 0 || value === process.pid) return
+  try {
+    spawnSync('taskkill.exe', ['/PID', String(value), '/T', '/F'], {
+      windowsHide: true,
+      stdio: 'ignore',
+      timeout: 3000,
+    })
+  } catch {
+    // process kill is best-effort; the stop token remains as a fallback
+  }
+}
+
 function runPythonScript(script, targets) {
   ensurePythonToolCompatibility()
   const runner = findPythonRunner()
@@ -2860,17 +2998,54 @@ async function chooseMoveTarget() {
   return res.filePaths[0]
 }
 
+async function resolveArchiveContainer(source) {
+  const parent = path.dirname(source)
+  const parentName = path.basename(parent)
+  if (!parentName || parent === path.dirname(parent)) return source
+  let entries
+  try {
+    entries = await fsp.readdir(parent, { withFileTypes: true })
+  } catch {
+    return source
+  }
+  const hasDirectIni = entries.some((entry) => entry.isFile() && /\.ini$/i.test(entry.name) && !/\.bak$/i.test(entry.name))
+  const childDirs = entries.filter((entry) => entry.isDirectory() && !entry.name.startsWith('.'))
+  if (hasDirectIni || childDirs.length !== 1 || childDirs[0].name !== path.basename(source)) return source
+
+  const archivePattern = new RegExp(`^${parentName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\.(zip|7z|rar)$`, 'i')
+  try {
+    const siblings = await fsp.readdir(path.dirname(parent), { withFileTypes: true })
+    if (siblings.some((entry) => entry.isFile() && archivePattern.test(entry.name))) return parent
+  } catch {}
+  return source
+}
+
 async function moveMods(rels, targetDir) {
   const moved = []
+  const movedRels = []
+  const skipped = []
+  const moves = []
   for (const rel of normalizeOrderList(rels)) {
-    const source = path.join(MODS_ROOT, rel)
+    const source = await resolveArchiveContainer(path.join(MODS_ROOT, rel))
     if (!isInsideRoot(path.resolve(source), path.resolve(MODS_ROOT))) continue
     const dest = path.join(targetDir, path.basename(source))
-    if (fs.existsSync(dest)) throw new Error(`鐩爣宸插瓨鍦細${path.basename(dest)}`)
+    if (fs.existsSync(dest)) {
+      skipped.push(path.basename(source))
+      continue
+    }
     await fsp.rename(source, dest)
     moved.push(rel)
+    const newRel = isInsideRoot(path.resolve(dest), path.resolve(MODS_ROOT))
+      ? path.relative(MODS_ROOT, dest).replace(/\\/g, '/')
+      : ''
+    moves.push({
+      oldRel: path.relative(MODS_ROOT, source).replace(/\\/g, '/'),
+      newRel,
+    })
+    if (newRel) movedRels.push(newRel)
   }
-  return { ok: true, moved: moved.length }
+  await updateFrameworkIsolationAfterMove(moves)
+  return { ok: true, moved: moved.length, movedRels, skipped }
 }
 
 async function chooseSourceDirs() {
@@ -2893,7 +3068,8 @@ async function moveDirectoryLike(source, targetDir) {
   const sameParent = path.resolve(path.dirname(resolvedSource)).toLowerCase() === resolvedTarget.toLowerCase()
   if (sameParent) return false
 
-  const dest = uniqueDestination(targetDir, path.basename(source))
+  const dest = path.join(targetDir, path.basename(source))
+  if (fs.existsSync(dest)) return false
   try {
     await fsp.rename(source, dest)
   } catch (error) {
@@ -2909,14 +3085,32 @@ async function moveSourceDirs(targetGroupPath, sourceDirs) {
   if (!isInsideRoot(path.resolve(targetDir), path.resolve(MODS_ROOT))) throw new Error('Invalid target')
   await fsp.mkdir(targetDir, { recursive: true })
   let moved = 0
+  const movedRels = []
+  const skipped = []
+  const moves = []
   for (const source of normalizeOrderList(sourceDirs)) {
-    const resolved = path.resolve(source)
+    const resolved = await resolveArchiveContainer(path.resolve(source))
     if (!fs.existsSync(resolved)) continue
-    const next = uniqueDestination(targetDir, path.basename(resolved))
+    const next = path.join(targetDir, path.basename(resolved))
     if (path.resolve(next).toLowerCase() === resolved.toLowerCase()) continue
-    if (await moveDirectoryLike(resolved, targetDir)) moved++
+    if (fs.existsSync(next)) {
+      skipped.push(path.basename(resolved))
+      continue
+    }
+    if (await moveDirectoryLike(resolved, targetDir)) {
+      moved++
+      const newRel = path.relative(MODS_ROOT, next).replace(/\\/g, '/')
+      movedRels.push(newRel)
+      if (isInsideRoot(resolved, path.resolve(MODS_ROOT))) {
+        moves.push({
+          oldRel: path.relative(MODS_ROOT, resolved).replace(/\\/g, '/'),
+          newRel,
+        })
+      }
+    }
   }
-  return { ok: true, moved }
+  await updateFrameworkIsolationAfterMove(moves)
+  return { ok: true, moved, movedRels, skipped }
 }
 
 function uniqueDestination(parent, baseName) {
@@ -2935,6 +3129,7 @@ async function pasteMods(rels, targetGroupPath, mode) {
   if (!isInsideRoot(path.resolve(targetDir), path.resolve(MODS_ROOT))) throw new Error('Invalid target')
   await fsp.mkdir(targetDir, { recursive: true })
   let changed = 0
+  const moves = []
   for (const rel of normalizeOrderList(rels)) {
     const source = path.join(MODS_ROOT, rel)
     if (!isInsideRoot(path.resolve(source), path.resolve(MODS_ROOT))) continue
@@ -2942,10 +3137,18 @@ async function pasteMods(rels, targetGroupPath, mode) {
     const sameParent = path.resolve(path.dirname(source)).toLowerCase() === path.resolve(targetDir).toLowerCase()
     if (mode === 'cut' && sameParent) continue
     const dest = uniqueDestination(targetDir, path.basename(source))
-    if (mode === 'cut') await fsp.rename(source, dest)
-    else await fsp.cp(source, dest, { recursive: true, force: false, errorOnExist: true })
+    if (mode === 'cut') {
+      await fsp.rename(source, dest)
+      moves.push({
+        oldRel: rel,
+        newRel: path.relative(MODS_ROOT, dest).replace(/\\/g, '/'),
+      })
+    } else {
+      await fsp.cp(source, dest, { recursive: true, force: false, errorOnExist: true })
+    }
     changed++
   }
+  if (moves.length) await updateFrameworkIsolationAfterMove(moves)
   return { ok: true, mode: mode === 'cut' ? 'cut' : 'copy', changed }
 }
 
@@ -2979,13 +3182,15 @@ function getIncludeSectionRange(lines) {
   return { start, end }
 }
 
-function makeIsolatedIncludeBlock(originalBlock, targetIncludePath) {
+function makeIsolatedIncludeBlock(originalBlock, targetIncludePaths) {
   const lines = originalBlock.split(/\r?\n/)
   const includeLines = lines.filter((line) => /^\s*include\s*=/i.test(line) && !/^\s*;/.test(line))
   const excludeLines = lines.filter((line) => /^\s*exclude_recursive\s*=/i.test(line) && !/^\s*;/.test(line))
   const block = ['[Include]']
   for (const line of includeLines) block.push(line)
-  block.push(`include_recursive = ${targetIncludePath}`)
+  for (const targetIncludePath of targetIncludePaths) {
+    block.push(`include_recursive = ${targetIncludePath}`)
+  }
   if (excludeLines.length) {
     for (const line of excludeLines) block.push(line)
   } else {
@@ -3007,25 +3212,89 @@ function replaceIncludeBlock(text, nextBlock) {
 
 function getFrameworkIsolationState() {
   if (!frameworkIsolationSession) return { active: false }
+  const targets = frameworkIsolationSession.targets || []
   return {
     active: true,
-    targetOrderKey: frameworkIsolationSession.targetOrderKey,
-    targetRel: frameworkIsolationSession.targetRel,
-    targetName: frameworkIsolationSession.targetName,
-    targetIncludePath: frameworkIsolationSession.targetIncludePath,
+    targets,
+    targetOrderKey: targets[0]?.targetOrderKey || '',
+    targetRel: targets[0]?.targetRel || '',
+    targetName: targets[0]?.targetName || '',
+    targetIncludePath: targets[0]?.targetIncludePath || '',
     d3dxPath: frameworkIsolationSession.d3dxPath,
   }
 }
 
-async function startFrameworkIsolation(rel) {
-  const groupPath = getModGroupPath(rel)
-  const mods = await scanCategory(groupPath)
-  const targetKey = stripDisabledRel(rel)
-  let target = mods.find((mod) => mod.orderKey === targetKey)
-  if (!target) return { ok: false, error: '未找到目标 Mod，请刷新后重试' }
+async function updateFrameworkIsolationAfterMove(moves = []) {
+  if (!frameworkIsolationSession || !moves.length) return
+  const session = frameworkIsolationSession
+  if (!fs.existsSync(session.d3dxPath)) return
+  const d3dxDir = path.dirname(session.d3dxPath)
+  const targets = []
+  for (const target of session.targets || []) {
+    let nextRel = target.targetRel
+    for (const move of moves) {
+      const oldRel = normalizeOrderKey(move.oldRel).toLowerCase()
+      const targetRel = normalizeOrderKey(nextRel).toLowerCase()
+      if (targetRel === oldRel) {
+        nextRel = move.newRel || ''
+        break
+      }
+      if (oldRel && targetRel.startsWith(`${oldRel}/`)) {
+        nextRel = move.newRel ? `${move.newRel}/${targetRel.slice(oldRel.length + 1)}` : ''
+        break
+      }
+    }
+    if (!nextRel) continue
+    targets.push({
+      ...target,
+      targetRel: nextRel,
+      targetOrderKey: stripDisabledRel(nextRel),
+      targetIncludePath: path.relative(d3dxDir, path.join(MODS_ROOT, nextRel)).replace(/\//g, '\\'),
+    })
+  }
+  const text = await fsp.readFile(session.d3dxPath, 'utf8')
+  if (!targets.length) {
+    await fsp.writeFile(session.d3dxPath, replaceIncludeBlock(text, session.originalIncludeBlock), 'utf8')
+    frameworkIsolationSession = null
+  } else {
+    await fsp.writeFile(session.d3dxPath, replaceIncludeBlock(text, makeIsolatedIncludeBlock(session.originalIncludeBlock, targets.map((item) => item.targetIncludePath))), 'utf8')
+    frameworkIsolationSession = { ...session, targets }
+  }
+  saveConfig()
+  sendF10()
+}
 
-  if (target.disabled) return { ok: false, error: '请先开启该 mod，再进行框架隔离' }
-  const targetDir = path.join(MODS_ROOT, target.rel)
+async function resetD3dxDefaultModDirectory() {
+  const d3dxPath = findD3dxIniPath()
+  if (!d3dxPath) return { ok: false, error: '未找到 d3dx.ini' }
+  if (frameworkIsolationSession) {
+    const ended = await endFrameworkIsolation()
+    if (!ended.ok) return ended
+  }
+  const text = await fsp.readFile(d3dxPath, 'utf8')
+  const lines = text.split(/\r?\n/)
+  const range = getIncludeSectionRange(lines)
+  if (!range) return { ok: false, error: 'd3dx.ini 中未找到 [Include] 段' }
+  const currentIncludeBlock = lines.slice(range.start, range.end).join('\n')
+  const defaultIncludePath = path.relative(path.dirname(d3dxPath), MODS_ROOT).replace(/\//g, '\\')
+  await fsp.writeFile(d3dxPath, replaceIncludeBlock(text, makeIsolatedIncludeBlock(currentIncludeBlock, [defaultIncludePath])), 'utf8')
+  sendF10()
+  return { ok: true }
+}
+
+async function startFrameworkIsolation(rels) {
+  const requestedRels = normalizeOrderList(Array.isArray(rels) ? rels : [rels])
+  if (!requestedRels.length) return { ok: false, error: '未选择目标 Mod' }
+  const targets = []
+  for (const rel of requestedRels) {
+    const groupPath = getModGroupPath(rel)
+    const mods = await scanCategory(groupPath)
+    const targetKey = stripDisabledRel(rel)
+    const target = mods.find((mod) => mod.orderKey === targetKey)
+    if (!target) return { ok: false, error: '未找到目标 Mod，请刷新后重试' }
+    if (target.disabled) return { ok: false, error: `请先开启「${target.name}」` }
+    targets.push(target)
+  }
 
   const d3dxPath = findD3dxIniPath()
   if (!d3dxPath) return { ok: false, error: '未找到可改写的 d3dx.ini，无法使用框架侧隔离' }
@@ -3036,10 +3305,22 @@ async function startFrameworkIsolation(rel) {
   if (!range) return { ok: false, error: 'd3dx.ini 中未找到 [Include] 段' }
 
   const currentIncludeBlock = lines.slice(range.start, range.end).join('\n')
-  const targetIncludePath = path.relative(d3dxDir, targetDir).replace(/\//g, '\\')
   const session = frameworkIsolationSession
   const originalIncludeBlock = session?.originalIncludeBlock || currentIncludeBlock
-  const nextBlock = makeIsolatedIncludeBlock(originalIncludeBlock, targetIncludePath)
+  const existingTargets = session?.targets || []
+  const nextTargets = [...existingTargets]
+  for (const target of targets) {
+    const targetIncludePath = path.relative(d3dxDir, path.join(MODS_ROOT, target.rel)).replace(/\//g, '\\')
+    if (!nextTargets.some((item) => item.targetOrderKey === target.orderKey)) {
+      nextTargets.push({
+        targetOrderKey: target.orderKey,
+        targetRel: target.rel,
+        targetName: target.name,
+        targetIncludePath,
+      })
+    }
+  }
+  const nextBlock = makeIsolatedIncludeBlock(originalIncludeBlock, nextTargets.map((item) => item.targetIncludePath))
   const nextText = replaceIncludeBlock(originalText, nextBlock)
 
   if (!session) {
@@ -3048,21 +3329,14 @@ async function startFrameworkIsolation(rel) {
     frameworkIsolationSession = {
       d3dxPath,
       originalIncludeBlock,
-      targetOrderKey: target.orderKey,
-      targetRel: target.rel,
-      targetName: target.name,
-      targetIncludePath,
+      targets: nextTargets,
     }
   } else {
     if (session.d3dxPath !== d3dxPath) return { ok: false, error: '当前隔离会话对应的 d3dx.ini 已变化，请先结束后重试' }
-    if (session.targetOrderKey === target.orderKey) return { ok: true, state: getFrameworkIsolationState() }
     await fsp.writeFile(d3dxPath, nextText, 'utf8')
     frameworkIsolationSession = {
       ...session,
-      targetOrderKey: target.orderKey,
-      targetRel: target.rel,
-      targetName: target.name,
-      targetIncludePath,
+      targets: nextTargets,
     }
   }
   saveConfig()
@@ -3071,10 +3345,23 @@ async function startFrameworkIsolation(rel) {
   return { ok: true, state: getFrameworkIsolationState() }
 }
 
-async function endFrameworkIsolation() {
+async function endFrameworkIsolation(rels = []) {
   if (!frameworkIsolationSession) return { ok: false, error: '当前没有隔离调试会话' }
   const session = frameworkIsolationSession
   if (!fs.existsSync(session.d3dxPath)) return { ok: false, error: 'd3dx.ini 不存在，无法自动恢复' }
+  const removeKeys = new Set(normalizeOrderList(Array.isArray(rels) ? rels : [rels]).map(stripDisabledRel))
+  if (removeKeys.size) {
+    const targets = (session.targets || []).filter((target) => !removeKeys.has(target.targetOrderKey))
+    if (targets.length) {
+      const text = await fsp.readFile(session.d3dxPath, 'utf8')
+      const nextText = replaceIncludeBlock(text, makeIsolatedIncludeBlock(session.originalIncludeBlock, targets.map((item) => item.targetIncludePath)))
+      await fsp.writeFile(session.d3dxPath, nextText, 'utf8')
+      frameworkIsolationSession = { ...session, targets }
+      saveConfig()
+      sendF10()
+      return { ok: true, state: getFrameworkIsolationState() }
+    }
+  }
   const text = await fsp.readFile(session.d3dxPath, 'utf8')
   const nextText = replaceIncludeBlock(text, session.originalIncludeBlock)
   await fsp.writeFile(session.d3dxPath, nextText, 'utf8')
@@ -3297,8 +3584,9 @@ function registerIpc() {
     })
   })
   ipcMain.handle('frameworkIsolation:get', () => getFrameworkIsolationState())
-  ipcMain.handle('frameworkIsolation:start', async (_e, rel) => withModOperationLock(rel, async () => startFrameworkIsolation(rel)))
-  ipcMain.handle('frameworkIsolation:end', async () => endFrameworkIsolation())
+  ipcMain.handle('frameworkIsolation:resetDefault', () => resetD3dxDefaultModDirectory())
+  ipcMain.handle('frameworkIsolation:start', async (_e, rels) => withModOperationLocks(Array.isArray(rels) ? rels : [rels], async () => startFrameworkIsolation(rels)))
+  ipcMain.handle('frameworkIsolation:end', async (_e, rels) => endFrameworkIsolation(rels))
   ipcMain.handle('mods:rename', async (_e, rel, name, groupPath) => {
     return withModOperationLock(rel, async () => {
       const result = await renameMod(rel, name, groupPath)
@@ -3775,14 +4063,22 @@ function findKeyWatchRowByEvent(event) {
   return row || null
 }
 
-function syncKeyWatchRowsFromIni(countExternalChange = false) {
+function syncKeyWatchRowsFromIni(countExternalChange = false, handledRows = new Set()) {
   if (!keyWatchState?.rows?.length) return
   for (const row of keyWatchState.rows) {
     const value = readIniPersistValue(row.absFile, row.varName)
     if (!value || String(value) === String(row.currentValue || '')) continue
     row.currentValue = String(value)
-    if (countExternalChange) row.triggerCount = (row.triggerCount || 0) + 1
+    if (countExternalChange && !handledRows.has(row.id)) row.triggerCount = (row.triggerCount || 0) + 1
   }
+}
+
+function syncKeyWatchRowFromIni(row) {
+  if (!row) return ''
+  const value = readIniPersistValue(row.absFile, row.varName)
+  if (!value) return ''
+  row.currentValue = String(value)
+  return row.currentValue
 }
 
 function writeUtf8FileFlushed(file, text) {
@@ -3922,7 +4218,7 @@ function pollKeyWatchEvents() {
   }
   const lines = text.split(/\r?\n/)
   const completeLineCount = text ? (/\r?\n$/.test(text) ? lines.length - 1 : lines.length) : 0
-  let handledChange = false
+  const handledRows = new Set()
   for (let i = keyWatchState.eventLineIndex || 0; i < completeLineCount; i += 1) {
     const line = lines[i].trim()
     if (!line) continue
@@ -3935,6 +4231,7 @@ function pollKeyWatchEvents() {
     if (event.type === 'error') keyWatchState.error = event.message || '监听失败'
     if (event.type === 'ready') {
       keyWatchState.listening = true
+      keyWatchState.watcherPid = Number(event.pid) || 0
       keyWatchState.error = event.failed ? `部分热键注册失败：${event.failed}` : ''
       continue
     }
@@ -3952,12 +4249,16 @@ function pollKeyWatchEvents() {
     if (event.type !== 'change') continue
     const row = findKeyWatchRowByEvent(event)
     if (!row) continue
-    row.currentValue = String(event.value ?? '')
+    const actualValue = syncKeyWatchRowFromIni(row)
+    if (!actualValue) {
+      keyWatchState.error = `无法读取 ${row.varName} 的 ini 当前值`
+      continue
+    }
     row.triggerCount = (row.triggerCount || 0) + 1
-    handledChange = true
+    handledRows.add(row.id)
   }
   keyWatchState.eventLineIndex = completeLineCount
-  syncKeyWatchRowsFromIni(!handledChange)
+  syncKeyWatchRowsFromIni(true, handledRows)
   if (keyWatchState.launched && !keyWatchState.listening && !keyWatchState.error && Date.now() - (keyWatchState.startedAt || 0) > 8000) {
     keyWatchState.error = '监听启动超时'
   }
@@ -3969,6 +4270,10 @@ function closeKeyWatchWindow(cancelPendingOpen = true) {
     clearInterval(keyWatchPoller)
     keyWatchPoller = null
   }
+  const processToStop = keyWatchProcess
+  keyWatchProcess = null
+  stopKeyWatchProcess(processToStop)
+  stopKeyWatchPid(keyWatchState?.watcherPid)
   if (keyWatchState?.stopFile) {
     try {
       fs.writeFileSync(keyWatchState.stopFile, keyWatchState.stopToken || String(Date.now()), 'utf8')
@@ -3977,7 +4282,6 @@ function closeKeyWatchWindow(cancelPendingOpen = true) {
     }
   }
   stopStaleKeyWatchSessions()
-  keyWatchProcess = null
   if (keyWatchWindow && !keyWatchWindow.isDestroyed()) keyWatchWindow.close()
   keyWatchWindow = null
   keyWatchState = null
@@ -3995,7 +4299,8 @@ async function resetKeyWatchRow(rowId) {
       const reload = await triggerGameReload()
       if (!reload?.ok) return { ok: true, reload }
     }
-    row.currentValue = row.initialValue
+    const actualValue = syncKeyWatchRowFromIni(row)
+    if (actualValue !== String(row.initialValue)) return { ok: false, err: '还原后界面与 ini 文件不一致' }
     row.triggerCount = 0
     return { ok: true }
   } catch (err) {
@@ -4015,11 +4320,13 @@ async function setKeyWatchRowValue(rowId, value) {
     if (!applied.ok) {
       if (!setIniPersistValue(row.absFile, row.varName, nextValue)) return { ok: false, err: applied.err || '修改失败' }
       if (!await waitForIniPersistValue(row.absFile, row.varName, nextValue)) return { ok: false, err: '修改后配置未落盘' }
-      row.currentValue = nextValue
+      const actualValue = syncKeyWatchRowFromIni(row)
+      if (actualValue !== nextValue) return { ok: false, err: '修改后界面与 ini 文件不一致' }
       const reload = await triggerGameReload()
       if (!reload?.ok) return { ok: true, reload }
     }
-    row.currentValue = nextValue
+    const actualValue = syncKeyWatchRowFromIni(row)
+    if (actualValue !== nextValue) return { ok: false, err: '修改后界面与 ini 文件不一致' }
     row.triggerCount = previousCount + 1
     return { ok: true }
   } catch (err) {
@@ -4091,6 +4398,7 @@ async function showKeyWatchWindow(rel, payload = {}) {
     failedHotkeys: [],
     listening: false,
     launched: false,
+    watcherPid: 0,
     startedAt: Date.now(),
     error: rows.length ? '' : '未找到可监听 Key 绑定',
     reloadStatus: '',
@@ -4250,12 +4558,29 @@ render();
   })
   keyWatchWindow.setAlwaysOnTop(true, 'screen-saver')
   positionPopupLeftCenter(keyWatchWindow, popupWidth, popupHeight)
-  keyWatchWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html))
   const createdWindow = keyWatchWindow
+  const loaded = new Promise((resolve) => {
+    let settled = false
+    const finish = (result) => {
+      if (settled) return
+      settled = true
+      resolve(result)
+    }
+    createdWindow.webContents.once('did-finish-load', () => finish({ ok: true }))
+    createdWindow.webContents.once('did-fail-load', (_event, errorCode, errorDescription) => {
+      finish({ ok: false, err: errorDescription || `监听界面加载失败：${errorCode}` })
+    })
+  })
+  createdWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html))
   keyWatchWindow.on('closed', () => {
     if (keyWatchWindow !== createdWindow) return
     closeKeyWatchWindow()
   })
+  const result = await loaded
+  if (!result.ok) {
+    if (!createdWindow.isDestroyed()) createdWindow.close()
+    return result
+  }
   return { ok: true }
 }
 

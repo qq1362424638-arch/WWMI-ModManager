@@ -55,6 +55,11 @@ const CHARACTER_MAP = {
   'Rebecca': '丽贝卡',
   'Lucy': '露西',
   'Suisui': '穗穗',
+  'Jingran': '景燃',
+  'Qingxiao': '清宵',
+  'Suoming': '锁暝',
+  'Hsin': '心',
+  'Xiankong': '夏空',
   'Yangyang Xuanling': '秧秧·玄翎',
   'YangyangXuanling': '秧秧·玄翎',
   // 常见目录名映射（mod目录可能用不同名称）
@@ -110,6 +115,11 @@ const CHARACTER_MAP = {
   'rebecca': '丽贝卡',
   'lucy': '露西',
   'suisui': '穗穗',
+  'jingran': '景燃',
+  'qingxiao': '清宵',
+  'suoming': '锁暝',
+  'hsin': '心',
+  'xiankong': '夏空',
   // 联动角色
   'yangyangxuanling': '秧秧·玄翎',
 }
