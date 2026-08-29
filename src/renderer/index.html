@@ -36,7 +36,8 @@
       <div class="overview-toolbar">
         <div class="search-shell overview-search-shell">
           <input id="search" class="search-field" type="text" placeholder="Tab 搜当前页" title="Tab 搜当前页" autocomplete="off" />
-          <button id="overviewConflictSearch" class="detail-global-search" type="button" title="F2 开启冲突筛选" aria-pressed="false">冲突</button>
+          <button id="overviewMovedSearch" class="detail-global-search" type="button" title="开启移动筛选" aria-pressed="false">有移动</button>
+          <button id="overviewConflictSearch" class="detail-global-search" type="button" title="F2 开启冲突筛选" aria-pressed="false">有冲突</button>
         </div>
         <button id="btnAddOverviewSection" class="btn btn-ghost" title="新建一级目录分组">新建分组</button>
         <button id="btnUpdateTools" class="btn btn-ghost" title="更新脚本、角色名称、头像与缓存配置">更新配置</button>
@@ -76,6 +77,7 @@
         <button id="btnFlatten" class="btn btn-ghost" title="将当前目录内嵌套的 mod 平整到同一级">平整目录</button>
         <button id="btnBatchMove" class="btn btn-ghost" title="批量选择文件夹并移入当前目录">批量移入</button>
         <button id="btnRefreshb" class="btn btn-ghost" title="重新扫描当前目录并刷新界面">刷新</button>
+        <button id="btnSendF10" class="btn btn-ghost" title="向游戏发送 F10 并切到游戏">发送F10</button>
         <button id="btnBack" class="btn-back" title="返回一级界面，快捷键 Esc">← 返回</button>
       </div>
     </header>
@@ -132,6 +134,15 @@
         <div class="settings-field settings-danger-field">
           <div class="settings-field-head">
             <div>
+              <div class="settings-label">d3dx.ini 默认 MOD 目录</div>
+              <div class="settings-path">恢复 [Include] 为默认 Mods 目录，并关闭框架隔离</div>
+            </div>
+            <button id="btnResetD3dxDefault" class="btn btn-ghost" type="button">重置</button>
+          </div>
+        </div>
+        <div class="settings-field settings-danger-field">
+          <div class="settings-field-head">
+            <div>
               <div class="settings-label">修正翻译词典</div>
               <div class="settings-path">优先于网络词典，用于覆盖键位说明翻译</div>
             </div>
@@ -163,16 +174,19 @@
     </div>
     <div id="updateProgressSteps" class="update-progress-steps"></div>
   </div>
-  <button id="frameworkIsolationNotice" class="framework-isolation-notice hidden" type="button" title="点击跳转到正在调试的 mod">
+  <div id="frameworkIsolationNotice" class="framework-isolation-notice framework-isolation-notice-collapsed hidden" role="status">
     <div class="framework-isolation-notice-head">
-      <div>
-        <div class="framework-isolation-notice-title">框架隔离调试中</div>
-        <div id="frameworkIsolationNoticeText" class="framework-isolation-notice-text">点击跳转到调试项</div>
+      <div class="framework-isolation-notice-heading">
+        <button id="frameworkIsolationNoticeToggle" class="framework-isolation-notice-toggle" type="button" title="展开调试项" aria-label="展开调试项" aria-expanded="false">展开</button>
+        <div class="framework-isolation-notice-heading-text">
+          <div id="frameworkIsolationNoticeTitle" class="framework-isolation-notice-title">框架隔离调试中</div>
+        </div>
       </div>
-      <div class="framework-isolation-notice-action">跳转</div>
+      <button id="frameworkIsolationNoticeClose" class="framework-isolation-notice-action" type="button">关闭全部</button>
     </div>
+    <div id="frameworkIsolationNoticeList" class="framework-isolation-notice-list"></div>
     <div class="framework-isolation-notice-bar"></div>
-  </button>
+  </div>
 
   <script src="renderer.js"></script>
 </body>

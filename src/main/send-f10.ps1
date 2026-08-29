@@ -1,5 +1,6 @@
 param(
-    [string]$Combo = 'Ctrl+Alt+F10'
+    [string]$Combo = 'Ctrl+Alt+F10',
+    [switch]$StayOnGame
 )
 
 $ErrorActionPreference = 'Stop'
@@ -92,7 +93,7 @@ function Resolve-Vk([string]$token) {
 }
 
 function Parse-Combo([string]$combo) {
-    $tokens = $combo -split '\+' | ForEach-Object { $_.Trim() } | Where-Object { $_ }
+    $tokens = $combo -split '\s*\+\s*|\s+' | ForEach-Object { $_.Trim() } | Where-Object { $_ }
     if (-not $tokens) { throw 'Empty key combo' }
     $modifiers = New-Object System.Collections.Generic.List[int]
     $key = $null
@@ -159,7 +160,7 @@ Start-Sleep -Milliseconds 100
 $sent = Send-ComboInput $Combo
 Start-Sleep -Milliseconds 80
 
-if ($previous -ne [IntPtr]::Zero) { [void][Native]::SetForegroundWindow($previous) }
+if (-not $StayOnGame -and $previous -ne [IntPtr]::Zero) { [void][Native]::SetForegroundWindow($previous) }
 if ($gameThread -ne 0) { [void][Native]::AttachThreadInput($currentThread, $gameThread, $false) }
 if ($previousThread -ne 0) { [void][Native]::AttachThreadInput($currentThread, $previousThread, $false) }
 

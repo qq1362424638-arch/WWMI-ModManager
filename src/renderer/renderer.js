@@ -11,6 +11,7 @@ let overviewSections = []
 let activeGroup = null // 当前选中的目录组（进入 detail 时设置）
 let searchTerm = ''
 let overviewConflictSearch = false
+let overviewMovedSearch = false
 let detailSearchTerm = ''
 let detailSearchGlobal = false
 let activeTagOrder = ['默认']
@@ -24,6 +25,7 @@ let lastSelectedRel = null
 let contextMenuRel = null
 let overviewContextPath = null
 let modClipboard = null
+const movedModRels = new Set()
 let overviewDraggedPath = null
 let overviewDraggedSectionId = null
 let frameworkIsolation = { active: false }
@@ -44,6 +46,20 @@ let dataLoadQueued = false
 let loadingMessage = ''
 let lastDetailTabAt = 0
 const SEARCH_HINT = 'Tab 搜当前页'
+
+function normalizeMovedModRel(rel) {
+  return String(rel || '')
+    .replace(/[\\/]+/g, '/')
+    .replace(/^\.\/+/, '')
+    .split('/')
+    .map((part) => {
+      let value = part
+      while (/^DISABLED_/i.test(value)) value = value.slice('DISABLED_'.length)
+      return value
+    })
+    .join('/')
+    .toLowerCase()
+}
 
 const SHORTCUTS = [
   { key: 'Ctrl+C', scope: '二级', desc: '复制所选 mod' },
@@ -121,6 +137,7 @@ const dom = {
   closeSettings: $('#btnCloseSettings'),
   settingsModsPath: $('#settingsModsPath'),
   settingsWwmiPath: $('#settingsWwmiPath'),
+  btnResetD3dxDefault: $('#btnResetD3dxDefault'),
   btnChooseModsRoot: $('#btnChooseModsRoot'),
   btnChooseWwmiRoot: $('#btnChooseWwmiRoot'),
   themeSwitch: $('#themeSwitch'),
@@ -133,6 +150,7 @@ const dom = {
   overviewEmpty: $('#overviewEmpty'),
   search: $('#search'),
   overviewConflictSearch: $('#overviewConflictSearch'),
+  overviewMovedSearch: $('#overviewMovedSearch'),
   btnRefresh: $('#btnRefresh'),
   overviewTitle: $('#overviewTitle'),
   btnUpdateTools: $('#btnUpdateTools'),
@@ -164,13 +182,18 @@ const dom = {
   updateProgressFill: $('#updateProgressFill'),
   updateProgressSteps: $('#updateProgressSteps'),
   frameworkIsolationNotice: $('#frameworkIsolationNotice'),
+  frameworkIsolationNoticeTitle: $('#frameworkIsolationNoticeTitle'),
   frameworkIsolationNoticeText: $('#frameworkIsolationNoticeText'),
+  frameworkIsolationNoticeList: $('#frameworkIsolationNoticeList'),
+  frameworkIsolationNoticeToggle: $('#frameworkIsolationNoticeToggle'),
+  frameworkIsolationNoticeClose: $('#frameworkIsolationNoticeClose'),
   btnListView: $('#btnListView'),
   btnCardView: $('#btnCardView'),
   btnBatchMove: $('#btnBatchMove'),
   btnFlatten: $('#btnFlatten'),
   btnTagManager: $('#btnTagManager'),
   btnRefreshb: $('#btnRefreshb'),
+  btnSendF10: $('#btnSendF10'),
   toast: $('#toast'),
 }
 
@@ -414,6 +437,14 @@ const TAG_COLOR_PALETTE = [
   { bg: '#ffe9ef', border: '#f08aaa', text: '#6a1d38' },
   { bg: '#eef3dc', border: '#a8c65a', text: '#3d4f10' },
   { bg: '#f3ece8', border: '#c59a85', text: '#563324' },
+  { bg: '#eaf0ff', border: '#8fa9ef', text: '#263b72' },
+  { bg: '#f0eaff', border: '#b18ae8', text: '#4a2674' },
+  { bg: '#e8f5ff', border: '#70b8e8', text: '#17486b' },
+  { bg: '#fff4e5', border: '#e0a85f', text: '#70400e' },
+  { bg: '#f0f7e8', border: '#9fc66c', text: '#3d5b18' },
+  { bg: '#ffeef5', border: '#e59abb', text: '#742b4a' },
+  { bg: '#eaf8f2', border: '#73c5a2', text: '#1f6046' },
+  { bg: '#f6edf0', border: '#cf9eaf', text: '#623547' },
 ]
 
 function normalizeTagColor(value) {
@@ -431,6 +462,64 @@ function getRandomTagColor(excludeColors = {}) {
   const candidates = TAG_COLOR_PALETTE.filter((color) => !used.has(color.bg.toLowerCase()))
   const pool = candidates.length ? candidates : TAG_COLOR_PALETTE
   return { ...pool[Math.floor(Math.random() * pool.length)] }
+}
+
+function getTagColorDistance(first, second) {
+  const parse = (value) => {
+    const hex = String(value || '').replace('#', '')
+    return [0, 2, 4].map((offset) => parseInt(hex.slice(offset, offset + 2), 16))
+  }
+  const a = parse(first)
+  const b = parse(second)
+  return Math.sqrt(a.reduce((sum, value, index) => sum + (value - b[index]) ** 2, 0))
+}
+
+function hslToHex(hue, saturation, lightness) {
+  const s = saturation / 100
+  const l = lightness / 100
+  const chroma = (1 - Math.abs(2 * l - 1)) * s
+  const segment = hue / 60
+  const x = chroma * (1 - Math.abs((segment % 2) - 1))
+  const [r1, g1, b1] = segment < 1
+    ? [chroma, x, 0]
+    : segment < 2
+      ? [x, chroma, 0]
+      : segment < 3
+        ? [0, chroma, x]
+        : segment < 4
+          ? [0, x, chroma]
+          : segment < 5
+            ? [x, 0, chroma]
+            : [chroma, 0, x]
+  const match = l - (chroma / 2)
+  return `#${[r1, g1, b1].map((value) => Math.round((value + match) * 255).toString(16).padStart(2, '0')).join('')}`
+}
+
+function getUniqueRandomTagColor(excludeColors = {}) {
+  const used = Object.values(excludeColors || {}).map(normalizeTagColor).filter(Boolean)
+  const usedValues = new Set(used.map((color) => color.bg.toLowerCase()))
+  const candidates = []
+  const paletteValues = new Set(TAG_COLOR_PALETTE.map((color) => color.bg.toLowerCase()))
+  for (let index = 0; index < 96; index++) {
+    const hue = Math.floor(Math.random() * 360)
+    const background = hslToHex(hue, 72, 87)
+    if (usedValues.has(background) || paletteValues.has(background)) continue
+    candidates.push({
+      bg: background,
+      border: hslToHex(hue, 64, 62),
+      text: hslToHex(hue, 55, 28),
+    })
+  }
+  if (!candidates.length) return null
+  if (!used.length) return candidates[0]
+
+  const scored = candidates.map((color) => ({
+    color,
+    distance: Math.min(...used.map((item) => getTagColorDistance(color.bg, item.bg))),
+  }))
+  const maxDistance = Math.max(...scored.map((item) => item.distance))
+  const best = scored.filter((item) => item.distance >= maxDistance - 18)
+  return { ...best[Math.floor(Math.random() * best.length)].color }
 }
 
 function getTagStyleFromColor(color) {
@@ -510,9 +599,10 @@ function hideAppTooltip() {
 }
 
 function applyFrameworkIsolationUi() {
+  const targetRels = new Set((frameworkIsolation?.targets || []).map((target) => target.targetRel))
   dom.modList.querySelectorAll('.mod-item').forEach((item) => {
     const rel = item.dataset.rel
-    const focused = !!frameworkIsolation?.active && frameworkIsolation.targetRel === rel
+    const focused = !!frameworkIsolation?.active && targetRels.has(rel)
     item.classList.toggle('framework-isolation-target', focused)
     item.classList.remove('isolation-blocked')
     item.querySelectorAll('.mod-check, .btn-lock').forEach((el) => {
@@ -522,17 +612,20 @@ function applyFrameworkIsolationUi() {
 }
 
 function isFrameworkIsolationTarget(rel) {
-  return !!frameworkIsolation?.active && frameworkIsolation.targetRel === rel
+  return !!frameworkIsolation?.active && (frameworkIsolation.targets || []).some((target) => target.targetRel === rel)
 }
 
 function getFrameworkIsolationTargetInfo() {
   if (!frameworkIsolation?.active) return null
-  const targetKey = frameworkIsolation.targetOrderKey || getClientModOrderKey(frameworkIsolation.targetRel)
+  const targetKeys = new Set((frameworkIsolation.targets || []).map((target) => target.targetOrderKey))
+  if (!targetKeys.size && frameworkIsolation.targetOrderKey) targetKeys.add(frameworkIsolation.targetOrderKey)
+  const matches = []
   for (const group of overviewGroups || []) {
-    const mod = (group.mods || []).find((item) => item.rel === frameworkIsolation.targetRel || item.orderKey === targetKey)
-    if (mod) return { group, mod }
+    const mods = (group.mods || []).filter((item) => targetKeys.has(item.orderKey) || item.rel === frameworkIsolation.targetRel)
+    matches.push(...mods.map((mod) => ({ group, mod })))
   }
-  return null
+  if (!matches.length) return null
+  return { group: matches[0].group, mods: matches.map((item) => item.mod), entries: matches }
 }
 
 function updateFrameworkIsolationNotice() {
@@ -540,10 +633,25 @@ function updateFrameworkIsolationNotice() {
   const info = getFrameworkIsolationTargetInfo()
   dom.frameworkIsolationNotice.classList.toggle('hidden', !info)
   if (!info) return
-  const groupName = info.group.chineseName || info.group.name || info.group.path || '未知目录'
-  const modName = frameworkIsolation.targetName || info.mod.name || info.mod.rel
-  dom.frameworkIsolationNoticeText.textContent = `${groupName} / ${modName}`
+  dom.frameworkIsolationNoticeTitle.textContent = `${info.entries.length} 个 MOD 框架隔离调试中`
+  dom.frameworkIsolationNoticeList.innerHTML = info.entries.map(({ group, mod }) => {
+    const groupName = group.chineseName || group.name || group.path || '未知目录'
+    return `<button class="framework-isolation-notice-row" type="button" data-isolation-rel="${escapeAttr(mod.rel)}" title="跳转到 ${escapeAttr(groupName)} / ${escapeAttr(mod.name || mod.rel)}">
+      <span class="framework-isolation-notice-row-name">${escapeHtml(groupName)} / ${escapeHtml(mod.name || mod.rel)}</span>
+      <span class="framework-isolation-notice-row-action">跳转</span>
+    </button>`
+  }).join('')
   positionFrameworkIsolationNotice()
+}
+
+function setFrameworkIsolationNoticeCollapsed(collapsed) {
+  if (!dom.frameworkIsolationNotice || !dom.frameworkIsolationNoticeToggle) return
+  dom.frameworkIsolationNotice.classList.toggle('framework-isolation-notice-collapsed', collapsed)
+  dom.frameworkIsolationNoticeToggle.textContent = collapsed ? '展开' : '折叠'
+  dom.frameworkIsolationNoticeToggle.title = collapsed ? '展开调试项' : '折叠调试项'
+  dom.frameworkIsolationNoticeToggle.setAttribute('aria-label', collapsed ? '展开调试项' : '折叠调试项')
+  dom.frameworkIsolationNoticeToggle.setAttribute('aria-expanded', String(!collapsed))
+  requestAnimationFrame(positionFrameworkIsolationNotice)
 }
 
 function positionFrameworkIsolationNotice() {
@@ -575,16 +683,18 @@ function focusModRow(rel) {
   return true
 }
 
-function jumpToFrameworkIsolationTarget() {
+function jumpToFrameworkIsolationTarget(rel = '') {
   const info = getFrameworkIsolationTargetInfo()
   if (!info) {
     showToast('未找到当前调试项，请刷新后重试', 'err')
     return
   }
-  if (!activeGroup || activeGroup.path !== info.group.path) {
-    openDetail(info.group, info.mod.rel)
+  const entry = info.entries.find((item) => item.mod.rel === rel) || info.entries[0]
+  const target = entry.mod
+  if (!activeGroup || activeGroup.path !== entry.group.path) {
+    openDetail(entry.group, target.rel)
   } else {
-    focusModRow(info.mod.rel)
+    focusModRow(target.rel)
   }
 }
 
@@ -640,6 +750,10 @@ function groupHasEnabledTagConflict(group) {
   return false
 }
 
+function groupHasMovedMod(group) {
+  return (group.mods || []).some((mod) => movedModRels.has(normalizeMovedModRel(mod.rel)))
+}
+
 function setOverviewConflictSearch(enabled, rerender = true) {
   overviewConflictSearch = !!enabled
   dom.overviewConflictSearch?.classList.toggle('active', overviewConflictSearch)
@@ -650,14 +764,28 @@ function setOverviewConflictSearch(enabled, rerender = true) {
   if (rerender && !activeGroup) renderOverview()
 }
 
+function setOverviewMovedSearch(enabled, rerender = true) {
+  overviewMovedSearch = !!enabled
+  dom.overviewMovedSearch?.classList.toggle('active', overviewMovedSearch)
+  dom.overviewMovedSearch?.setAttribute('aria-pressed', overviewMovedSearch ? 'true' : 'false')
+  const title = overviewMovedSearch ? '关闭移动筛选' : '开启移动筛选'
+  if (dom.overviewMovedSearch) dom.overviewMovedSearch.title = title
+  setSearchPlaceholder()
+  if (rerender && !activeGroup) renderOverview()
+}
+
 function renderOverview() {
   const term = normalizeSearchText(searchTerm)
+  const filterActive = overviewConflictSearch || overviewMovedSearch
   const conflictFiltered = overviewConflictSearch
     ? overviewGroups.filter(groupHasEnabledTagConflict)
     : overviewGroups
-  const filtered = term
-    ? conflictFiltered.filter((g) => getGroupSearchText(g).includes(term))
+  const movedFiltered = overviewMovedSearch
+    ? conflictFiltered.filter(groupHasMovedMod)
     : conflictFiltered
+  const filtered = term
+    ? movedFiltered.filter((g) => getGroupSearchText(g).includes(term))
+    : movedFiltered
 
   if (filtered.length === 0) {
     dom.overviewGrid.innerHTML = ''
@@ -666,8 +794,8 @@ function renderOverview() {
   }
   dom.overviewEmpty.classList.add('hidden')
 
-  dom.overviewGrid.innerHTML = getOverviewRenderSections(filtered, !!term || overviewConflictSearch).map((section) => {
-    const expanded = (!!term || overviewConflictSearch) ? section.groups.length > 0 : (!section.collapsed && section.groups.length > 0)
+  dom.overviewGrid.innerHTML = getOverviewRenderSections(filtered, !!term || filterActive).map((section) => {
+    const expanded = (!!term || filterActive) ? section.groups.length > 0 : (!section.collapsed && section.groups.length > 0)
     const header = section.showHeader
       ? `<div class="overview-section-header" data-section-id="${escapeAttr(section.id)}" draggable="${section.custom ? 'true' : 'false'}">
           <button class="section-toggle" data-section-action="toggle" title="${expanded ? '折叠分组' : '展开分组'}">${expanded ? '⌄' : '›'}</button>
@@ -679,7 +807,7 @@ function renderOverview() {
       : ''
     const cards = !expanded
       ? ''
-      : `<div class="overview-section-grid" data-section-id="${escapeAttr(section.id)}">${section.groups.map((g) => renderOverviewCard(g, !term && !overviewConflictSearch, section.id)).join('')}</div>`
+      : `<div class="overview-section-grid" data-section-id="${escapeAttr(section.id)}">${section.groups.map((g) => renderOverviewCard(g, !term && !filterActive, section.id)).join('')}</div>`
     return `<section class="overview-section">${header}${cards}</section>`
   }).join('')
 
@@ -700,7 +828,7 @@ function renderOverview() {
   })
   bindOverviewImageFallback()
   bindOverviewSectionHeaders()
-  setupOverviewDrag(!term)
+  setupOverviewDrag(!term && !filterActive)
 }
 
 function bindOverviewImageFallback() {
@@ -833,6 +961,11 @@ function bindOverviewSectionHeaders() {
 const SEARCH_ALIASES = {
   changli: ['cl'],
   yangyang: ['yy'],
+  cartethyia: ['kt', 'ktx', 'ktxy'],
+  卡提希亚: ['kt', 'ktx', 'ktxy'],
+  卡提希娅: ['kt', 'ktx', 'ktxy'],
+  卡提西娅: ['kt', 'ktx', 'ktxy'],
+  卡提西亚: ['kt', 'ktx', 'ktxy'],
 }
 
 const PINYIN_INITIALS = {
@@ -861,6 +994,10 @@ function normalizeSearchText(value) {
     .normalize('NFKC')
     .toLowerCase()
     .replace(/\s+/g, '')
+}
+
+function getSearchAliases(value) {
+  return SEARCH_ALIASES[normalizeSearchText(value)] || []
 }
 
 function getInitialSearchText(value) {
@@ -896,7 +1033,7 @@ function getGroupSearchText(group) {
     .filter(Boolean)
     .flatMap((value) => {
       const normalized = normalizeSearchText(value)
-      return [normalized, getInitialSearchText(value), ...(SEARCH_ALIASES[normalized] || [])]
+      return [normalized, getInitialSearchText(value), ...getSearchAliases(value)]
     })
   return aliases.join('|')
 }
@@ -1106,7 +1243,8 @@ async function handleBatchMove(targetPath) {
   if (!src.ok || src.canceled) return
   const result = await window.api.moveSourceDirs(targetPath, src.sources)
   if (result.ok) {
-    showToast(`已移入 ${result.moved} 个文件夹`, 'ok')
+    ;(result.movedRels || []).forEach((rel) => movedModRels.add(normalizeMovedModRel(rel)))
+    showMoveResult(result, '文件夹', '移入')
     await loadData({ quiet: true })
   } else {
     showToast('移入失败：' + result.error, 'err')
@@ -1122,7 +1260,6 @@ function openDetail(group, focusRel = null) {
   activeGlobalTags = []
   detailSearchTerm = ''
   dom.detailSearch.value = ''
-  setDetailSearchGlobal(false, false)
   selectedModRel = null
   selectedModRels.clear()
   lastSelectedRel = null
@@ -1181,6 +1318,8 @@ function setDetailSearchGlobal(enabled, rerender = true) {
 }
 
 function renderModTable() {
+  const modPane = dom.modList.closest('.detail-mods')
+  const previousScrollTop = modPane?.scrollTop || 0
   const term = normalizeSearchText(detailSearchTerm)
   if (detailSearchGlobal && term) {
     renderGlobalSearchResults(term)
@@ -1190,7 +1329,7 @@ function renderModTable() {
   dom.modList.classList.remove('hidden')
   const allMods = activeGroup.mods || []
   const mods = term
-    ? allMods.filter((mod) => getModSearchText(mod).includes(term))
+    ? allMods.filter((mod) => getModSearchText(mod, activeGroup).includes(term))
     : allMods
   if (allMods.length > 0 && mods.length === 0) {
     dom.modList.className = 'mod-list list-view'
@@ -1226,6 +1365,7 @@ function renderModTable() {
   setupModDrag()
   preloadModImages(mods)
   applyFrameworkIsolationUi()
+  if (modPane) modPane.scrollTop = previousScrollTop
 }
 
 function reconcilePendingModToggles() {
@@ -1263,12 +1403,13 @@ function stripSpecialSearchPathSegments(value, scopeGroup = activeGroup) {
     .join('/')
 }
 
-function getModSearchText(mod) {
-  return [mod.name, stripSpecialSearchPathSegments(mod.rel), stripSpecialSearchPathSegments(mod.group), getModTag(mod)]
+function getModSearchText(mod, scopeGroup = null) {
+  const groupSearchText = scopeGroup ? getGroupSearchText(scopeGroup) : ''
+  return [mod.name, stripSpecialSearchPathSegments(mod.rel), stripSpecialSearchPathSegments(mod.group), getModTag(mod), groupSearchText]
     .filter(Boolean)
     .map((value) => {
       const normalized = normalizeSearchText(value)
-      return `${normalized}|${getInitialSearchText(value)}`
+      return `${normalized}|${getInitialSearchText(value)}|${getSearchAliases(value).join('|')}`
     })
     .join('|')
 }
@@ -1355,6 +1496,7 @@ function renderModRow(m, extraClass = '') {
         <div class="mod-name" data-edit-name>${escapeHtml(m.name)}</div>
         ${group ? `<div class="mod-group">${escapeHtml(group)}</div>` : ''}
       </div>
+      ${movedModRels.has(normalizeMovedModRel(m.rel)) ? '<span class="mod-moved-marker" title="本次运行中已移动">↔</span>' : ''}
       ${renderModTag(m)}
       <button class="btn-favorite ${m.favorite ? 'favorited' : ''}" title="${m.favorite ? '取消收藏' : '收藏'}" aria-pressed="${m.favorite ? 'true' : 'false'}">${renderFavoriteIcon(m.favorite)}</button>
       <span class="mod-clipboard-marker" aria-hidden="true"></span>
@@ -1575,6 +1717,27 @@ async function openTagManager() {
   modal.className = 'text-modal'
   let savingTags = false
   let pendingTagSave = false
+  const normalizeUniqueTagRowColors = () => {
+    const used = {}
+    let available = true
+    tagRows = tagRows.map((row, index) => {
+      if (index === 0) return { ...row, color: null }
+      const current = normalizeTagColor(row.color)
+      const currentKey = current?.bg?.toLowerCase()
+      if (current && !used[currentKey]) {
+        used[currentKey] = current
+        return { ...row, color: current }
+      }
+      const next = getUniqueRandomTagColor(used)
+      if (!next) {
+        available = false
+        return row
+      }
+      used[next.bg.toLowerCase()] = next
+      return { ...row, color: next }
+    })
+    return available
+  }
   const applySavedTags = (result, renames, fallbackTags, fallbackColors) => {
     activeTagOrder = result.tags || fallbackTags
     activeTagColors = result.colors && typeof result.colors === 'object' ? result.colors : fallbackColors
@@ -1594,6 +1757,7 @@ async function openTagManager() {
         color: tag === DEFAULT_MOD_TAG ? null : (normalizeTagColor(activeTagColors[tag]) || normalizeTagColor(current?.color) || getRandomTagColor(activeTagColors)),
       }
     })
+    normalizeUniqueTagRowColors()
     sortCurrentModsByFavorite()
     renderModTable()
   }
@@ -1605,6 +1769,11 @@ async function openTagManager() {
     }
     savingTags = true
     normalizeRowsForSave()
+    if (!normalizeUniqueTagRowColors()) {
+      savingTags = false
+      showToast('颜色数量不足，无法保证每个标签颜色唯一', 'err')
+      return false
+    }
     const unique = [DEFAULT_MOD_TAG]
     for (const row of tagRows) if (row.value !== DEFAULT_MOD_TAG && !unique.includes(row.value)) unique.push(row.value)
     const renames = {}
@@ -1644,6 +1813,7 @@ async function openTagManager() {
     input.select()
   }
   const render = () => {
+    const previousScrollTop = modal.querySelector('.tag-manager-list')?.scrollTop || 0
     modal.innerHTML = `
       <div class="text-dialog tag-manager-dialog">
         <div class="tag-manager-head">
@@ -1652,30 +1822,31 @@ async function openTagManager() {
         </div>
         <div class="tag-manager-list">
           ${tagRows.map((row, index) => `
-            <div class="tag-manager-row" data-index="${index}">
-              <button class="tag-manager-drag" type="button" title="拖动排序" draggable="${index > 0 ? 'true' : 'false'}" ${index === 0 ? 'disabled' : ''}>⋮⋮</button>
-              <div class="tag-manager-color-sample" style="${escapeAttr(row.value === DEFAULT_MOD_TAG ? getTagStyle(row.value, activeGroup?.path) : getTagStyleFromColor(row.color))}"></div>
+            <div class="tag-manager-row" data-index="${index}" draggable="${index > 0 ? 'true' : 'false'}">
+              <button class="tag-manager-drag" type="button" title="拖动排序" draggable="false" ${index === 0 ? 'disabled' : ''}>⋮⋮</button>
+              <button class="tag-manager-color-sample" type="button" data-tag-action="color" title="点击更换随机颜色" ${index === 0 ? 'disabled' : ''} style="${escapeAttr(row.value === DEFAULT_MOD_TAG ? getTagStyle(row.value, activeGroup?.path) : getTagStyleFromColor(row.color))}"></button>
               <div class="tag-manager-name">
                 ${row.editing
                   ? `<input class="text-dialog-input tag-manager-input" value="${escapeAttr(row.value)}" maxlength="16" autofocus />`
                   : `<button class="tag-manager-label" type="button" ${index === 0 ? 'disabled' : ''}>${escapeHtml(row.value)}</button>`}
               </div>
-              <button class="btn btn-ghost tag-manager-color-btn" data-tag-action="color" ${index === 0 ? 'disabled' : ''}>随机颜色</button>
               <button class="btn btn-ghost" data-tag-action="edit" ${index === 0 ? 'disabled' : ''}>重命名</button>
               <button class="btn btn-ghost tag-manager-global-btn ${row.global ? 'active' : ''}" data-tag-action="global" ${index === 0 ? 'disabled' : ''}>设为全局</button>
               <button class="btn btn-ghost" data-tag-action="delete" ${index === 0 ? 'disabled' : ''}>删除</button>
             </div>
-          `).join('')}
+          `).slice(1).join('')}
           <div class="tag-manager-row tag-manager-new-row">
             <button class="tag-manager-drag" type="button" disabled>⋮⋮</button>
             <div class="tag-manager-color-sample tag-manager-new-color"></div>
             <div class="tag-manager-name">
               <input class="text-dialog-input tag-manager-new-input" value="" maxlength="16" placeholder="添加标签" />
             </div>
-            <span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span>
           </div>
         </div>
       </div>`
+    const list = modal.querySelector('.tag-manager-list')
+    if (list) list.scrollTop = previousScrollTop
     const input = modal.querySelector('.tag-manager-input')
     if (input) {
       input.focus()
@@ -1722,11 +1893,29 @@ async function openTagManager() {
     }
     if (action === 'edit' && index > 0) tagRows[index].editing = true
     if (action === 'global' && index > 0) {
+      if (tagRows[index].global && !confirm(`确定取消标签「${tagRows[index].value}」的全局属性？`)) return
       tagRows[index].global = !tagRows[index].global
       await persistTagRows(tagRows[index].global ? '已设为全局标签' : '已取消全局标签')
     }
     if (action === 'color' && index > 0) {
-      tagRows[index].color = getRandomTagColor(Object.fromEntries(tagRows.filter((item, rowIndex) => rowIndex !== index && item.color).map((item) => [item.value, item.color])))
+      const usedColors = {}
+      modal.querySelectorAll('.tag-manager-color-sample[data-tag-action="color"]').forEach((sample) => {
+        const sampleRow = sample.closest('.tag-manager-row')
+        const sampleIndex = Number(sampleRow?.dataset.index)
+        if (sampleIndex === index) return
+        const displayed = getComputedStyle(sample).getPropertyValue('--tag-bg').trim()
+        if (displayed) usedColors[`displayed-${sampleIndex}`] = { bg: displayed, border: displayed, text: displayed }
+      })
+      tagRows.forEach((item, rowIndex) => {
+        if (rowIndex !== index && item.color) usedColors[`row-${rowIndex}`] = item.color
+      })
+      usedColors.__current = tagRows[index].color
+      const nextColor = getUniqueRandomTagColor(usedColors)
+      if (!nextColor) {
+        showToast('没有可用的未重复颜色', 'err')
+        return
+      }
+      tagRows[index].color = nextColor
       await persistTagRows('颜色已保存')
     }
     render()
@@ -1741,15 +1930,6 @@ async function openTagManager() {
     e.preventDefault()
     focusNewTagInput()
   }, true)
-  modal.addEventListener('dblclick', (e) => {
-    const label = e.target.closest('.tag-manager-label')
-    const row = label?.closest('.tag-manager-row')
-    const index = Number(row?.dataset.index)
-    if (!label || index <= 0) return
-    syncRows()
-    tagRows[index].editing = true
-    render()
-  })
   modal.addEventListener('focusout', (e) => {
     const isEditInput = e.target.classList.contains('tag-manager-input')
     const isNewInput = e.target.classList.contains('tag-manager-new-input')
@@ -1807,16 +1987,19 @@ async function openTagManager() {
     const clean = String(value || '').replace(/\s+/g, ' ').trim().slice(0, 16)
     if (!clean) return false
     const tag = uniqueTagName(tagRows.map((item) => item.value), clean === DEFAULT_MOD_TAG ? '标签' : clean)
-    const color = getRandomTagColor(Object.fromEntries(tagRows.filter((item) => item.color).map((item) => [item.value, item.color])))
+    const color = getUniqueRandomTagColor(Object.fromEntries(tagRows.filter((item) => item.color).map((item) => [item.value, item.color])))
+    if (!color) {
+      showToast('没有可用的未重复颜色', 'err')
+      return false
+    }
     tagRows.push({ original: '', value: tag, editing: false, global: false, color })
     return persistTagRows('标签已添加')
   }
   let draggedTagIndex = null
   modal.addEventListener('dragstart', (e) => {
-    const handle = e.target.closest('.tag-manager-drag')
-    const row = handle?.closest('.tag-manager-row')
+    const row = e.target.closest('.tag-manager-row')
     const index = Number(row?.dataset.index)
-    if (!handle || !row || index <= 0) {
+    if (!row || index <= 0 || e.target.closest('button, input')) {
       e.preventDefault()
       return
     }
@@ -2056,14 +2239,35 @@ function getContextMenuMod() {
   return activeGroup.mods.find((mod) => mod.rel === rel) || null
 }
 
+async function ensureFrameworkIsolationModsEnabled(mods) {
+  const disabledMods = mods.filter((mod) => !getEffectiveModEnabled(mod))
+  if (!disabledMods.length) return true
+
+  showToast('正在自动开启框架隔离目标...')
+  for (const mod of disabledMods) {
+    const result = await window.api.toggleMod(mod.rel, true)
+    if (!result.ok) {
+      showToast(`自动开启失败：${result.error || mod.name || mod.rel}`, 'err')
+      await loadData({ quiet: true })
+      return false
+    }
+    mod.disabled = false
+    syncModRowState(mod.rel)
+  }
+  updateModCounts()
+  return true
+}
+
 function syncBatchMenu() {
   const menu = ensureBatchMenu()
   let frameworkBtn = menu.querySelector('[data-action="framework-isolate"], [data-action="framework-restore"]')
   const mod = getContextMenuMod()
-  const isTarget = !!frameworkIsolation?.active && mod?.rel === frameworkIsolation.targetRel
-  const isEnabled = !!mod && getEffectiveModEnabled(mod)
+  const selectedRels = getSelectedModRels()
+  const contextRels = contextMenuRel && selectedRels.includes(contextMenuRel) ? selectedRels : [contextMenuRel || selectedRels[0]]
+  const targetRels = new Set((frameworkIsolation?.targets || []).map((target) => target.targetRel))
+  const isTarget = !!frameworkIsolation?.active && contextRels.length > 0 && contextRels.every((rel) => targetRels.has(rel))
   const label = frameworkIsolation?.active
-    ? (isTarget ? '结束框架隔离' : '切换到此项调试')
+    ? (isTarget ? '移除框架隔离' : '加入框架隔离')
     : '框架隔离调试此项'
   const action = frameworkIsolation?.active && isTarget ? 'framework-restore' : 'framework-isolate'
   if (!frameworkBtn) {
@@ -2072,8 +2276,8 @@ function syncBatchMenu() {
   }
   frameworkBtn.dataset.action = action
   frameworkBtn.textContent = label
-  frameworkBtn.disabled = !isEnabled
-  frameworkBtn.title = isEnabled ? label : '请先开启该 mod'
+  frameworkBtn.disabled = !mod
+  frameworkBtn.title = label
 }
 
 function showBatchMenu(x, y) {
@@ -2102,7 +2306,8 @@ async function moveSelectedMods() {
   if (!target.ok || target.canceled) return
   const result = await window.api.moveMods(rels, target.target)
   if (result.ok) {
-    showToast(`已移动 ${result.moved} 个 mod`)
+    ;(result.movedRels || []).forEach((rel) => movedModRels.add(normalizeMovedModRel(rel)))
+    showMoveResult(result, 'mod', '移动')
     selectedModRels.clear()
     selectedModRel = null
     await loadData({ quiet: true })
@@ -2117,26 +2322,21 @@ async function openSelectedModFolder() {
 }
 
 async function startContextFrameworkIsolation() {
-  const rel = contextMenuRel || getSelectedModRels()[0]
-  const mod = activeGroup?.mods?.find((item) => item.rel === rel)
-  if (!rel || blockBusyMod(rel)) return
-  if (!getEffectiveModEnabled(mod)) {
-    showToast('请先开启该 mod，再进行框架隔离', 'err')
-    return
-  }
-  if (frameworkIsolation?.active && frameworkIsolation.targetRel === rel) {
-    showToast('当前已在此项调试中')
-    return
-  }
-  const targetOrderKey = getClientModOrderKey(rel)
+  const selectedRels = getSelectedModRels()
+  const rels = contextMenuRel && selectedRels.includes(contextMenuRel)
+    ? selectedRels
+    : [contextMenuRel || selectedRels[0]]
+  const mods = rels.map((rel) => activeGroup?.mods?.find((item) => item.rel === rel)).filter(Boolean)
+  if (!rels.length || rels.some(blockBusyMod)) return
+  if (!await ensureFrameworkIsolationModsEnabled(mods)) return
   const previous = frameworkIsolation
-    frameworkIsolation = { ...(frameworkIsolation || { active: true }), active: true, pending: true, targetOrderKey, targetRel: rel }
+    frameworkIsolation = { ...(frameworkIsolation || { active: true }), active: true, pending: true }
   applyFrameworkIsolationUi()
   updateFrameworkIsolationNotice()
   hideBatchMenu()
   showToast(frameworkIsolation?.active && previous?.active ? '正在切换框架隔离目标...' : '正在进入框架隔离...')
   try {
-    const result = await window.api.startFrameworkIsolation(rel)
+    const result = await window.api.startFrameworkIsolation(rels)
     if (!result.ok) {
       frameworkIsolation = previous || { active: false }
       applyFrameworkIsolationUi()
@@ -2147,8 +2347,8 @@ async function startContextFrameworkIsolation() {
     frameworkIsolation = result.state || { active: true }
     applyFrameworkIsolationUi()
     updateFrameworkIsolationNotice()
-    selectedModRel = rel
-    showToast(previous?.active ? '已切换框架隔离目标' : '已进入框架隔离调试，其他 mod 已禁止互动')
+    selectedModRel = rels[0]
+    showToast(previous?.active ? '已加入框架隔离目标' : '已进入框架隔离调试')
   } catch (err) {
     frameworkIsolation = previous || { active: false }
     applyFrameworkIsolationUi()
@@ -2157,8 +2357,14 @@ async function startContextFrameworkIsolation() {
   }
 }
 
-async function endContextFrameworkIsolation() {
+async function endContextFrameworkIsolation(closeAll = false) {
   if (!frameworkIsolation?.active) return
+  const selectedRels = getSelectedModRels()
+  const rels = closeAll
+    ? []
+    : (contextMenuRel && selectedRels.includes(contextMenuRel)
+      ? selectedRels
+      : [contextMenuRel || selectedRels[0]])
   const previous = frameworkIsolation
   frameworkIsolation = { active: false }
   applyFrameworkIsolationUi()
@@ -2166,7 +2372,7 @@ async function endContextFrameworkIsolation() {
   hideBatchMenu()
   showToast('正在结束框架隔离...')
   try {
-    const result = await window.api.endFrameworkIsolation()
+    const result = await window.api.endFrameworkIsolation(rels)
     if (!result.ok) {
       frameworkIsolation = previous
       applyFrameworkIsolationUi()
@@ -2174,7 +2380,10 @@ async function endContextFrameworkIsolation() {
       showToast(result.error || '结束隔离失败', 'err')
       return
     }
-    showToast('已结束框架隔离并恢复加载范围')
+    frameworkIsolation = result.state || { active: false }
+    applyFrameworkIsolationUi()
+    updateFrameworkIsolationNotice()
+    showToast(rels.length ? '已移除框架隔离目标' : '已结束框架隔离并恢复加载范围')
   } catch (err) {
     frameworkIsolation = previous
     applyFrameworkIsolationUi()
@@ -2247,7 +2456,7 @@ async function applySelectedEnabled(enable) {
   }
   const targets = rels
     .map((rel) => getModByRel(rel))
-    .filter((mod) => mod && !mod.locked && (getEffectiveModDisabled(mod) !== enable || pendingModToggles.has(mod.rel)))
+    .filter((mod) => mod && !mod.locked && (getEffectiveModEnabled(mod) !== enable || pendingModToggles.has(mod.rel)))
   if (!targets.length) {
     showToast(enable ? '所选 mod 已启用' : '所选 mod 已停用')
     return
@@ -2884,8 +3093,20 @@ function bindDetailPanel(mod) {
         }
       }
       if (action === 'watch') {
-        const result = await window.api.watchIni(mod.rel)
-        if (!result.ok) showToast(result.err || '启动监听失败', 'err')
+        const oldText = button.textContent
+        button.disabled = true
+        button.textContent = '启动中…'
+        setLoadingState(true, '正在启动 ini 热键监听，请稍候…')
+        try {
+          const result = await window.api.watchIni(mod.rel)
+          if (!result.ok) showToast(result.err || '启动监听失败', 'err')
+        } catch (err) {
+          showToast(err.message || '启动监听失败', 'err')
+        } finally {
+          setLoadingState(false)
+          button.textContent = oldText
+          button.disabled = false
+        }
       }
       if (action === 'keyPopup') window.api.showKeyPopup({
         rel: mod.rel,
@@ -3229,6 +3450,18 @@ function showToast(msg, kind = 'ok') {
   toastTimer = setTimeout(() => dom.toast.classList.add('hidden'), 3000)
 }
 
+function showMoveResult(result, itemName, actionName) {
+  const skipped = Array.isArray(result?.skipped) ? result.skipped : []
+  if (!skipped.length) {
+    showToast(`已${actionName} ${result?.moved || 0} 个${itemName}`)
+    return
+  }
+  const names = skipped.slice(0, 3).join('、')
+  const suffix = skipped.length > 3 ? '等' : ''
+  const movedText = result?.moved ? `已${actionName} ${result.moved} 个${itemName}；` : ''
+  showToast(`${movedText}跳过 ${skipped.length} 个同名${itemName}：${names}${suffix}`, 'err')
+}
+
 const UPDATE_CONFIG_STEPS = [
   { key: 'tools', title: '更新脚本文件', desc: '复制技能脚本与工具文件' },
   { key: 'characters', title: '同步角色配置', desc: '更新角色名称、头像与缓存配置' },
@@ -3368,10 +3601,31 @@ dom.overviewConflictSearch?.addEventListener('click', () => {
   setOverviewConflictSearch(!overviewConflictSearch)
   dom.search.focus()
 })
-dom.frameworkIsolationNotice?.addEventListener('click', jumpToFrameworkIsolationTarget)
+dom.overviewMovedSearch?.addEventListener('click', () => {
+  setOverviewMovedSearch(!overviewMovedSearch)
+  dom.search.focus()
+})
+dom.frameworkIsolationNotice?.addEventListener('click', (event) => {
+  const row = event.target.closest('[data-isolation-rel]')
+  if (row) jumpToFrameworkIsolationTarget(row.dataset.isolationRel)
+})
+dom.frameworkIsolationNoticeClose?.addEventListener('click', (event) => {
+  event.stopPropagation()
+  endContextFrameworkIsolation(true)
+})
+dom.frameworkIsolationNoticeToggle?.addEventListener('click', (event) => {
+  event.stopPropagation()
+  const collapsed = dom.frameworkIsolationNotice.classList.contains('framework-isolation-notice-collapsed')
+  setFrameworkIsolationNoticeCollapsed(!collapsed)
+})
+setFrameworkIsolationNoticeCollapsed(true)
 setDetailSearchGlobal(false, false)
 function setSearchPlaceholder(focused = document.activeElement === dom.search) {
-  dom.search.placeholder = overviewConflictSearch ? 'Tab 搜当前页 · F2 关闭冲突' : SEARCH_HINT
+  const filters = [
+    overviewMovedSearch ? '有移动' : '',
+    overviewConflictSearch ? '有冲突' : '',
+  ].filter(Boolean).join(' + ')
+  dom.search.placeholder = filters ? `Tab 搜当前页 · ${filters}` : SEARCH_HINT
   dom.search.title = overviewConflictSearch ? 'Tab 搜当前页，F2 关闭冲突筛选' : SEARCH_HINT
 }
 dom.search.addEventListener('focus', () => setSearchPlaceholder(true))
@@ -3510,6 +3764,26 @@ dom.btnChooseWwmiRoot?.addEventListener('click', async () => {
   if (r.ok) {
     await refreshSettingsPaths()
     showToast('已设置 WWMI 目录', 'ok')
+  }
+})
+dom.btnResetD3dxDefault?.addEventListener('click', async () => {
+  if (!confirm('确认恢复 d3dx.ini 默认 MOD 目录并关闭框架隔离？')) return
+  const button = dom.btnResetD3dxDefault
+  button.disabled = true
+  try {
+    const result = await window.api.resetFrameworkIsolationDefault()
+    if (!result.ok) {
+      showToast(result.error || '重置 d3dx.ini 失败', 'err')
+      return
+    }
+    frameworkIsolation = { active: false }
+    updateFrameworkIsolationNotice()
+    await loadData({ quiet: true })
+    showToast('d3dx.ini 默认 MOD 目录已恢复', 'ok')
+  } catch (error) {
+    showToast('重置 d3dx.ini 失败：' + error.message, 'err')
+  } finally {
+    button.disabled = false
   }
 })
 dom.btnWindowMinimize?.addEventListener('click', () => window.api.windowMinimize())
@@ -3679,6 +3953,18 @@ document.addEventListener('keydown', async (e) => {
 
 dom.btnRefresh.addEventListener('click', () => loadData({ quiet: false }))
 dom.btnRefreshb.addEventListener('click', () => loadData({ quiet: false }))
+dom.btnSendF10?.addEventListener('click', async () => {
+  dom.btnSendF10.disabled = true
+  showToast('正在发送 F10...')
+  try {
+    const result = await window.api.sendGameF10()
+    if (!result.ok) showToast(result.err || result.out || '发送 F10 失败', 'err')
+  } catch (err) {
+    showToast('发送 F10 失败：' + err.message, 'err')
+  } finally {
+    dom.btnSendF10.disabled = false
+  }
+})
 
 dom.btnBack.addEventListener('click', backToOverview)
 

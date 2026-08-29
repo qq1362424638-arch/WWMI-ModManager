@@ -106,8 +106,24 @@ const MODORA_RENDERER_ROOT = 'D:\\Program Files\\MODORA Preview\\resources\\app.
 const MODORA_ICONS_DIR = path.join(MODORA_RENDERER_ROOT, 'icons')
 const MODORA_OFFICIAL_CHARACTER_DIR = path.join(MODORA_RENDERER_ROOT, 'characters', 'official')
 const MODORA_OFFICIAL_CHARACTER_ASSETS = {
+  rover: {
+    file: path.join('..', 'rover.jpg'),
+    names: ['Rover', 'rover', '漂泊者'],
+  },
+  camellya: {
+    file: path.join('..', 'camellya.jpg'),
+    names: ['Camellya', 'camellya', '椿'],
+  },
+  shorekeeper: {
+    file: path.join('..', 'shorekeeper.jpg'),
+    names: ['Shorekeeper', 'shorekeeper', '守岸人'],
+  },
+  cantarella: {
+    file: path.join('..', 'cantarella.jpg'),
+    names: ['Cantarella', 'cantarella', '坎特蕾拉'],
+  },
   yangyangxuanling: {
-    file: '10001.png',
+    file: path.join('..', 'roster', 'roster-36.jpg'),
     names: ['Yangyang Xuanling', 'YangyangXuanling', 'yangyangxuanling', '秧秧·玄翎', '秧秧玄翎'],
   },
 }
@@ -294,6 +310,16 @@ function getCharacterAvatarFilePath(dirName) {
   return null
 }
 
+function getModoraOfficialCharacterAssetPath(dirName) {
+  const keys = [dirName, getChineseName(dirName)].map(normalizeAssetKey)
+  for (const record of Object.values(MODORA_OFFICIAL_CHARACTER_ASSETS)) {
+    if (!record.names.some((name) => keys.includes(normalizeAssetKey(name)))) continue
+    const imagePath = path.join(MODORA_OFFICIAL_CHARACTER_DIR, record.file)
+    if (imageFileExists(imagePath) && isLikelyAvatarFile(imagePath)) return imagePath
+  }
+  return null
+}
+
 async function getWritableCharacterAvatarDir() {
   try {
     await fsp.mkdir(CHARACTER_AVATAR_DIR, { recursive: true })
@@ -337,8 +363,24 @@ async function downloadCharacterAvatar(url, cacheKey) {
 async function syncModoraRosterAvatars() {
   let copied = 0
   const syncedNames = new Set()
+  for (const record of Object.values(MODORA_OFFICIAL_CHARACTER_ASSETS)) {
+    const imagePath = path.join(MODORA_OFFICIAL_CHARACTER_DIR, record.file)
+    if (!imageFileExists(imagePath) || !isLikelyAvatarFile(imagePath)) continue
+    try {
+      const avatarUrl = await copyCharacterAvatar(imagePath, record.names[0])
+      if (!avatarUrl) continue
+      for (const name of record.names) {
+        characterAvatarCache[name] = avatarUrl
+        syncedNames.add(normalizeAssetKey(name))
+      }
+      copied++
+    } catch (error) {
+      console.error('复制 MODORA 官方角色头像失败:', record.names[0], error.message)
+    }
+  }
   for (const [file, englishName, chineseName] of MODORA_ROSTER_CHARACTER_ASSETS) {
     const imagePath = path.join(MODORA_RENDERER_ROOT, 'characters', 'roster', file)
+    if (syncedNames.has(normalizeAssetKey(englishName)) || syncedNames.has(normalizeAssetKey(chineseName))) continue
     if (!imageFileExists(imagePath) || !isLikelyAvatarFile(imagePath)) continue
     try {
       const avatarUrl = await copyCharacterAvatar(imagePath, englishName)
@@ -408,6 +450,8 @@ async function fetchCharacterAvatars(force = false) {
 // 鑾峰彇瑙掕壊澶村儚URL
 function getCharacterAvatar(dirName) {
   if (PLACEHOLDER_ASSET_KEYS.has(normalizeAssetKey(dirName))) return null
+  const officialPath = getModoraOfficialCharacterAssetPath(dirName)
+  if (officialPath) return toAssetImageUrl(officialPath)
   const localPath = getCharacterAvatarFilePath(dirName)
   if (localPath) return toAssetImageUrl(localPath)
   // 鐩存帴鍖归厤
@@ -976,72 +1020,24 @@ function sortByPinnedOrder(items, orderList, isEnabled, getKey, fallbackCompare,
 
 async function scanCategory(categoryName) {
   const root = path.join(MODS_ROOT, categoryName)
-  const result = []
-  const isIni = (f) => /\.ini$/i.test(f) && !/\.bak$/i.test(f) && !/\.BAK$/i.test(f)
-
-  async function containsIni(dir) {
-    let entries
-    try {
-      entries = await fsp.readdir(dir, { withFileTypes: true })
-    } catch {
-      return false
-    }
-    if (entries.some((entry) => entry.isFile() && isIni(entry.name))) return true
-    for (const entry of entries) {
-      if (entry.isDirectory() && await containsIni(path.join(dir, entry.name))) return true
-    }
-    return false
+  let entries = []
+  try {
+    entries = await fsp.readdir(root, { withFileTypes: true })
+  } catch {
+    entries = []
   }
-
-  async function collect(dir, groupPath, isCategoryRoot = false) {
-    let entries
-    try {
-      entries = await fsp.readdir(dir, { withFileTypes: true })
-    } catch (e) {
-      return
-    }
-    const files = entries.filter((e) => e.isFile()).map((e) => e.name)
-    const dirs = entries.filter((e) => e.isDirectory()).map((e) => e.name)
-
-    if (files.some(isIni)) {
-      result.push(await makeModEntry(categoryName, dir, groupPath, files))
-      return
-    }
-
-    if (!isCategoryRoot && dirs.length >= 2) {
-      const childModDirs = []
-      for (const d of dirs) {
-        if (await containsIni(path.join(dir, d))) childModDirs.push(d)
-      }
-      if (childModDirs.length === dirs.length) {
-        result.push({ ...await makeModEntry(categoryName, dir, groupPath, files), wrap: true })
-        return
-      }
-    }
-
-    const hasShell = files.some((f) => f.toLowerCase().startsWith('.jasm_modconfig')) ||
-      files.some((f) => /^preview\.(png|jpe?g|webp)$/i.test(f) || /^\.JASM_Cover\.(png|jpe?g|webp)$/.test(f))
-    if (hasShell && !isCategoryRoot) {
-      const before = result.length
-      for (const d of dirs) await collect(path.join(dir, d), groupPath)
-      const found = result.length - before
-      if (found > 0) {
-        result.length = before
-        if (files.some(isIni)) {
-          result.push(await makeModEntry(categoryName, dir, groupPath, files))
-        } else {
-          result.push({ ...await makeModEntry(categoryName, dir, groupPath, files), wrap: true })
-        }
-      }
-      return
-    }
-
-    for (const d of dirs) {
-      await collect(path.join(dir, d), groupPath ? groupPath + ' / ' + d : d)
-    }
-  }
-
-  await collect(root, '', true)
+  const result = await Promise.all(entries
+    .filter((entry) => entry.isDirectory() && !entry.name.startsWith('.'))
+    .map(async (entry) => {
+      const dir = path.join(root, entry.name)
+      let files = []
+      try {
+        files = (await fsp.readdir(dir, { withFileTypes: true }))
+          .filter((item) => item.isFile())
+          .map((item) => item.name)
+      } catch {}
+      return makeModEntry(categoryName, dir, '', files)
+    }))
   const getTag = (mod) => mod.tag
   getTag.order = getGroupTagOrder(categoryName)
   return sortByPinnedOrder(
@@ -3026,20 +3022,29 @@ async function moveMods(rels, targetDir) {
   const skipped = []
   const moves = []
   for (const rel of normalizeOrderList(rels)) {
-    const source = await resolveArchiveContainer(path.join(MODS_ROOT, rel))
-    if (!isInsideRoot(path.resolve(source), path.resolve(MODS_ROOT))) continue
-    const dest = path.join(targetDir, path.basename(source))
-    if (fs.existsSync(dest)) {
-      skipped.push(path.basename(source))
+    const source = path.join(MODS_ROOT, rel)
+    const resolvedSource = path.resolve(source)
+    const resolvedTarget = path.resolve(targetDir)
+    if (!isInsideRoot(resolvedSource, path.resolve(MODS_ROOT))) continue
+    if (!fs.existsSync(resolvedSource)) continue
+    const stat = await fsp.stat(resolvedSource)
+    if (!stat.isDirectory()) continue
+    if (resolvedTarget.toLowerCase().startsWith(`${resolvedSource.toLowerCase()}${path.sep}`)) {
+      skipped.push(path.basename(resolvedSource))
       continue
     }
-    await fsp.rename(source, dest)
+    const dest = path.join(targetDir, path.basename(resolvedSource))
+    if (fs.existsSync(dest)) {
+      skipped.push(path.basename(resolvedSource))
+      continue
+    }
+    if (!await moveDirectoryLike(resolvedSource, targetDir)) continue
     moved.push(rel)
     const newRel = isInsideRoot(path.resolve(dest), path.resolve(MODS_ROOT))
       ? path.relative(MODS_ROOT, dest).replace(/\\/g, '/')
       : ''
     moves.push({
-      oldRel: path.relative(MODS_ROOT, source).replace(/\\/g, '/'),
+      oldRel: path.relative(MODS_ROOT, resolvedSource).replace(/\\/g, '/'),
       newRel,
     })
     if (newRel) movedRels.push(newRel)
@@ -3065,6 +3070,7 @@ async function moveDirectoryLike(source, targetDir) {
   const resolvedSource = path.resolve(source)
   const resolvedTarget = path.resolve(targetDir)
   if (resolvedSource.toLowerCase() === resolvedTarget.toLowerCase()) return false
+  if (resolvedTarget.toLowerCase().startsWith(`${resolvedSource.toLowerCase()}${path.sep}`)) return false
   const sameParent = path.resolve(path.dirname(resolvedSource)).toLowerCase() === resolvedTarget.toLowerCase()
   if (sameParent) return false
 
@@ -3341,7 +3347,6 @@ async function startFrameworkIsolation(rels) {
   }
   saveConfig()
   scheduleRescan()
-  sendF10()
   return { ok: true, state: getFrameworkIsolationState() }
 }
 
@@ -3358,7 +3363,6 @@ async function endFrameworkIsolation(rels = []) {
       await fsp.writeFile(session.d3dxPath, nextText, 'utf8')
       frameworkIsolationSession = { ...session, targets }
       saveConfig()
-      sendF10()
       return { ok: true, state: getFrameworkIsolationState() }
     }
   }
@@ -3367,7 +3371,6 @@ async function endFrameworkIsolation(rels = []) {
   await fsp.writeFile(session.d3dxPath, nextText, 'utf8')
   frameworkIsolationSession = null
   saveConfig()
-  sendF10()
   return { ok: true }
 }
 
@@ -3384,10 +3387,12 @@ async function trashMods(rels) {
   return { ok: true, deleted }
 }
 
-function sendF10(combo = 'Ctrl+Alt+F10') {
+function sendF10(combo = 'Ctrl+Alt+F10', options = {}) {
   return new Promise((resolve) => {
     const script = unpackedPath(path.join(__dirname, 'send-f10.ps1'))
-    const child = spawn('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', script, '-Combo', combo], { windowsHide: true })
+    const args = ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', script, '-Combo', combo]
+    if (options.stayOnGame) args.push('-StayOnGame')
+    const child = spawn('powershell.exe', args, { windowsHide: true })
     let out = '', err = ''
     child.stdout.on('data', (d) => (out += d))
     child.stderr.on('data', (d) => (err += d))
@@ -3587,6 +3592,7 @@ function registerIpc() {
   ipcMain.handle('frameworkIsolation:resetDefault', () => resetD3dxDefaultModDirectory())
   ipcMain.handle('frameworkIsolation:start', async (_e, rels) => withModOperationLocks(Array.isArray(rels) ? rels : [rels], async () => startFrameworkIsolation(rels)))
   ipcMain.handle('frameworkIsolation:end', async (_e, rels) => endFrameworkIsolation(rels))
+  ipcMain.handle('game:sendF10', () => sendF10('F10', { stayOnGame: true }))
   ipcMain.handle('mods:rename', async (_e, rel, name, groupPath) => {
     return withModOperationLock(rel, async () => {
       const result = await renameMod(rel, name, groupPath)

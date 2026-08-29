@@ -16,8 +16,10 @@ contextBridge.exposeInMainWorld('api', {
   // 切换启用状态：rel=相对路径，enable=true 启用 / false 停用
   toggleMod: (rel, enable) => ipcRenderer.invoke('mods:toggle', rel, enable),
   getFrameworkIsolation: () => ipcRenderer.invoke('frameworkIsolation:get'),
-  startFrameworkIsolation: (rel) => ipcRenderer.invoke('frameworkIsolation:start', rel),
-  endFrameworkIsolation: () => ipcRenderer.invoke('frameworkIsolation:end'),
+  resetFrameworkIsolationDefault: () => ipcRenderer.invoke('frameworkIsolation:resetDefault'),
+  startFrameworkIsolation: (rels) => ipcRenderer.invoke('frameworkIsolation:start', rels),
+  endFrameworkIsolation: (rels) => ipcRenderer.invoke('frameworkIsolation:end', rels),
+  sendGameF10: () => ipcRenderer.invoke('game:sendF10'),
   renameMod: (rel, name, groupPath) => ipcRenderer.invoke('mods:rename', rel, name, groupPath),
   setModPreview: (rel) => ipcRenderer.invoke('mods:setPreview', rel),
   setModLocked: (rel, locked) => ipcRenderer.invoke('mods:setLocked', rel, locked),
