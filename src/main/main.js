@@ -1,6 +1,6 @@
 ﻿// ---------- WWMI Mod 绠＄悊鍣細涓昏繘绋?----------
 // 鑱岃矗锛氬垱寤轰富绐楀彛銆佹壂鎻?Mods 鐩綍銆佸鐞嗗惎鐢?鍋滅敤锛圖ISABLED_ 鍓嶇紑锛夈€?//       鐩戝惉鐩綍鍙樺寲銆佸悜娓告垙鍙戦€?F10 閲嶈浇鐑敭銆佹彁渚涙湰鍦板浘鐗囧崗璁€?// 閫傜敤鐜锛歐indows 10/11 x64锛岄福娼?WWMI mod 绠＄悊銆?
-const { app, BrowserWindow, ipcMain, dialog, protocol, net, shell, screen, nativeImage } = require('electron')
+const { app, BrowserWindow, ipcMain, dialog, protocol, net, shell, screen, nativeImage, clipboard } = require('electron')
 const fs = require('fs')
 const path = require('path')
 const fsp = require('fs/promises')
@@ -2455,6 +2455,27 @@ async function setModPreview(rel) {
   return { ok: true, preview: toModImageUrl(dest) }
 }
 
+async function setModPreviewFromClipboard(rel) {
+  const target = path.join(MODS_ROOT, rel)
+  if (!isInsideRoot(path.resolve(target), path.resolve(MODS_ROOT))) throw new Error('Invalid path')
+  if (!fs.existsSync(target) || !fs.statSync(target).isDirectory()) throw new Error('Mod 目录不存在')
+  const image = clipboard.readImage()
+  const size = image.getSize()
+  if (!size.width || !size.height) throw new Error('剪切板中没有图片')
+  const ext = '.png'
+  const dest = path.join(target, `.JASM_Cover${ext}`)
+  const temp = path.join(target, `.JASM_Clipboard-${Date.now()}${ext}`)
+  await fsp.writeFile(temp, image.toPNG())
+  try {
+    await promotePreviewImage(target, temp, dest, ext)
+  } catch (error) {
+    await fsp.rm(temp, { force: true }).catch(() => {})
+    throw error
+  }
+  await updateJasmModConfig(target, path.basename(dest))
+  return { ok: true, preview: toModImageUrl(dest) }
+}
+
 async function setOverviewPreview(groupPath) {
   const res = await dialog.showOpenDialog(mainWindow, {
     title: '选择预览图',
@@ -3607,6 +3628,13 @@ function registerIpc() {
       return result
     })
   })
+  ipcMain.handle('mods:setPreviewFromClipboard', async (_e, rel) => {
+    return withModOperationLock(rel, async () => {
+      const result = await setModPreviewFromClipboard(rel)
+      if (result.ok) scheduleRescan()
+      return result
+    })
+  })
   ipcMain.handle('overview:openFolder', (_e, groupPath) => openOverviewFolder(groupPath))
   ipcMain.handle('overview:rename', async (_e, groupPath, nextName) => {
     const result = await renameOverviewGroup(groupPath, nextName)
@@ -4302,11 +4330,11 @@ async function resetKeyWatchRow(rowId) {
     if (!applied.ok) {
       if (!setIniPersistValue(row.absFile, row.varName, row.initialValue)) return { ok: false, err: applied.err || '还原失败' }
       if (!await waitForIniPersistValue(row.absFile, row.varName, row.initialValue)) return { ok: false, err: '还原后配置未落盘' }
-      const reload = await triggerGameReload()
-      if (!reload?.ok) return { ok: true, reload }
     }
     const actualValue = syncKeyWatchRowFromIni(row)
     if (actualValue !== String(row.initialValue)) return { ok: false, err: '还原后界面与 ini 文件不一致' }
+    const reload = await triggerGameReload()
+    if (!reload?.ok) return { ok: true, reload }
     row.triggerCount = 0
     return { ok: true }
   } catch (err) {
@@ -4322,17 +4350,13 @@ async function setKeyWatchRowValue(rowId, value) {
   if (!row.values.map(String).includes(nextValue)) return { ok: false, err: 'value 不存在' }
   const previousCount = row.triggerCount || 0
   try {
-    const applied = await applyKeyWatchValueByHotkey(row, nextValue)
-    if (!applied.ok) {
-      if (!setIniPersistValue(row.absFile, row.varName, nextValue)) return { ok: false, err: applied.err || '修改失败' }
-      if (!await waitForIniPersistValue(row.absFile, row.varName, nextValue)) return { ok: false, err: '修改后配置未落盘' }
-      const actualValue = syncKeyWatchRowFromIni(row)
-      if (actualValue !== nextValue) return { ok: false, err: '修改后界面与 ini 文件不一致' }
-      const reload = await triggerGameReload()
-      if (!reload?.ok) return { ok: true, reload }
-    }
+    const currentValue = String(readIniPersistValue(row.absFile, row.varName) || row.currentValue || '')
+    if (currentValue !== nextValue && !setIniPersistValue(row.absFile, row.varName, nextValue)) return { ok: false, err: '修改失败' }
+    if (!await waitForIniPersistValue(row.absFile, row.varName, nextValue)) return { ok: false, err: '修改后配置未落盘' }
     const actualValue = syncKeyWatchRowFromIni(row)
     if (actualValue !== nextValue) return { ok: false, err: '修改后界面与 ini 文件不一致' }
+    const reload = await triggerGameReload()
+    if (!reload?.ok) return { ok: true, reload }
     row.triggerCount = previousCount + 1
     return { ok: true }
   } catch (err) {
@@ -4419,10 +4443,21 @@ async function showKeyWatchWindow(rel, payload = {}) {
   keyWatchPoller = setInterval(pollKeyWatchEvents, 300)
   const area = getPopupWorkArea()
   const baseWatchWidth = 880
-  const baseHeaderHeight = 74
-  const baseRowHeight = 52
-  const basePaddingHeight = 42
-  const desiredHeight = baseHeaderHeight + basePaddingHeight + Math.max(rows.length, 1) * baseRowHeight
+  const baseHeaderHeight = 52
+  const baseTableHeaderHeight = 28
+  const basePaddingHeight = 16
+  const bodyWidth = Math.max(520, baseWatchWidth - 32)
+  const spareWidth = Math.max(260, bodyWidth - 120 - 78 - 78 - 68)
+  const valueWidth = Math.max(150, Math.min(
+    rows.reduce((width, row) => Math.max(width, (row.values || []).reduce((sum, value) => sum + String(value).length * 7 + 24, 0)), 150) + 22,
+    spareWidth * 0.58,
+  ))
+  const rowHeights = rows.map((row) => {
+    const valueNeed = (row.values || []).reduce((sum, value) => sum + String(value).length * 7 + 24, 0)
+    const valueLines = Math.max(1, Math.ceil(valueNeed / valueWidth))
+    return 20 + valueLines * 22
+  })
+  const desiredHeight = baseHeaderHeight + baseTableHeaderHeight + basePaddingHeight + rowHeights.reduce((sum, height) => sum + height, 0) + (rows.length ? 54 : 0)
   const maxPopupWidth = Math.max(520, area.width - 24)
   const maxPopupHeight = Math.max(220, area.height - 24)
   const watchScale = desiredHeight > maxPopupHeight
@@ -4434,20 +4469,20 @@ async function showKeyWatchWindow(rel, payload = {}) {
   const html = `<!doctype html>
 <html><head><meta charset="utf-8"><style>
 html,body{margin:0;width:100%;height:100%;background:transparent;overflow:hidden;font-family:"Segoe UI","Microsoft YaHei UI",sans-serif;color:#302231;--watch-scale:${watchScale.toFixed(3)}}
-body{-webkit-app-region:drag}
+body{-webkit-app-region:no-drag}
 .panel{position:absolute;inset:10px;border:1px solid #ff9ccc;background:#fff1f8;box-shadow:0 14px 34px rgba(88,31,61,.22);display:flex;flex-direction:column;overflow:hidden}
-.header{display:flex;align-items:center;gap:calc(12px * var(--watch-scale));padding:calc(14px * var(--watch-scale)) calc(16px * var(--watch-scale));border-bottom:1px solid #f3c8dc}
+.header{-webkit-app-region:drag;display:flex;align-items:center;gap:calc(8px * var(--watch-scale));padding:calc(6px * var(--watch-scale)) calc(16px * var(--watch-scale));border-bottom:1px solid #f3c8dc}
 .title{font-weight:900;font-size:calc(18px * var(--watch-scale));overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1}
 .status{font-size:calc(12px * var(--watch-scale));color:#8f7482;white-space:nowrap}
 .header-actions{display:flex;align-items:center;gap:calc(8px * var(--watch-scale))}
-.watch-action{-webkit-app-region:no-drag;border:1px solid #ff9ccc;background:#ffe3f0;color:#302231;border-radius:8px;padding:calc(7px * var(--watch-scale)) calc(12px * var(--watch-scale));font-size:calc(13px * var(--watch-scale));font-weight:800;cursor:pointer;white-space:nowrap}
-.body{-webkit-app-region:no-drag;overflow:auto;padding:calc(12px * var(--watch-scale)) calc(16px * var(--watch-scale)) calc(16px * var(--watch-scale))}
+.watch-action{-webkit-app-region:no-drag;border:1px solid #ff9ccc;background:#ffe3f0;color:#302231;border-radius:8px;padding:calc(3px * var(--watch-scale)) calc(8px * var(--watch-scale));font-size:calc(13px * var(--watch-scale));font-weight:800;cursor:pointer;white-space:nowrap}
+.body{-webkit-app-region:no-drag;overflow:auto;padding:calc(3px * var(--watch-scale)) calc(16px * var(--watch-scale)) calc(5px * var(--watch-scale))}
 table{width:100%;border-collapse:collapse;table-layout:auto}
-th,td{border-bottom:1px solid #f1d2df;padding:calc(9px * var(--watch-scale)) calc(8px * var(--watch-scale));text-align:left;vertical-align:middle;font-size:calc(13px * var(--watch-scale))}
+th,td{border-bottom:1px solid #f1d2df;padding:calc(2px * var(--watch-scale)) calc(8px * var(--watch-scale));text-align:left;vertical-align:middle;font-size:calc(13px * var(--watch-scale))}
 th{font-weight:900;color:#4a3544}
-.key{border:1px solid #ff9ccc;background:#fff8fb;border-radius:8px;min-height:calc(34px * var(--watch-scale));display:flex;align-items:center;justify-content:center;font-weight:900;white-space:nowrap}
+.key{border:1px solid #ff9ccc;background:#fff8fb;border-radius:8px;min-height:calc(28px * var(--watch-scale));display:flex;align-items:center;justify-content:center;font-weight:900;white-space:nowrap}
 .desc{display:flex;align-items:center;gap:calc(7px * var(--watch-scale));min-width:0;flex-wrap:wrap}.main{white-space:normal;word-break:break-word;overflow-wrap:anywhere}.raw{color:#9b7689;border:1px solid #e7b7cd;background:#f8ddea;border-radius:6px;padding:calc(2px * var(--watch-scale)) calc(6px * var(--watch-scale));white-space:normal;word-break:break-word;overflow-wrap:anywhere}
-.values{display:flex;flex-wrap:wrap;gap:calc(5px * var(--watch-scale));align-items:center}.value{border:1px solid #e8bfd1;background:#fff8fb;border-radius:6px;padding:calc(2px * var(--watch-scale)) calc(7px * var(--watch-scale));color:#806172;font-weight:700;white-space:nowrap;cursor:pointer}.value:hover{background:#f2d3e2;border-color:#e58db4}.value.active{background:#ff78b7;border-color:#ff5fa9;color:white}
+.values{display:flex;flex-wrap:wrap;gap:calc(5px * var(--watch-scale));align-items:center}.value{-webkit-app-region:no-drag;border:1px solid #e8bfd1;background:#fff8fb;border-radius:6px;padding:calc(2px * var(--watch-scale)) calc(7px * var(--watch-scale));color:#806172;font-weight:700;white-space:nowrap;cursor:pointer;user-select:none}.value:hover,.value.pending{background:#f2d3e2;border-color:#e58db4}.value.pending{cursor:wait;box-shadow:0 0 0 1px rgba(229,141,180,.24)}.value.active{background:#ff78b7;border-color:#ff5fa9;color:white}.value.active.pending{background:#f2d3e2;border-color:#e58db4;color:#806172}
 .count{font-weight:900;text-align:center}.reset{border:1px solid #ff9ccc;background:#ffe3f0;color:#302231;border-radius:8px;padding:calc(6px * var(--watch-scale)) calc(10px * var(--watch-scale));font-size:calc(13px * var(--watch-scale));font-weight:800;cursor:pointer}.empty{padding:22px 4px;color:#8f7482}
 .failed-list{margin-top:calc(12px * var(--watch-scale));border:1px solid #f0bfd4;background:#fff8fb;padding:calc(10px * var(--watch-scale));font-size:calc(12px * var(--watch-scale));color:#6e4b5c}.failed-title{font-weight:900;margin-bottom:calc(6px * var(--watch-scale))}.failed-item{display:flex;gap:calc(8px * var(--watch-scale));flex-wrap:wrap;padding:calc(3px * var(--watch-scale)) 0}.failed-key{font-weight:900;color:#d84e91}
 ::-webkit-scrollbar{width:10px}::-webkit-scrollbar-thumb{background:#ff9ccc;border-radius:8px}
@@ -4460,10 +4495,15 @@ th{font-weight:900;color:#4a3544}
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let renderBusy = false;
 let actionBusy = false;
+let pendingValue = null;
 function rowHtml(row) {
   const raw = row.rawDescription && row.rawDescription.toLowerCase() !== String(row.description || '').toLowerCase()
     ? '<span class="raw">' + esc(row.rawDescription) + '</span>' : '';
-  const values = (row.values || []).map(value => '<button type="button" class="value ' + (String(value) === String(row.currentValue) ? 'active' : '') + '" data-id="' + esc(row.id) + '" data-value="' + esc(value) + '">' + esc(value) + '</button>').join('');
+  const values = (row.values || []).map(value => {
+    const isActive = String(value) === String(row.currentValue);
+    const isPending = pendingValue && pendingValue.id === row.id && pendingValue.value === String(value);
+    return '<button type="button" class="value ' + (isActive ? 'active ' : '') + (isPending ? 'pending' : '') + '"' + (isPending ? ' aria-busy="true"' : '') + ' data-id="' + esc(row.id) + '" data-value="' + esc(value) + '">' + esc(value) + '</button>';
+  }).join('');
   return '<tr><td><div class="key">' + esc(row.key) + '</div></td><td><div class="desc"><span class="main">' + esc(row.description) + '</span>' + raw + '</div></td><td><div class="values">' + values + '</div></td><td class="count">' + esc(row.triggerCount) + '</td><td><button class="reset" data-id="' + esc(row.id) + '">还原</button></td></tr>';
 }
 function textWidth(value, unit = 8) {
@@ -4516,8 +4556,15 @@ async function render() {
 document.querySelector('.body').addEventListener('pointerdown', async (event) => {
   const button = event.target.closest('.value, .reset');
   if (!button || actionBusy) return;
+  if (event.button !== 0) return;
   event.preventDefault();
+  event.stopPropagation();
   actionBusy = true;
+  if (button.classList.contains('value')) {
+    pendingValue = { id: button.dataset.id, value: String(button.dataset.value || '') };
+    button.classList.add('pending');
+    button.setAttribute('aria-busy', 'true');
+  }
   try {
     if (button.classList.contains('reset')) {
       await window.api.resetKeyWatchRow(button.dataset.id);
@@ -4526,6 +4573,7 @@ document.querySelector('.body').addEventListener('pointerdown', async (event) =>
     }
   } finally {
     actionBusy = false;
+    pendingValue = null;
     await render();
   }
 });

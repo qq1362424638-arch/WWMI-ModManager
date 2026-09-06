@@ -22,6 +22,7 @@ contextBridge.exposeInMainWorld('api', {
   sendGameF10: () => ipcRenderer.invoke('game:sendF10'),
   renameMod: (rel, name, groupPath) => ipcRenderer.invoke('mods:rename', rel, name, groupPath),
   setModPreview: (rel) => ipcRenderer.invoke('mods:setPreview', rel),
+  setModPreviewFromClipboard: (rel) => ipcRenderer.invoke('mods:setPreviewFromClipboard', rel),
   setModLocked: (rel, locked) => ipcRenderer.invoke('mods:setLocked', rel, locked),
   setModFavorite: (rel, favorite) => ipcRenderer.invoke('mods:setFavorite', rel, favorite),
   setModTag: (rel, tag, groupPath) => ipcRenderer.invoke('mods:setTag', rel, tag, groupPath),

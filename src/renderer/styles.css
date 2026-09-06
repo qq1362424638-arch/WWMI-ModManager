@@ -474,37 +474,43 @@ body {
 
 .toast {
   position: fixed;
-  top: 20px;
+  top: 68px;
   left: 50%;
   transform: translateX(-50%);
   background: var(--floating-surface);
-  border: 1px solid var(--floating-border);
-  padding: 10px 20px;
+  border: 2px solid var(--floating-border);
+  padding: 12px 22px;
   border-radius: 10px;
   box-shadow: var(--floating-shadow);
-  z-index: 200;
-  font-size: 13px;
+  z-index: 4000;
+  max-width: min(680px, calc(100vw - 40px));
+  text-align: center;
+  font-size: 14px;
+  line-height: 1.4;
+  font-weight: 700;
+  pointer-events: none;
   animation: toastIn 0.2s ease;
 }
 .toast.hidden { display: none; }
-.toast.ok { border-color: var(--accent-border); color: var(--accent); background: var(--floating-head-bg); }
-.toast.err { border-color: var(--red); color: var(--red); }
+.toast.ok { border-color: var(--accent); color: var(--accent); background: var(--floating-head-bg); }
+.toast.err { border-color: var(--red); color: var(--red); background: var(--floating-surface); }
 @keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(-8px); } to { opacity: 1; } }
 
 .app-tooltip {
   position: fixed;
   z-index: 3300;
-  max-width: min(360px, calc(100vw - 32px));
-  padding: 8px 12px;
-  border: 1px solid var(--accent-border);
+  max-width: min(420px, calc(100vw - 32px));
+  padding: 9px 13px;
+  border: 1px solid var(--accent);
   border-radius: 8px;
   background: var(--floating-surface);
   color: var(--text);
-  box-shadow: var(--floating-shadow);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.2), var(--floating-shadow);
   font-size: 13px;
   line-height: 1.35;
   pointer-events: none;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 .app-tooltip::before {
   content: "";

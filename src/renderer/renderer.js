@@ -2422,6 +2422,22 @@ async function setModPreview(rel) {
   }
 }
 
+async function setModPreviewFromClipboard(rel) {
+  if (blockIsolationMod(rel)) return
+  if (blockBusyMod(rel)) return
+  setModBusy(rel, true)
+  try {
+    const result = await window.api.setModPreviewFromClipboard(rel)
+    if (!result.ok) throw new Error(result.error || 'clipboard preview failed')
+    showToast('已将剪切板图片设为预览图')
+    await loadData({ quiet: true })
+  } catch (err) {
+    showToast('操作失败：' + err.message, 'err')
+  } finally {
+    setModBusy(rel, false)
+  }
+}
+
 async function trashSelectedMods() {
   const rels = getSelectedModRels()
   if (!rels.length) return
@@ -2940,6 +2956,7 @@ function renderDetailPanel(mod) {
         <button data-detail-action="rename" title="重命名当前 mod 目录">重命名</button>
         <button data-detail-action="preview" title="为当前 mod 指定预览图">指定预览图</button>
         <button data-detail-action="open" title="在资源管理器中打开当前 mod 目录">打开目录</button>
+        <button data-detail-action="clipboardPreview" title="将剪切板中的图片应用为当前 mod 预览图">粘贴图片</button>
       </div>
       <div class="key-section">
         <div class="key-section-header">
@@ -3066,9 +3083,14 @@ function bindDetailPanel(mod) {
         return
       }
       if (blockIsolationMod(mod.rel)) return
+      if (action === 'watch' && mod.locked) {
+        showToast('当前配置已锁定，请先取消锁定', 'err')
+        return
+      }
       if (blockBusyMod(mod.rel)) return
       if (action === 'rename') startRename(title, mod.rel)
       if (action === 'preview') await setModPreview(mod.rel)
+      if (action === 'clipboardPreview') await setModPreviewFromClipboard(mod.rel)
       if (action === 'open') {
         const result = await window.api.openFolder(mod.rel)
         if (result && !result.ok) showToast(result.error || '打开目录失败', 'err')

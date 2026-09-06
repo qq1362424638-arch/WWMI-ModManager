@@ -9,12 +9,27 @@ $ErrorActionPreference = 'Stop'
 $PollIntervalMs = 8
 $AllBindings = New-Object System.Collections.Generic.List[object]
 $Active = @{}
+$RegisteredHotkeys = New-Object System.Collections.Generic.List[object]
+$PolledHotkeys = New-Object System.Collections.Generic.List[object]
 
 Add-Type -TypeDefinition @'
 using System;
 using System.Runtime.InteropServices;
+[StructLayout(LayoutKind.Sequential)]
+public struct KeyMessage {
+    public IntPtr HWnd;
+    public uint Message;
+    public UIntPtr WParam;
+    public IntPtr LParam;
+    public uint Time;
+    public int PointX;
+    public int PointY;
+}
 public static class KeyNative {
     [DllImport("user32.dll")] public static extern short GetAsyncKeyState(int vKey);
+    [DllImport("user32.dll", SetLastError = true)] public static extern bool RegisterHotKey(IntPtr hWnd, int id, uint modifiers, uint vk);
+    [DllImport("user32.dll", SetLastError = true)] public static extern bool UnregisterHotKey(IntPtr hWnd, int id);
+    [DllImport("user32.dll")] public static extern bool PeekMessage(out KeyMessage message, IntPtr hWnd, uint minFilter, uint maxFilter, uint removeMsg);
 }
 '@
 
@@ -26,12 +41,34 @@ $VkCodes = @{
     '.'=0xBE; 'period'=0xBE; ','=0xBC; 'comma'=0xBC; '='=0xBB;
     '['=0xDB; ']'=0xDD; '\'=0xDC; ';'=0xBA; "'"=0xDE; '-'=0xBD; '/'=0xBF; '`'=0xC0
 }
+$VkCodes['vk_up'] = 0x26; $VkCodes['vk_down'] = 0x28
+$VkCodes['vk_left'] = 0x25; $VkCodes['vk_right'] = 0x27
+$VkCodes['vk_space'] = 0x20; $VkCodes['vk_escape'] = 0x1B
+$VkCodes['vk_return'] = 0x0D; $VkCodes['vk_enter'] = 0x0D
+$VkCodes['vk_tab'] = 0x09; $VkCodes['vk_back'] = 0x08
+$VkCodes['vk_backspace'] = 0x08; $VkCodes['vk_delete'] = 0x2E
+$VkCodes['vk_home'] = 0x24; $VkCodes['vk_end'] = 0x23
+$VkCodes['vk_prior'] = 0x21; $VkCodes['vk_next'] = 0x22
+$VkCodes['vk_shift'] = 0x10; $VkCodes['vk_control'] = 0x11
+$VkCodes['vk_ctrl'] = 0x11; $VkCodes['vk_menu'] = 0x12
+$VkCodes['vk_lshift'] = 0xA0; $VkCodes['vk_rshift'] = 0xA1
+$VkCodes['vk_lcontrol'] = 0xA2; $VkCodes['vk_rcontrol'] = 0xA3
+$VkCodes['vk_lmenu'] = 0xA4; $VkCodes['vk_rmenu'] = 0xA5
 for ($i = 0; $i -le 9; $i++) {
     $VkCodes[[string]$i] = 0x30 + $i
     $VkCodes["numpad$i"] = 0x60 + $i
+    $VkCodes["vk_$i"] = 0x30 + $i
+    $VkCodes["vk_numpad$i"] = 0x60 + $i
 }
-for ($i = 0; $i -lt 26; $i++) { $VkCodes[[char](97 + $i)] = 0x41 + $i }
-for ($i = 1; $i -le 12; $i++) { $VkCodes["f$i"] = 0x6F + $i }
+for ($i = 0; $i -lt 26; $i++) {
+    $letter = [char](97 + $i)
+    $VkCodes[$letter] = 0x41 + $i
+    $VkCodes["vk_$letter"] = 0x41 + $i
+}
+for ($i = 1; $i -le 12; $i++) {
+    $VkCodes["f$i"] = 0x6F + $i
+    $VkCodes["vk_f$i"] = 0x6F + $i
+}
 
 $VkMap = @{
     'VK_UP'='up'; 'UP'='up'; 'VK_DOWN'='down'; 'DOWN'='down'; 'VK_LEFT'='left'; 'LEFT'='left'; 'VK_RIGHT'='right'; 'RIGHT'='right';
@@ -75,7 +112,7 @@ function Convert-Key($Key) {
 function Parse-Key($Raw) {
     $mods = New-Object System.Collections.Generic.List[string]
     $remaining = New-Object System.Collections.Generic.List[string]
-    foreach ($token in ([string]$Raw).Trim().Split(' ', [StringSplitOptions]::RemoveEmptyEntries)) {
+    foreach ($token in ([string]$Raw).Trim().Replace('+', ' ').Split(' ', [StringSplitOptions]::RemoveEmptyEntries)) {
         $lower = $token.ToLowerInvariant()
         if ($lower -in @('no_modifiers','no_alt','no_ctrl','no_shift')) { continue }
         if ($lower -eq 'control') { $lower = 'ctrl' }
@@ -88,26 +125,32 @@ function Parse-Key($Raw) {
     $key = Convert-Key ($remaining -join ' ')
     if (-not $key) { return '' }
     $ordered = @('alt','ctrl','shift') | Where-Object { $mods.Contains($_) }
-    if ($ordered.Count) { return (($ordered + @($key)) -join '+') }
+    if ($ordered.Count) { return ((@($ordered) + @($key)) -join '+') }
     return $key
 }
 
 function Parse-Hotkey($Hotkey) {
     $modifiers = 0
+    $modifierKeys = @{}
     $keyCode = $null
     foreach ($part in ([string]$Hotkey).Replace('+', ' ').Split(' ', [StringSplitOptions]::RemoveEmptyEntries)) {
         $part = $part.Trim().ToLowerInvariant()
         if ($part -in @('no_modifiers','no_alt','no_ctrl','no_shift')) { continue }
-        if ($part -eq 'control') { $part = 'ctrl' }
-        if ($part -eq 'ctrl') { $modifiers = $modifiers -bor 2; continue }
-        if ($part -eq 'alt') { $modifiers = $modifiers -bor 1; continue }
-        if ($part -eq 'shift') { $modifiers = $modifiers -bor 4; continue }
+        if ($part -in @('control','ctrl')) { $part = 'ctrl'; $modifiers = $modifiers -bor 2; $modifierKeys.ctrl = 0; continue }
+        if ($part -in @('rctrl','rightctrl','rightcontrol','vk_rcontrol')) { $modifiers = $modifiers -bor 2; $modifierKeys.ctrl = 0xA3; continue }
+        if ($part -in @('lctrl','leftctrl','leftcontrol','vk_lcontrol')) { $modifiers = $modifiers -bor 2; $modifierKeys.ctrl = 0xA2; continue }
+        if ($part -in @('alt','menu')) { $part = 'alt'; $modifiers = $modifiers -bor 1; $modifierKeys.alt = 0; continue }
+        if ($part -in @('ralt','rightalt','rightmenu','vk_rmenu')) { $modifiers = $modifiers -bor 1; $modifierKeys.alt = 0xA5; continue }
+        if ($part -in @('lalt','leftalt','leftmenu','vk_lmenu')) { $modifiers = $modifiers -bor 1; $modifierKeys.alt = 0xA4; continue }
+        if ($part -eq 'shift') { $modifiers = $modifiers -bor 4; $modifierKeys.shift = 0; continue }
+        if ($part -in @('rshift','rightshift','vk_rshift')) { $modifiers = $modifiers -bor 4; $modifierKeys.shift = 0xA1; continue }
+        if ($part -in @('lshift','leftshift','vk_lshift')) { $modifiers = $modifiers -bor 4; $modifierKeys.shift = 0xA0; continue }
         if (-not $VkCodes.ContainsKey($part)) { return $null }
         if ($keyCode -ne $null) { return $null }
         $keyCode = $VkCodes[$part]
     }
     if ($keyCode -eq $null) { return $null }
-    [pscustomobject]@{ Modifiers = $modifiers; Vk = [int]$keyCode }
+    [pscustomobject]@{ Modifiers = $modifiers; Vk = [int]$keyCode; ModifierKeys = $modifierKeys }
 }
 
 function Read-Text($Path) {
@@ -273,18 +316,37 @@ function Is-ModifierDown([int]$Mod) {
     $false
 }
 
+function Get-ModifierMask {
+    $mask = 0
+    if (Is-ModifierDown 1) { $mask = $mask -bor 1 }
+    if (Is-ModifierDown 2) { $mask = $mask -bor 2 }
+    if (Is-ModifierDown 4) { $mask = $mask -bor 4 }
+    $mask
+}
+
+function Is-ParsedModifierDown($Parsed, [string]$Name, [int]$GenericMask) {
+    if (-not $Parsed.ModifierKeys.ContainsKey($Name)) { return $false }
+    $specificVk = [int]$Parsed.ModifierKeys[$Name]
+    if ($specificVk -gt 0) { return Is-KeyDown $specificVk }
+    Is-ModifierDown $GenericMask
+}
+
 function Combo-Pressed($Parsed, $KeyState, [bool]$WasDown) {
     if (-not ($KeyState.Pressed -or ($KeyState.Down -and -not $WasDown))) { return $false }
-    foreach ($mod in @(1,2,4)) {
-        if (($Parsed.Modifiers -band $mod) -ne 0 -and -not (Is-ModifierDown $mod)) { return $false }
-    }
+    if (($Parsed.Modifiers -band 1) -ne 0 -and -not (Is-ParsedModifierDown $Parsed 'alt' 1)) { return $false }
+    if (($Parsed.Modifiers -band 2) -ne 0 -and -not (Is-ParsedModifierDown $Parsed 'ctrl' 2)) { return $false }
+    if (($Parsed.Modifiers -band 4) -ne 0 -and -not (Is-ParsedModifierDown $Parsed 'shift' 4)) { return $false }
     $true
 }
 
 try {
     Load-Bindings ([IO.Path]::GetFullPath($Target))
-    $watched = New-Object System.Collections.Generic.List[object]
+    $hotkeyMap = @{}
+    $registrationMap = @{}
+    $nextId = 1000
     $failed = 0
+    $message = New-Object KeyMessage
+    [void][KeyNative]::PeekMessage([ref]$message, [IntPtr]::Zero, 0, 0, 0)
     foreach ($binding in $AllBindings) {
         $parsed = Parse-Hotkey $binding.Hotkey
         if ($null -eq $parsed) {
@@ -292,17 +354,58 @@ try {
             Emit-Event @{ type='registerError'; key=$binding.Hotkey; varName=$binding.VarName; file=$binding.File; message='unsupported key' }
             continue
         }
-        $watched.Add([pscustomobject]@{ Parsed=$parsed; Binding=$binding })
+        $comboKey = "$($parsed.Modifiers):$($parsed.Vk)"
+        if ($registrationMap.ContainsKey($comboKey)) {
+            $registrationMap[$comboKey].Bindings.Add($binding)
+            continue
+        }
+        $hasSpecificModifier = @($parsed.ModifierKeys.Values | Where-Object { [int]$_ -gt 0 }).Count -gt 0
+        if ($hasSpecificModifier) {
+            $PolledHotkeys.Add([pscustomobject]@{
+                Id = "poll-$($PolledHotkeys.Count)"
+                Parsed = $parsed
+                Binding = $binding
+            })
+            continue
+        }
+        $id = $nextId
+        $nextId += 1
+        if (-not [KeyNative]::RegisterHotKey([IntPtr]::Zero, $id, [uint32]$parsed.Modifiers, [uint32]$parsed.Vk)) {
+            $failed += 1
+            Emit-Event @{ type='registerError'; key=$binding.Hotkey; varName=$binding.VarName; file=$binding.File; message="hotkey registration failed: $([Runtime.InteropServices.Marshal]::GetLastWin32Error())" }
+            continue
+        }
+        $item = [pscustomobject]@{
+            Id = $id
+            Bindings = New-Object System.Collections.Generic.List[object]
+        }
+        $item.Bindings.Add($binding)
+        $RegisteredHotkeys.Add($item)
+        $hotkeyMap[[string]$id] = $item
+        $registrationMap[$comboKey] = $item
     }
     if (-not $AllBindings.Count) {
         Emit-Event @{ type='error'; message='no key bindings' }
         exit 1
     }
-    Emit-Event @{ type='ready'; registered=$watched.Count; failed=$failed; stopToken=$StopToken }
+    Emit-Event @{ type='ready'; registered=($RegisteredHotkeys.Count + $PolledHotkeys.Count); failed=$failed; pid=$PID; stopToken=$StopToken }
     while (-not (Should-Stop)) {
+        while ([KeyNative]::PeekMessage([ref]$message, [IntPtr]::Zero, 0, 0, 1)) {
+            if ($message.Message -ne 0x0312) { continue }
+            $item = $hotkeyMap[[string]$message.WParam.ToUInt32()]
+            if (-not $item) { continue }
+            foreach ($binding in $item.Bindings) {
+                $value = Cycle-Value $binding
+                if ($value) {
+                    Emit-Event @{ type='change'; varName=$binding.VarName; file=$binding.File; value=$value; time=(Get-Date -Format 'HH:mm:ss') }
+                } else {
+                    Emit-Event @{ type='error'; key=$binding.Hotkey; varName=$binding.VarName; file=$binding.File; message='hotkey detected but persist value was not updated' }
+                }
+            }
+        }
         $stateCache = @{}
-        foreach ($item in $watched) {
-            $id = "$($item.Parsed.Modifiers):$($item.Parsed.Vk):$($item.Binding.VarName):$($item.Binding.File)"
+        foreach ($item in $PolledHotkeys) {
+            $id = [string]$item.Id
             $vkKey = [string]$item.Parsed.Vk
             if (-not $stateCache.ContainsKey($vkKey)) { $stateCache[$vkKey] = Get-KeyState $item.Parsed.Vk }
             $keyState = $stateCache[$vkKey]
@@ -322,4 +425,8 @@ try {
 } catch {
     Emit-Event @{ type='error'; message=$_.Exception.Message }
     exit 1
+} finally {
+    foreach ($item in $RegisteredHotkeys) {
+        [void][KeyNative]::UnregisterHotKey([IntPtr]::Zero, [int]$item.Id)
+    }
 }

@@ -21,6 +21,7 @@ $game = [IntPtr]$gameProc.MainWindowHandle
 Add-Type -TypeDefinition @'
 using System;
 using System.Runtime.InteropServices;
+[StructLayout(LayoutKind.Sequential)] public struct CursorPoint { public int X; public int Y; }
 public static class Native {
     [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
     [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
@@ -30,6 +31,8 @@ public static class Native {
     [DllImport("user32.dll")] public static extern bool ShowWindowAsync(IntPtr hWnd, int nCmdShow);
     [DllImport("user32.dll")] public static extern uint MapVirtualKey(uint uCode, uint uMapType);
     [DllImport("user32.dll")] public static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
+    [DllImport("user32.dll")] public static extern bool GetCursorPos(out CursorPoint point);
+    [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
 }
 '@
 
@@ -143,6 +146,8 @@ function Send-ComboInput([string]$combo) {
 }
 
 $previous = [Native]::GetForegroundWindow()
+$cursor = [CursorPoint]::new()
+$hasCursor = [Native]::GetCursorPos([ref]$cursor)
 $currentThread = [Native]::GetCurrentThreadId()
 $previousThread = [uint32]0
 $gameThread = [uint32]0
@@ -161,6 +166,11 @@ $sent = Send-ComboInput $Combo
 Start-Sleep -Milliseconds 80
 
 if (-not $StayOnGame -and $previous -ne [IntPtr]::Zero) { [void][Native]::SetForegroundWindow($previous) }
+if ($hasCursor) {
+    [void][Native]::SetCursorPos($cursor.X, $cursor.Y)
+    Start-Sleep -Milliseconds 80
+    [void][Native]::SetCursorPos($cursor.X, $cursor.Y)
+}
 if ($gameThread -ne 0) { [void][Native]::AttachThreadInput($currentThread, $gameThread, $false) }
 if ($previousThread -ne 0) { [void][Native]::AttachThreadInput($currentThread, $previousThread, $false) }
 
