@@ -43,6 +43,9 @@ contextBridge.exposeInMainWorld('api', {
   closeKeyWatch: () => ipcRenderer.invoke('keyWatch:close'),
   returnKeyWatch: () => ipcRenderer.invoke('keyWatch:return'),
   flattenDir: (targetRel) => ipcRenderer.invoke('mods:flatten', targetRel),
+  searchModDirectories: (name) => ipcRenderer.invoke('mods:searchDirectories', name),
+  getModDirectoryTree: (modRel, directoryRel) => ipcRenderer.invoke('mods:getDirectoryTree', modRel, directoryRel),
+  disableModDirectories: (modRel, directoryRels, name) => ipcRenderer.invoke('mods:disableDirectories', modRel, directoryRels, name),
   chooseMoveTarget: () => ipcRenderer.invoke('mods:chooseMoveTarget'),
   chooseMoveSources: () => ipcRenderer.invoke('mods:chooseMoveSources'),
   moveMods: (rels, targetDir) => ipcRenderer.invoke('mods:moveMany', rels, targetDir),
@@ -63,7 +66,6 @@ contextBridge.exposeInMainWorld('api', {
   setOverviewOrder: (order) => ipcRenderer.invoke('sort:setOverview', order),
   getOverviewSections: () => ipcRenderer.invoke('sort:getOverviewSections'),
   setOverviewSections: (sections) => ipcRenderer.invoke('sort:setOverviewSections', sections),
-  setModOrder: (groupPath, order) => ipcRenderer.invoke('sort:setMods', groupPath, order),
   // 修改 Mods 根目录
   chooseRoot: () => ipcRenderer.invoke('mods:chooseRoot'),
   // 获取当前 root

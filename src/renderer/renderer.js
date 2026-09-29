@@ -40,6 +40,7 @@ let modTagCloseTimer = null
 const preloadedImages = new Set()
 let previewRenderToken = 0
 let modHoverPreviewEl = null
+let lastPointerPosition = null
 let appTooltipEl = null
 let dataLoadInFlight = null
 let dataLoadQueued = false
@@ -81,6 +82,7 @@ const SHORTCUTS = [
 
 const SHORTCUT_KEY_ORDER = ['Tab', 'Tab Tab', 'Enter', 'Esc', 'F2', 'Delete', 'Ctrl+A', 'Ctrl+C', 'Ctrl+V', 'Ctrl+X', 'Ctrl+点击', 'Shift+点击']
 const THEME_STORAGE_KEY = 'wwmi-modora-theme'
+const DIRECTORY_SEARCH_STORAGE_KEY = 'wwmi-directory-search-history'
 const APP_THEMES = new Set(['dark', 'light', 'pink'])
 const APP_RESTART_RIGHT_CLICK_WINDOW_MS = 3000
 let appRestartRightClickArmed = false
@@ -157,6 +159,7 @@ const dom = {
   btnClearDictionary: $('#btnClearDictionary'),
   btnClearCorrectionDictionary: $('#btnClearCorrectionDictionary'),
   btnAddOverviewSection: $('#btnAddOverviewSection'),
+  btnDirectorySearch: $('#btnDirectorySearch'),
   // detail
   detailPage: $('#page-detail'),
   btnBack: $('#btnBack'),
@@ -387,21 +390,7 @@ function blockBusyMod(rel) {
   return true
 }
 
-function normalizeClientOrderKey(value) {
-  return String(value || '').split(/[\\/]+/).filter(Boolean).map((part) => {
-    let name = part
-    while (name.startsWith('DISABLED_')) name = name.slice('DISABLED_'.length)
-    return name
-  }).join('/')
-}
-
-function getClientModOrderKey(rel) {
-  if (!activeGroup?.mods) return normalizeClientOrderKey(rel)
-  const mod = activeGroup.mods.find((item) => item.rel === rel || item.orderKey === normalizeClientOrderKey(rel))
-  return mod?.orderKey || normalizeClientOrderKey(rel)
-}
-
-function sortCurrentModsByFavorite() {
+function sortCurrentMods() {
   if (!activeGroup?.mods) return
   activeGroup.mods.sort((a, b) => {
     const ae = a.disabled ? 0 : 1
@@ -1279,7 +1268,7 @@ function openDetail(group, focusRel = null) {
   renderModTable()
   refreshActiveTagOrder(group.path).then(() => {
     if (activeGroup?.path !== group.path) return
-    sortCurrentModsByFavorite()
+    sortCurrentMods()
     renderModTable()
   }).catch(() => {})
   if (focusRel) {
@@ -1320,6 +1309,7 @@ function setDetailSearchGlobal(enabled, rerender = true) {
 function renderModTable() {
   const modPane = dom.modList.closest('.detail-mods')
   const previousScrollTop = modPane?.scrollTop || 0
+  requestAnimationFrame(refreshModHoverPreviewAtPointer)
   const term = normalizeSearchText(detailSearchTerm)
   if (detailSearchGlobal && term) {
     renderGlobalSearchResults(term)
@@ -1362,7 +1352,6 @@ function renderModTable() {
     return `${index === separatorIndex ? separatorHtml : ''}${detailViewMode === 'card' ? renderModCard(m, extraClass) : renderModRow(m, extraClass)}`
   }).join('')
   bindModItems()
-  setupModDrag()
   preloadModImages(mods)
   applyFrameworkIsolationUi()
   if (modPane) modPane.scrollTop = previousScrollTop
@@ -1488,7 +1477,7 @@ function renderModRow(m, extraClass = '') {
   const group = displayGroup(m)
   const disabled = getEffectiveModDisabled(m)
   const pending = pendingModToggles.has(m.rel)
-  return `<div class="mod-row mod-item ${disabled ? 'disabled' : ''} ${pending ? 'pending-toggle' : ''} ${extraClass}" data-rel="${escapeAttr(m.rel)}" data-order-key="${escapeAttr(m.orderKey || m.rel)}" data-preview-src="${escapeAttr(previewSrc)}" draggable="true">
+  return `<div class="mod-row mod-item ${disabled ? 'disabled' : ''} ${pending ? 'pending-toggle' : ''} ${extraClass}" data-rel="${escapeAttr(m.rel)}" data-preview-src="${escapeAttr(previewSrc)}">
       <input type="checkbox" class="mod-check" ${disabled ? '' : 'checked'} />
       <button class="btn-lock ${m.locked ? 'locked' : ''}" title="${m.locked ? '取消锁定配置' : '锁定配置'}">${renderLockIcon(m.locked)}</button>
       <div class="mod-thumb">${thumb}</div>
@@ -1518,7 +1507,7 @@ function renderModCard(m, extraClass = '') {
   const group = displayGroup(m)
   const disabled = getEffectiveModDisabled(m)
   const pending = pendingModToggles.has(m.rel)
-  return `<div class="mod-card mod-item ${disabled ? 'disabled' : ''} ${pending ? 'pending-toggle' : ''} ${extraClass}" data-rel="${escapeAttr(m.rel)}" data-order-key="${escapeAttr(m.orderKey || m.rel)}" data-preview-src="${escapeAttr(previewSrc)}" draggable="true">
+  return `<div class="mod-card mod-item ${disabled ? 'disabled' : ''} ${pending ? 'pending-toggle' : ''} ${extraClass}" data-rel="${escapeAttr(m.rel)}" data-preview-src="${escapeAttr(previewSrc)}">
       <div class="mod-card-image">
         ${thumb}
         <label class="mod-card-toggle">
@@ -1635,7 +1624,7 @@ function bindModItems() {
         const result = await window.api.setModFavorite(rel, !mod.favorite)
         if (!result.ok) throw new Error(result.error || 'favorite failed')
         mod.favorite = result.favorite
-        sortCurrentModsByFavorite()
+        sortCurrentMods()
         renderModTable()
         if (selectedModRel) {
           const selectedItem = Array.from(dom.modList.querySelectorAll('.mod-item'))
@@ -1686,7 +1675,7 @@ async function saveModTag(rel, tag) {
       mod.tag = results[index]?.tag || nextTag
     })
     if (!activeTagOrder.includes(nextTag)) activeTagOrder.push(nextTag)
-    sortCurrentModsByFavorite()
+    sortCurrentMods()
     changed.forEach((mod) => setModBusy(mod.rel, false))
     renderModTable()
     updateBatchSelection()
@@ -1758,7 +1747,7 @@ async function openTagManager() {
       }
     })
     normalizeUniqueTagRowColors()
-    sortCurrentModsByFavorite()
+    sortCurrentMods()
     renderModTable()
   }
   const persistTagRows = async (toastText = '') => {
@@ -2216,7 +2205,6 @@ function ensureBatchMenu() {
     <button data-action="delete" title="将所选 mod 删除到回收站">删除到回收站</button>
   `
   document.body.appendChild(menu)
-  bindAutoCloseMenu(menu, hideBatchMenu)
   menu.addEventListener('click', async (e) => {
     const action = e.target?.dataset?.action
     if (!action) return
@@ -2292,6 +2280,7 @@ function hideBatchMenu() {
   const menu = document.querySelector('#batchMenu')
   if (menu) menu.classList.add('hidden')
   contextMenuRel = null
+  requestAnimationFrame(refreshModHoverPreviewAtPointer)
 }
 
 async function moveSelectedMods() {
@@ -2677,6 +2666,195 @@ async function addOverviewSection() {
   }
 }
 
+function openDirectorySearchModal() {
+  const modal = document.createElement('div')
+  modal.className = 'text-modal directory-search-modal'
+  modal.setAttribute('role', 'dialog')
+  modal.setAttribute('aria-modal', 'true')
+  modal.setAttribute('aria-label', '目录管理')
+  modal.innerHTML = `
+    <div class="text-dialog directory-search-dialog">
+      <div class="directory-search-toolbar">
+        <input class="text-dialog-input directory-search-input" type="text" maxlength="128" placeholder="输入完整目录名，如 Skills" autocomplete="off" aria-label="目录名称" />
+        <button class="btn btn-ghost directory-search-close" type="button" title="关闭窗口" aria-label="关闭窗口">×</button>
+      </div>
+      <div class="directory-search-history" hidden></div>
+      <div class="directory-search-results" aria-live="polite"><div class="directory-search-message">输入完整目录名开始搜索</div></div>
+    </div>
+  `
+  const input = modal.querySelector('.directory-search-input')
+  const historyRow = modal.querySelector('.directory-search-history')
+  const results = modal.querySelector('.directory-search-results')
+  let timer = null
+  let requestId = 0
+  let currentResults = []
+  let searchHistory = []
+  let lastSearch = ''
+  try {
+    const stored = JSON.parse(localStorage.getItem(DIRECTORY_SEARCH_STORAGE_KEY) || '{}')
+    searchHistory = Array.isArray(stored.history)
+      ? [...new Set(stored.history.filter((value) => typeof value === 'string' && value.trim()).map((value) => value.trim()))].slice(0, 8)
+      : []
+    lastSearch = typeof stored.lastSearch === 'string' ? stored.lastSearch.trim() : ''
+  } catch {}
+  const onKeydown = (event) => {
+    if (event.key === 'Escape' && modal.isConnected) close()
+  }
+  const close = () => {
+    clearTimeout(timer)
+    document.removeEventListener('keydown', onKeydown)
+    modal.remove()
+  }
+  const renderMessage = (message) => {
+    results.innerHTML = `<div class="directory-search-message">${escapeHtml(message)}</div>`
+  }
+  const renderHistory = () => {
+    historyRow.hidden = searchHistory.length === 0
+    historyRow.innerHTML = searchHistory.length
+      ? `<span class="directory-search-history-label">历史</span><div class="directory-search-history-items">${searchHistory.map((value) => `<button class="directory-search-history-chip" type="button" data-query="${escapeAttr(value)}" title="搜索 ${escapeAttr(value)}">${escapeHtml(value)}</button>`).join('')}</div>`
+      : ''
+  }
+  const rememberSearch = (query) => {
+    searchHistory = [query, ...searchHistory.filter((value) => value !== query)].slice(0, 8)
+    lastSearch = query
+    try {
+      localStorage.setItem(DIRECTORY_SEARCH_STORAGE_KEY, JSON.stringify({ lastSearch, history: searchHistory }))
+    } catch {}
+    renderHistory()
+  }
+  const renderTree = (node) => {
+    const children = (node.children || []).map(renderTree).join('')
+    return `<div class="directory-tree-node ${node.disabled ? 'disabled' : ''}"><div class="directory-tree-line"><span class="directory-tree-marker">${children ? '▾' : '·'}</span><span>${escapeHtml(node.name)}</span></div>${children ? `<div class="directory-tree-children">${children}</div>` : ''}</div>`
+  }
+  const renderResults = (items) => {
+    currentResults = items
+    if (!items.length) {
+      renderMessage('没有找到匹配的目录')
+      return
+    }
+    results.innerHTML = items.map((item, index) => `
+      <div class="directory-search-result" data-result-index="${index}">
+        <div class="directory-search-result-row">
+          <button class="directory-search-mod-button" type="button" data-action="expand" aria-expanded="false">
+            <span class="directory-search-mod-name">${escapeHtml(item.modName)}</span>
+            <span class="directory-search-mod-path">${escapeHtml(item.groupPath)}</span>
+            <span class="directory-search-match-count">${item.matches.length > 1 ? `${item.matches.length} 个匹配目录` : ''}</span>
+          </button>
+          <button class="btn btn-ghost directory-search-disable" type="button" data-action="disable" title="在匹配目录名前添加 DISABLED_">关闭此目录</button>
+        </div>
+        <div class="directory-search-tree hidden"></div>
+      </div>
+    `).join('')
+  }
+  const search = async (expectedRequest = null) => {
+    const query = input.value.trim()
+    if (!query) {
+      currentResults = []
+      renderMessage('输入完整目录名开始搜索')
+      return
+    }
+    rememberSearch(query)
+    const id = expectedRequest ?? ++requestId
+    renderMessage('正在搜索…')
+    try {
+      const items = await window.api.searchModDirectories(query)
+      if (!modal.isConnected || id !== requestId || input.value.trim() !== query) return
+      renderResults(Array.isArray(items) ? items : [])
+    } catch (error) {
+      if (id === requestId) renderMessage(`搜索失败：${error.message}`)
+    }
+  }
+  input.addEventListener('input', () => {
+    clearTimeout(timer)
+    const id = ++requestId
+    if (!input.value.trim()) {
+      currentResults = []
+      renderMessage('输入完整目录名开始搜索')
+      return
+    }
+    renderMessage('正在搜索…')
+    timer = setTimeout(() => search(id), 250)
+  })
+  input.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
+      clearTimeout(timer)
+      search()
+    }
+  })
+  historyRow.addEventListener('click', (event) => {
+    const chip = event.target.closest('[data-query]')
+    if (!chip) return
+    clearTimeout(timer)
+    input.value = chip.dataset.query || ''
+    input.focus()
+    search()
+  })
+  modal.querySelector('.directory-search-close').addEventListener('click', close)
+  modal.addEventListener('click', async (event) => {
+    if (event.target === modal) {
+      close()
+      return
+    }
+    const actionButton = event.target.closest('[data-action]')
+    if (!actionButton) return
+    const resultRow = actionButton.closest('.directory-search-result')
+    const item = currentResults[Number(resultRow?.dataset.resultIndex)]
+    if (!item) return
+
+    if (actionButton.dataset.action === 'expand') {
+      const treePanel = resultRow.querySelector('.directory-search-tree')
+      const expanded = actionButton.getAttribute('aria-expanded') === 'true'
+      if (expanded) {
+        actionButton.setAttribute('aria-expanded', 'false')
+        treePanel.classList.add('hidden')
+        return
+      }
+      actionButton.setAttribute('aria-expanded', 'true')
+      treePanel.classList.remove('hidden')
+      if (treePanel.dataset.loaded === 'true') return
+      treePanel.innerHTML = '<div class="directory-search-message">正在读取目录结构…</div>'
+      const trees = await Promise.all(item.matches.map(async (directoryRel) => {
+        try {
+          const response = await window.api.getModDirectoryTree(item.modRel, directoryRel)
+          return response?.ok ? { directoryRel, tree: response.tree } : { directoryRel, error: response?.error || '读取失败' }
+        } catch (error) {
+          return { directoryRel, error: error.message || '读取失败' }
+        }
+      }))
+      if (!resultRow.isConnected || actionButton.getAttribute('aria-expanded') !== 'true') return
+      treePanel.dataset.loaded = 'true'
+      treePanel.innerHTML = trees.map((entry) => entry.tree
+        ? `<div class="directory-search-tree-match"><div class="directory-search-tree-path">${escapeHtml(entry.directoryRel.replace(`${item.modRel}/`, ''))}</div>${renderTree(entry.tree)}</div>`
+        : `<div class="directory-search-message">${escapeHtml(entry.error)}</div>`).join('')
+      return
+    }
+
+    if (actionButton.dataset.action === 'disable') {
+      actionButton.disabled = true
+      try {
+        const response = await window.api.disableModDirectories(item.modRel, item.matches, input.value.trim())
+        if (!response?.ok) {
+          showToast(response?.error || '关闭目录失败', 'err')
+          if (response?.count) await search()
+          return
+        }
+        showToast(`已关闭 ${response.count} 个目录`)
+        await search()
+      } catch (error) {
+        showToast(`关闭目录失败：${error.message}`, 'err')
+      } finally {
+        if (actionButton.isConnected) actionButton.disabled = false
+      }
+    }
+  })
+  renderHistory()
+  input.value = lastSearch
+  document.addEventListener('keydown', onKeydown)
+  document.body.appendChild(modal)
+  input.focus()
+  if (lastSearch) search()
+}
+
 async function renameOverviewSection(section) {
   const name = await askText({
     title: '重命名一级分类',
@@ -2764,83 +2942,6 @@ async function deleteOverviewSection(section) {
   await saveOverviewLayout()
   renderOverview()
   showToast(releasedCount ? `分类已删除，${releasedCount} 个目录已回到未分组` : '分类已删除')
-}
-
-function setupModDrag() {
-  if (!activeGroup) return
-  setupDragSort({
-    container: dom.modList,
-    itemSelector: '.mod-item',
-    getItem: (key) => activeGroup.mods.find((mod) => (mod.orderKey || mod.rel) === key),
-    isEnabled: (mod) => mod && getEffectiveModEnabled(mod),
-    getTag: (mod) => getModTag(mod),
-    isFavorite: (mod) => mod && mod.favorite,
-    move: async (draggedKey, targetKey) => {
-      moveItem(activeGroup.mods, draggedKey, targetKey, (mod) => mod.orderKey || mod.rel)
-      renderModTable()
-      await window.api.setModOrder(activeGroup.path, activeGroup.mods.map((mod) => mod.orderKey || mod.rel))
-    },
-  })
-}
-
-function setupDragSort({ container, itemSelector, getItem, isEnabled, getTag = () => DEFAULT_MOD_TAG, isFavorite = () => false, move }) {
-  let draggedKey = null
-  container.querySelectorAll(itemSelector).forEach((item) => {
-    item.addEventListener('dragstart', (e) => {
-      if (e.target.closest('button,input')) {
-        e.preventDefault()
-        return
-      }
-      draggedKey = item.dataset.orderKey
-      suppressNextClick = true
-      item.classList.add('dragging')
-      e.dataTransfer.effectAllowed = 'move'
-      e.dataTransfer.setData('text/plain', draggedKey)
-    })
-
-    item.addEventListener('dragover', (e) => {
-      if (!draggedKey || draggedKey === item.dataset.orderKey) return
-      e.preventDefault()
-      item.classList.add('drag-over')
-    })
-
-    item.addEventListener('dragleave', () => item.classList.remove('drag-over'))
-
-    item.addEventListener('drop', async (e) => {
-      e.preventDefault()
-      item.classList.remove('drag-over')
-      const targetKey = item.dataset.orderKey
-      if (!draggedKey || draggedKey === targetKey) return
-
-      const dragged = getItem(draggedKey)
-      const target = getItem(targetKey)
-      if (isEnabled(dragged) !== isEnabled(target)) {
-        showToast('已启用项会始终排在前面')
-        return
-      }
-      if (getTag(dragged) !== getTag(target)) {
-        showToast('相同标签内才能手动排序')
-        return
-      }
-      if (isFavorite(dragged) !== isFavorite(target)) {
-        showToast('收藏项会始终排在同状态前面')
-        return
-      }
-
-      try {
-        await move(draggedKey, targetKey)
-      } catch (err) {
-        showToast('保存排序失败：' + err.message, 'err')
-      }
-    })
-
-    item.addEventListener('dragend', () => {
-      draggedKey = null
-      item.classList.remove('dragging', 'drag-over')
-      container.querySelectorAll('.drag-over').forEach((el) => el.classList.remove('drag-over'))
-      setTimeout(() => { suppressNextClick = false }, 0)
-    })
-  })
 }
 
 function moveItem(items, draggedKey, targetKey, getKey) {
@@ -3420,6 +3521,20 @@ function hideModHoverPreview() {
   modHoverPreviewEl?.classList.add('hidden')
 }
 
+function refreshModHoverPreviewAtPointer() {
+  if (!lastPointerPosition || detailViewMode === 'card' || !isDetailVisible()) {
+    hideModHoverPreview()
+    return
+  }
+  const { x, y } = lastPointerPosition
+  const item = document.elementFromPoint(x, y)?.closest('.mod-item')
+  if (!item || !dom.modList.contains(item)) {
+    hideModHoverPreview()
+    return
+  }
+  showModHoverPreview(item.dataset.previewSrc, x, y)
+}
+
 function showModHoverPreview(src, x, y) {
   if (!src) {
     hideModHoverPreview()
@@ -3735,6 +3850,7 @@ dom.btnClearCorrectionDictionary?.addEventListener('click', async () => {
 
 document.addEventListener('click', (e) => {
   if (e.target?.id === 'btnAddOverviewSection') addOverviewSection()
+  if (e.target?.id === 'btnDirectorySearch') openDirectorySearchModal()
 })
 
 dom.themeSwitch?.addEventListener('click', (e) => {
@@ -3853,12 +3969,17 @@ document.addEventListener('click', (e) => {
   hideAppTooltip()
 })
 
+document.addEventListener('contextmenu', (e) => {
+  if (!e.target.closest('#batchMenu')) hideBatchMenu()
+}, true)
+
 document.addEventListener('pointerover', (e) => {
   const target = getTooltipTarget(e.target)
   if (target) showAppTooltip(target, e.clientX, e.clientY)
 })
 
 document.addEventListener('pointermove', (e) => {
+  lastPointerPosition = { x: e.clientX, y: e.clientY }
   const target = getTooltipTarget(e.target)
   if (target && appTooltipEl && !appTooltipEl.classList.contains('hidden')) {
     showAppTooltip(target, e.clientX, e.clientY)

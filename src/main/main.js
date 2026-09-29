@@ -730,7 +730,7 @@ function getReferenceCharacterDirs() {
 let MODS_ROOT = DEFAULT_MODS_ROOT
 let WWMI_ROOT = DEFAULT_WWMI_ROOT
 let detailViewMode = 'list'
-let sortOrder = { overview: [], overviewSections: [], mods: {} }
+let sortOrder = { overview: [], overviewSections: [] }
 let overviewMeta = {}
 let favoriteMods = []
 let modTags = {}
@@ -793,7 +793,6 @@ function loadConfig() {
       sortOrder = {
         overview: normalizeOrderList(raw.sortOrder.overview),
         overviewSections: normalizeOverviewSections(raw.sortOrder.overviewSections),
-        mods: normalizeOrderMap(raw.sortOrder.mods),
       }
     }
   } catch {
@@ -818,15 +817,6 @@ function normalizeOrderList(value) {
   return Array.isArray(value)
     ? Array.from(new Set(value.filter((item) => typeof item === 'string' && item)))
     : []
-}
-
-function normalizeOrderMap(value) {
-  if (!value || typeof value !== 'object') return {}
-  const result = {}
-  for (const [key, list] of Object.entries(value)) {
-    if (typeof key === 'string' && key) result[normalizeOrderKey(key)] = normalizeOrderList(list)
-  }
-  return result
 }
 
 function normalizeModTagText(value) {
@@ -1018,6 +1008,32 @@ function sortByPinnedOrder(items, orderList, isEnabled, getKey, fallbackCompare,
   return items
 }
 
+function sortMods(items, isEnabled, getKey, fallbackCompare, getTag = null) {
+  const favoriteSet = new Set(normalizeOrderList(favoriteMods))
+  items.sort((a, b) => {
+    const ae = isEnabled(a) ? 1 : 0
+    const be = isEnabled(b) ? 1 : 0
+    if (ae !== be) return be - ae
+
+    if (getTag) {
+      const at = normalizeModTagText(getTag(a))
+      const bt = normalizeModTagText(getTag(b))
+      const order = getTag.order || [DEFAULT_MOD_TAG]
+      const ai = order.includes(at) ? order.indexOf(at) : Number.MAX_SAFE_INTEGER
+      const bi = order.includes(bt) ? order.indexOf(bt) : Number.MAX_SAFE_INTEGER
+      if (ai !== bi) return ai - bi
+      if (at !== bt) return at.localeCompare(bt, 'zh-Hans')
+    }
+
+    const af = favoriteSet.has(getKey(a)) ? 1 : 0
+    const bf = favoriteSet.has(getKey(b)) ? 1 : 0
+    if (af !== bf) return bf - af
+
+    return fallbackCompare(a, b)
+  })
+  return items
+}
+
 async function scanCategory(categoryName) {
   const root = path.join(MODS_ROOT, categoryName)
   let entries = []
@@ -1040,12 +1056,11 @@ async function scanCategory(categoryName) {
     }))
   const getTag = (mod) => mod.tag
   getTag.order = getGroupTagOrder(categoryName)
-  return sortByPinnedOrder(
+  return sortMods(
     result,
-    sortOrder.mods[normalizeOrderKey(categoryName)],
     (mod) => !mod.disabled,
     (mod) => mod.orderKey,
-    (a, b) => a.name.localeCompare(b.name, 'zh'),
+    (a, b) => a.name.localeCompare(b.name, 'zh-Hans'),
     getTag,
   )
 }
@@ -1576,17 +1591,18 @@ async function queryOnlineTranslation(key) {
   }
   const query = new URLSearchParams({ q: normalized.replace(/_/g, ' '), langpair: 'en|zh-CN' })
   let value = ''
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), 5000)
   try {
-    const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), 5000)
     const response = await fetch(`${ONLINE_TRANSLATION_SOURCE}?${query.toString()}`, { signal: controller.signal })
-    clearTimeout(timer)
     if (response.ok) {
       const data = await response.json()
       value = compactOnlineTranslation(normalized, data?.responseData?.translatedText || '')
     }
   } catch {
     value = ''
+  } finally {
+    clearTimeout(timer)
   }
   onlineTranslationCache.set(normalized, value)
   updateLocalDictionary(normalized, value, 'online_query', ONLINE_TRANSLATION_SOURCE)
@@ -1991,6 +2007,186 @@ async function buildOverviewGroups() {
   )
 }
 
+async function getSearchableOverviewGroupPaths() {
+  let entries = []
+  try {
+    entries = await fsp.readdir(MODS_ROOT, { withFileTypes: true })
+  } catch {
+    return []
+  }
+
+  const groups = []
+  for (const entry of entries) {
+    if (!entry.isDirectory() || entry.name.startsWith('.') || isDisabledDirName(entry.name)) continue
+    if (entry.name !== SPECIAL_EXPAND_DIR) {
+      groups.push(entry.name)
+      continue
+    }
+    let children = []
+    try {
+      children = await fsp.readdir(path.join(MODS_ROOT, entry.name), { withFileTypes: true })
+    } catch {}
+    children
+      .filter((child) => child.isDirectory() && !child.name.startsWith('.') && !isDisabledDirName(child.name))
+      .forEach((child) => groups.push(`${entry.name}/${child.name}`))
+  }
+  return groups
+}
+
+function getSafeModsRelativeParts(value) {
+  if (typeof value !== 'string' || !value.trim()) return null
+  const parts = value.replace(/\\/g, '/').split('/')
+  if (parts.some((part) => !part || part === '.' || part === '..' || part.startsWith('.') || isDisabledDirName(part))) return null
+  return parts
+}
+
+async function resolveSearchableModRoot(modRel) {
+  const parts = getSafeModsRelativeParts(modRel)
+  if (!parts || parts.length < 2) return null
+  const groupPath = parts.slice(0, -1).join('/')
+  if (!(await getSearchableOverviewGroupPaths()).includes(groupPath)) return null
+
+  const modPath = path.resolve(MODS_ROOT, ...parts)
+  if (!isInsideRoot(modPath, path.resolve(MODS_ROOT))) return null
+  try {
+    const stat = await fsp.lstat(modPath)
+    if (!stat.isDirectory() || stat.isSymbolicLink()) return null
+  } catch {
+    return null
+  }
+  return { modPath, groupPath, modName: parts[parts.length - 1] }
+}
+
+async function resolveVisibleModDirectory(modPath, directoryRel) {
+  const parts = getSafeModsRelativeParts(directoryRel)
+  if (!parts) return null
+  const targetPath = path.resolve(MODS_ROOT, ...parts)
+  if (!isInsideRoot(targetPath, path.resolve(MODS_ROOT))) return null
+  const relative = path.relative(modPath, targetPath)
+  if (!relative || relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) return null
+
+  let current = modPath
+  for (const part of relative.split(path.sep)) {
+    current = path.join(current, part)
+    try {
+      const stat = await fsp.lstat(current)
+      if (!stat.isDirectory() || stat.isSymbolicLink()) return null
+    } catch {
+      return null
+    }
+  }
+  return { targetPath, relativePath: relative.split(path.sep).join('/') }
+}
+
+async function searchModDirectories(name) {
+  const query = String(name || '').trim()
+  if (!query || query.length > 128) return []
+  const normalizedQuery = query.toLowerCase()
+  const groups = await getSearchableOverviewGroupPaths()
+  const results = []
+
+  for (const groupPath of groups) {
+    let modEntries = []
+    try {
+      modEntries = await fsp.readdir(path.join(MODS_ROOT, ...groupPath.split('/')), { withFileTypes: true })
+    } catch {
+      continue
+    }
+    for (const modEntry of modEntries) {
+      if (!modEntry.isDirectory() || modEntry.name.startsWith('.') || isDisabledDirName(modEntry.name)) continue
+      const modRel = `${groupPath}/${modEntry.name}`
+      const modPath = path.join(MODS_ROOT, ...modRel.split('/'))
+      const matches = []
+      const visit = async (directory, relativeDirectory) => {
+        let entries = []
+        try {
+          entries = await fsp.readdir(directory, { withFileTypes: true })
+        } catch {
+          return
+        }
+        for (const entry of entries) {
+          if (!entry.isDirectory() || entry.name.startsWith('.') || isDisabledDirName(entry.name)) continue
+          const childPath = path.join(directory, entry.name)
+          const childRel = `${relativeDirectory}/${entry.name}`
+          if (entry.name.toLowerCase() === normalizedQuery) {
+            matches.push(childRel)
+            continue
+          }
+          await visit(childPath, childRel)
+        }
+      }
+      await visit(modPath, modRel)
+      if (matches.length) {
+        results.push({
+          modRel,
+          modName: stripDisabled(modEntry.name),
+          groupPath,
+          matches,
+        })
+      }
+    }
+  }
+  return results.sort((a, b) => a.groupPath.localeCompare(b.groupPath, 'zh-Hans') || a.modName.localeCompare(b.modName, 'zh-Hans'))
+}
+
+async function getModDirectoryTree(modRel, directoryRel) {
+  const mod = await resolveSearchableModRoot(modRel)
+  if (!mod) return { ok: false, error: 'Mod 目录不存在或不可用' }
+  const directory = await resolveVisibleModDirectory(mod.modPath, directoryRel)
+  if (!directory) return { ok: false, error: '目标目录不存在或不可用' }
+
+  const buildTree = async (targetPath, rel, name) => {
+    let entries = []
+    try {
+      entries = await fsp.readdir(targetPath, { withFileTypes: true })
+    } catch {}
+    const children = []
+    for (const entry of entries) {
+      if (!entry.isDirectory() || entry.name.startsWith('.')) continue
+      const childPath = path.join(targetPath, entry.name)
+      children.push(await buildTree(childPath, `${rel}/${entry.name}`, entry.name))
+    }
+    children.sort((a, b) => a.name.localeCompare(b.name, 'zh-Hans'))
+    return { name, rel, disabled: isDisabledDirName(name), children }
+  }
+  const name = path.basename(directory.targetPath)
+  return { ok: true, tree: await buildTree(directory.targetPath, directoryRel.replace(/\\/g, '/'), name) }
+}
+
+async function disableModDirectories(modRel, directoryRels, name) {
+  return withModOperationLock(modRel, async () => {
+    const mod = await resolveSearchableModRoot(modRel)
+    const query = String(name || '').trim()
+    if (!mod || !query || query.length > 128) return { ok: false, error: '搜索结果已失效，请重新搜索' }
+    const requested = Array.isArray(directoryRels) ? [...new Set(directoryRels)] : []
+    if (!requested.length) return { ok: false, error: '没有可关闭的目录' }
+
+    const targets = []
+    for (const rel of requested) {
+      const directory = await resolveVisibleModDirectory(mod.modPath, rel)
+      if (!directory || path.basename(directory.targetPath).toLowerCase() !== query.toLowerCase()) {
+        return { ok: false, error: '目标目录已变化，请重新搜索' }
+      }
+      const nextPath = path.join(path.dirname(directory.targetPath), `${DISABLED_PREFIX}${path.basename(directory.targetPath)}`)
+      if (fs.existsSync(nextPath)) return { ok: false, error: `目标已存在：${path.basename(nextPath)}` }
+      targets.push({ currentPath: directory.targetPath, nextPath })
+    }
+
+    let count = 0
+    try {
+      for (const target of targets) {
+        await fsp.rename(target.currentPath, target.nextPath)
+        count += 1
+      }
+    } catch (error) {
+      if (count) scheduleRescan()
+      return { ok: false, error: error.message || '关闭目录失败', count }
+    }
+    scheduleRescan()
+    return { ok: true, count }
+  })
+}
+
 // 浠?mods 鍒楄〃璁＄畻瀛愮洰褰曚俊鎭?
 function computeSubdirs(mods) {
   const sameDir = (a, b) => stripDisabled(a) === stripDisabled(b)
@@ -2108,29 +2304,6 @@ function getModGroupPath(rel) {
   const parts = normalizeOrderKey(rel).split('/').filter(Boolean)
   if (parts[0] === SPECIAL_EXPAND_DIR && parts.length >= 2) return parts.slice(0, 2).join('/')
   return parts[0] || ''
-}
-
-async function pinToggledMod(rel, enable) {
-  const groupPath = getModGroupPath(rel)
-  if (!groupPath) return
-
-  const toggledKey = stripDisabledRel(rel)
-  const mods = await scanCategory(groupPath)
-  const visibleKeys = mods.map((mod) => mod.orderKey)
-  const orderedKeys = [
-    ...normalizeOrderList(sortOrder.mods[groupPath]).filter((key) => visibleKeys.includes(key)),
-    ...visibleKeys.filter((key) => !normalizeOrderList(sortOrder.mods[groupPath]).includes(key)),
-  ].filter((key) => key !== toggledKey)
-
-  if (enable) {
-    orderedKeys.unshift(toggledKey)
-  } else {
-    const enabledCount = mods.filter((mod) => !mod.disabled && mod.orderKey !== toggledKey).length
-    orderedKeys.splice(enabledCount, 0, toggledKey)
-  }
-
-  sortOrder.mods[groupPath] = orderedKeys
-  saveConfig()
 }
 
 function setModFavorite(rel, favorite) {
@@ -2311,9 +2484,6 @@ async function renameMod(rel, nextName, groupPath) {
   await fsp.rename(target, finalPath)
   const newRel = path.relative(MODS_ROOT, finalPath)
   const newKey = stripDisabledRel(newRel)
-  if (typeof groupPath === 'string' && sortOrder.mods[groupPath]) {
-    sortOrder.mods[groupPath] = sortOrder.mods[groupPath].map((key) => key === oldKey ? newKey : key)
-  }
   const groupKey = normalizeOrderKey(groupPath || getGroupPathFromRel(rel))
   if (modTags[groupKey]?.[oldKey]) {
     modTags[groupKey][newKey] = modTags[groupKey][oldKey]
@@ -2519,10 +2689,6 @@ async function renameOverviewGroup(groupPath, nextName) {
   await fsp.rename(target, finalPath)
   const newPath = path.relative(MODS_ROOT, finalPath).replace(/\\/g, '/')
   sortOrder.overview = sortOrder.overview.map((key) => key === groupPath ? newPath : key)
-  if (sortOrder.mods[groupPath]) {
-    sortOrder.mods[newPath] = sortOrder.mods[groupPath]
-    delete sortOrder.mods[groupPath]
-  }
   if (modTags[groupPath]) {
     modTags[newPath] = modTags[groupPath]
     delete modTags[groupPath]
@@ -3596,6 +3762,9 @@ function registerIpc() {
     return buildModData()
   })
   ipcMain.handle('mods:refresh', async () => buildModData())
+  ipcMain.handle('mods:searchDirectories', (_e, name) => searchModDirectories(name))
+  ipcMain.handle('mods:getDirectoryTree', (_e, modRel, directoryRel) => getModDirectoryTree(modRel, directoryRel))
+  ipcMain.handle('mods:disableDirectories', (_e, modRel, directoryRels, name) => disableModDirectories(modRel, directoryRels, name))
   ipcMain.handle('tools:update', () => updateToolFiles())
   ipcMain.handle('tools:syncCharacters', () => fetchCharacterAvatars(true))
   ipcMain.handle('tools:clearLocalDictionary', () => clearLocalDictionary())
@@ -3604,7 +3773,6 @@ function registerIpc() {
   ipcMain.handle('mods:toggle', async (_e, rel, enable) => {
     return withModOperationLock(rel, async () => {
       await toggleDisabled(rel, enable)
-      await pinToggledMod(rel, enable)
       scheduleRescan()
       return { ok: true }
     })
@@ -3878,12 +4046,6 @@ function registerIpc() {
   })
   ipcMain.handle('sort:setOverviewSections', (_e, sections) => {
     sortOrder.overviewSections = normalizeOverviewSections(sections)
-    saveConfig()
-    return { ok: true }
-  })
-  ipcMain.handle('sort:setMods', (_e, groupPath, order) => {
-    if (typeof groupPath !== 'string' || !groupPath) return { ok: false }
-    sortOrder.mods[normalizeOrderKey(groupPath)] = normalizeOrderList(order)
     saveConfig()
     return { ok: true }
   })
@@ -4382,11 +4544,20 @@ async function showKeyWatchWindow(rel, payload = {}) {
   const target = path.join(MODS_ROOT, rel)
   if (!isInsideRoot(path.resolve(target), path.resolve(MODS_ROOT))) return { ok: false, err: 'Invalid target' }
   let bindings = []
+  let bindingTimeout
   try {
-    bindings = await getModKeyBindings(target)
+    bindings = await Promise.race([
+      getModKeyBindings(target),
+      new Promise((_resolve, reject) => {
+        bindingTimeout = setTimeout(() => reject(new Error('读取键位说明超时，请稍后重试')), 30000)
+      }),
+    ])
   } catch (err) {
     if (!isCurrentOpen()) return { ok: true, skipped: true }
+    if (err.message === '读取键位说明超时，请稍后重试') keyWatchOpenToken += 1
     return { ok: false, err: err.message || '读取键位失败' }
+  } finally {
+    clearTimeout(bindingTimeout)
   }
   if (!isCurrentOpen()) return { ok: true, skipped: true }
 

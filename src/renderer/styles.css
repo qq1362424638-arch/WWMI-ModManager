@@ -909,6 +909,149 @@ body {
   gap: 8px;
   margin-top: 14px;
 }
+.directory-search-dialog {
+  display: flex;
+  flex-direction: column;
+  width: min(780px, calc(100vw - 32px));
+  max-height: calc(100vh - 40px);
+  padding: 10px;
+  border-radius: 8px;
+}
+.directory-search-toolbar {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 8px;
+}
+.directory-search-history {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: 28px;
+  margin-top: 6px;
+}
+.directory-search-history[hidden] { display: none; }
+.directory-search-history-label {
+  flex: 0 0 auto;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+.directory-search-history-items {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  white-space: nowrap;
+}
+.directory-search-history-chip {
+  flex: 0 0 auto;
+  max-width: 180px;
+  overflow: hidden;
+  padding: 3px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.directory-search-history-chip:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+.directory-search-input {
+  height: 38px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.directory-search-close {
+  width: 38px;
+  min-width: 38px;
+  height: 38px;
+  padding: 0;
+  font-size: 20px;
+}
+.directory-search-results {
+  min-height: 120px;
+  margin-top: 8px;
+  overflow: auto;
+  border-top: 1px solid var(--border);
+}
+.directory-search-message {
+  padding: 18px 10px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+.directory-search-result { border-bottom: 1px solid var(--border); }
+.directory-search-result-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+}
+.directory-search-mod-button {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 44px;
+  padding: 7px 10px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.directory-search-mod-button:hover { background: var(--control-hover-bg); }
+.directory-search-mod-button[aria-expanded="true"] .directory-search-mod-name::before { content: "▾ "; color: var(--accent); }
+.directory-search-mod-button[aria-expanded="false"] .directory-search-mod-name::before { content: "› "; color: var(--text-muted); }
+.directory-search-mod-name {
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.directory-search-mod-path,
+.directory-search-match-count {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.directory-search-match-count { margin-left: auto; }
+.directory-search-disable { flex: 0 0 auto; white-space: nowrap; }
+.directory-search-tree {
+  margin: 0 8px 10px 18px;
+  padding: 8px 10px;
+  border-left: 2px solid var(--accent-weak-border, var(--border));
+  background: var(--bg-elevated);
+}
+.directory-search-tree-match + .directory-search-tree-match { margin-top: 10px; }
+.directory-search-tree-path {
+  margin-bottom: 5px;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+.directory-tree-node { min-height: 22px; }
+.directory-tree-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: var(--text);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.directory-tree-node.disabled > .directory-tree-line { color: var(--text-muted); }
+.directory-tree-marker { width: 12px; flex: 0 0 12px; color: var(--accent); text-align: center; }
+.directory-tree-children { margin-left: 13px; padding-left: 8px; border-left: 1px solid var(--border); }
 .meta-dialog { width: min(520px, calc(100vw - 48px)); }
 .meta-field {
   display: grid;
@@ -939,7 +1082,8 @@ body {
 }
 .overview-toolbar .btn { min-width: 88px; }
 .overview-toolbar #btnUpdateTools,
-.overview-toolbar #btnAddOverviewSection { min-width: 104px; }
+.overview-toolbar #btnAddOverviewSection,
+.overview-toolbar #btnDirectorySearch { min-width: 104px; }
 .overview-toolbar .btn {
   border-radius: 12px;
   background: var(--overview-card-bg);
@@ -1761,16 +1905,6 @@ body {
     opacity: 0;
   }
 }
-.mod-row.dragging { opacity: 0.55; }
-.mod-row.drag-over {
-  background: var(--accent-weak);
-  box-shadow: inset 0 0 0 1px var(--accent-weak);
-}
-.mod-row.drag-over::before {
-  width: 5px;
-  background: var(--green);
-}
-
 .mod-row .mod-check {
   width: 52px;
   height: 26px;
@@ -2268,8 +2402,6 @@ body {
   background: linear-gradient(180deg, var(--accent-weak), transparent 28%), var(--bg-elevated);
 }
 .mod-card.state-separator { border-top-color: var(--accent-strong-border); }
-.mod-card.dragging { opacity: 0.55; transform: scale(0.98); }
-.mod-card.drag-over { border-color: var(--accent); }
 .mod-card-image {
   position: relative;
   aspect-ratio: 3 / 4;
@@ -2446,7 +2578,7 @@ body {
   max-height: calc(100vh - 16px);
   overflow: auto;
   padding: 6px;
-  border: 1px solid var(--floating-border);
+  border: 1px solid var(--accent-strong-border);
   border-radius: 8px;
   background: var(--floating-surface);
   box-shadow: var(--floating-shadow);
