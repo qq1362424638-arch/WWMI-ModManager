@@ -8,4 +8,6 @@ out/
 # 截图等临时文件
 *.png.bak
 screenshot*.png
-.tmp-electron-user-data/
+.tmp-electron-user-data*/
+src/tools/__pycache__/
+src/assets/character-avatars/.write-test-*
