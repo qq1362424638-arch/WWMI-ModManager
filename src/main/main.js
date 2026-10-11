@@ -3207,11 +3207,19 @@ async function moveMods(rels, targetDir) {
   const moved = []
   const movedRels = []
   const skipped = []
+  const failed = []
   const moves = []
+  const targetValue = typeof targetDir === 'string' ? targetDir.trim() : ''
+  if (!targetValue) return { ok: false, error: '未选择目标目录' }
+  const resolvedTarget = path.resolve(targetValue)
+  if (!fs.existsSync(resolvedTarget)) {
+    return { ok: false, error: '目标目录不存在' }
+  }
+  const targetStat = await fsp.stat(resolvedTarget)
+  if (!targetStat.isDirectory()) return { ok: false, error: '目标路径不是目录' }
   for (const rel of normalizeOrderList(rels)) {
     const source = path.join(MODS_ROOT, rel)
     const resolvedSource = path.resolve(source)
-    const resolvedTarget = path.resolve(targetDir)
     if (!isInsideRoot(resolvedSource, path.resolve(MODS_ROOT))) continue
     if (!fs.existsSync(resolvedSource)) continue
     const stat = await fsp.stat(resolvedSource)
@@ -3220,12 +3228,20 @@ async function moveMods(rels, targetDir) {
       skipped.push(path.basename(resolvedSource))
       continue
     }
-    const dest = path.join(targetDir, path.basename(resolvedSource))
+    const dest = path.join(resolvedTarget, path.basename(resolvedSource))
     if (fs.existsSync(dest)) {
       skipped.push(path.basename(resolvedSource))
       continue
     }
-    if (!await moveDirectoryLike(resolvedSource, targetDir)) continue
+    try {
+      if (!await moveDirectoryLike(resolvedSource, resolvedTarget)) {
+        failed.push({ name: path.basename(resolvedSource), error: '源目录与目标目录相同或目标位于源目录内' })
+        continue
+      }
+    } catch (error) {
+      failed.push({ name: path.basename(resolvedSource), error: error?.message || '文件系统移动失败' })
+      continue
+    }
     moved.push(rel)
     const newRel = isInsideRoot(path.resolve(dest), path.resolve(MODS_ROOT))
       ? path.relative(MODS_ROOT, dest).replace(/\\/g, '/')
@@ -3237,7 +3253,7 @@ async function moveMods(rels, targetDir) {
     if (newRel) movedRels.push(newRel)
   }
   await updateFrameworkIsolationAfterMove(moves)
-  return { ok: true, moved: moved.length, movedRels, skipped }
+  return { ok: true, moved: moved.length, movedRels, skipped, failed }
 }
 
 async function chooseSourceDirs() {

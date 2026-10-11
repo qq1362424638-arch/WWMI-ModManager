@@ -1962,6 +1962,10 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  -webkit-text-stroke: var(--mod-name-stroke-width, 0) var(--mod-name-stroke, transparent);
+}
+.mod-row.disabled .mod-name {
+  -webkit-text-stroke-width: var(--mod-name-stroke-disabled-width, 0);
 }
 .mod-row:not(.disabled) .mod-name,
 .mod-card:not(.disabled) .mod-name {
@@ -2527,6 +2531,10 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  -webkit-text-stroke: var(--mod-name-stroke-width, 0) var(--mod-name-stroke, transparent);
+}
+.mod-card.disabled .mod-name {
+  -webkit-text-stroke-width: var(--mod-name-stroke-disabled-width, 0);
 }
 .mod-card.disabled .mod-name {
   font-weight: 500;

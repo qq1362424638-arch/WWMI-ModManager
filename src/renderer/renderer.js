@@ -18,6 +18,7 @@ let activeTagOrder = ['默认']
 let activeTagColors = {}
 let activeGlobalTags = []
 let selectedModRel = null
+let pendingDetailFocusRel = null
 let suppressNextClick = false
 let detailViewMode = 'list'
 let selectedModRels = new Set()
@@ -37,7 +38,7 @@ const MOD_TOGGLE_CONCURRENCY = 4
 let modToggleActiveCount = 0
 let modToggleRefreshTimer = null
 let modTagCloseTimer = null
-const preloadedImages = new Set()
+const preloadedImages = new Map()
 let previewRenderToken = 0
 let modHoverPreviewEl = null
 let lastPointerPosition = null
@@ -204,8 +205,58 @@ function isModBusy(rel) {
   return busyModRels.has(rel)
 }
 
+function normalizeModIdentity(rel) {
+  return String(rel || '')
+    .replace(/[\\/]+/g, '/')
+    .split('/')
+    .filter(Boolean)
+    .map((part) => part.replace(/^DISABLED_/i, ''))
+    .join('/')
+    .toLowerCase()
+}
+
+function findModByIdentity(rel, mods = activeGroup?.mods || []) {
+  const exact = mods.find((mod) => mod.rel === rel)
+  if (exact) return exact
+  const identity = normalizeModIdentity(rel)
+  return identity ? mods.find((mod) => normalizeModIdentity(mod.rel) === identity) || null : null
+}
+
+function findModItemByIdentity(rel) {
+  const identity = normalizeModIdentity(rel)
+  return Array.from(dom.modList.querySelectorAll('.mod-item'))
+    .find((item) => item.dataset.rel === rel || normalizeModIdentity(item.dataset.rel) === identity) || null
+}
+
+function remapSelectedModState(mods = activeGroup?.mods || []) {
+  const resolveRel = (rel) => findModByIdentity(rel, mods)?.rel || null
+  if (selectedModRel) selectedModRel = resolveRel(selectedModRel) || selectedModRel
+  if (pendingDetailFocusRel) pendingDetailFocusRel = resolveRel(pendingDetailFocusRel) || pendingDetailFocusRel
+  selectedModRels = new Set(Array.from(selectedModRels).map(resolveRel).filter(Boolean))
+  if (lastSelectedRel) lastSelectedRel = resolveRel(lastSelectedRel) || lastSelectedRel
+}
+
+function getPendingModToggle(rel) {
+  const entry = getPendingModToggleEntry(rel)
+  return entry ? entry[1] : null
+}
+
+function getPendingModToggleEntry(rel) {
+  const exact = pendingModToggles.get(rel)
+  if (exact) return [rel, exact]
+  const identity = normalizeModIdentity(rel)
+  for (const [pendingRel, pending] of pendingModToggles) {
+    if (normalizeModIdentity(pendingRel) === identity) return [pendingRel, pending]
+  }
+  return null
+}
+
+function hasPendingModToggle(rel) {
+  return !!getPendingModToggle(rel)
+}
+
 function getModByRel(rel) {
-  return activeGroup?.mods?.find((mod) => mod.rel === rel) || null
+  return findModByIdentity(rel)
 }
 
 function getModConfirmLabel(rel) {
@@ -216,7 +267,7 @@ function getModConfirmLabel(rel) {
 function getEffectiveModDisabled(modOrRel) {
   const rel = typeof modOrRel === 'string' ? modOrRel : modOrRel?.rel
   if (!rel) return false
-  const pending = pendingModToggles.get(rel)
+  const pending = getPendingModToggle(rel)
   if (pending) return !pending.desiredEnable
   const mod = typeof modOrRel === 'string' ? getModByRel(rel) : modOrRel
   return !!mod?.disabled
@@ -240,8 +291,8 @@ function applyModRowState(item, disabled, pending = false) {
 
 function syncModRowState(rel) {
   dom.modList.querySelectorAll('.mod-item').forEach((item) => {
-    if (item.dataset.rel !== rel) return
-    applyModRowState(item, getEffectiveModDisabled(rel), pendingModToggles.has(rel))
+    if (normalizeModIdentity(item.dataset.rel) !== normalizeModIdentity(rel)) return
+    applyModRowState(item, getEffectiveModDisabled(rel), hasPendingModToggle(rel))
   })
 }
 
@@ -263,17 +314,29 @@ function enqueueModToggle(rel, enable) {
   if (!rel) return
   const mod = getModByRel(rel)
   if (!mod) return
-  const pending = pendingModToggles.get(rel) || {
+  const existing = getPendingModToggleEntry(rel)
+  const pending = existing?.[1] || {
     confirmedEnable: !mod.disabled,
     desiredEnable: !mod.disabled,
     running: false,
   }
   pending.desiredEnable = enable
-  pendingModToggles.set(rel, pending)
+  const queueRel = existing?.[0] || rel
+  pendingModToggles.set(queueRel, pending)
+  requestDetailModFocus(rel)
+  if (activeGroup && isDetailVisible()) {
+    const item = Array.from(dom.modList.querySelectorAll('.mod-item')).find((el) => el.dataset.rel === rel)
+    if (item) {
+      selectedModRel = rel
+      selectedModRels = selectedModRels.has(rel) ? selectedModRels : new Set([rel])
+      lastSelectedRel = rel
+      selectMod(item, rel)
+    }
+  }
   syncModRowState(rel)
-  if (!pending.running && !queuedModToggleRels.has(rel)) {
-    modToggleQueue.push(rel)
-    queuedModToggleRels.add(rel)
+  if (!pending.running && !queuedModToggleRels.has(queueRel)) {
+    modToggleQueue.push(queueRel)
+    queuedModToggleRels.add(queueRel)
     pumpModToggleQueue()
   }
 }
@@ -314,6 +377,10 @@ async function runQueuedModToggle(rel, pending) {
       if (mod) mod.disabled = !targetEnable
       syncModRowState(rel)
       updateModCounts()
+      if (selectedModRel && normalizeModIdentity(selectedModRel) === normalizeModIdentity(rel)) {
+        const selectedMod = getModByRel(selectedModRel)
+        if (selectedMod && !dom.detailPreview.classList.contains('hidden')) renderDetailPanel(selectedMod)
+      }
     }
   } finally {
     pending.running = false
@@ -529,6 +596,14 @@ function getTagStyle(tag, groupPath = activeGroup?.path) {
   return `--tag-bg:${color.bg};--tag-border:${color.border};--tag-text:${color.text};`
 }
 
+function getModNameStyle(mod) {
+  const tag = getModTag(mod)
+  if (tag === DEFAULT_MOD_TAG) return '--mod-name-stroke:transparent;--mod-name-stroke-width:0;'
+  const tagStyle = getTagStyle(tag, activeGroup?.path)
+  const stroke = /--tag-border:([^;]+);/.exec(tagStyle)?.[1] || 'transparent'
+  return `--mod-name-stroke:${stroke};--mod-name-stroke-width:0.35px;--mod-name-stroke-disabled-width:0.2px;`
+}
+
 function getAvailableTags(excludeTag = '') {
   const current = getModTag({ tag: excludeTag })
   return getCurrentTagOrder().filter((tag) => tag !== current)
@@ -661,15 +736,64 @@ function positionFrameworkIsolationNotice() {
   dom.frameworkIsolationNotice.style.bottom = `${Math.max(24, window.innerHeight - rect.bottom + 24)}px`
 }
 
-function focusModRow(rel) {
-  const item = Array.from(dom.modList.querySelectorAll('.mod-item')).find((el) => el.dataset.rel === rel)
+function scrollModRowIntoView(item, behavior = 'auto') {
+  if (!item) return
+  const pane = dom.modList.closest('.detail-mods')
+  if (!pane) {
+    item.scrollIntoView({ block: 'nearest', behavior })
+    return
+  }
+  const paneRect = pane.getBoundingClientRect()
+  const itemRect = item.getBoundingClientRect()
+  const margin = 8
+  const itemTop = pane.scrollTop + itemRect.top - paneRect.top
+  const itemBottom = pane.scrollTop + itemRect.bottom - paneRect.top
+  const maxScrollTop = Math.max(0, pane.scrollHeight - pane.clientHeight)
+  let nextScrollTop = pane.scrollTop
+  if (itemTop < pane.scrollTop + margin) nextScrollTop = itemTop - margin
+  else if (itemBottom > pane.scrollTop + pane.clientHeight - margin) nextScrollTop = itemBottom - pane.clientHeight + margin
+  nextScrollTop = Math.max(0, Math.min(maxScrollTop, nextScrollTop))
+  if (Math.abs(nextScrollTop - pane.scrollTop) > 1) {
+    if (behavior === 'smooth') pane.scrollTo({ top: nextScrollTop, behavior })
+    else pane.scrollTop = nextScrollTop
+  }
+}
+
+function requestDetailModFocus(rel) {
+  if (rel) pendingDetailFocusRel = rel
+}
+
+function scheduleSelectedModRestore() {
+  requestAnimationFrame(() => requestAnimationFrame(restoreSelectedModUi))
+}
+
+function restoreSelectedModUi() {
+  const focusRel = pendingDetailFocusRel || selectedModRel
+  if (!focusRel) {
+    updateBatchSelection()
+    return false
+  }
+  const item = findModItemByIdentity(focusRel)
   if (!item) return false
-  selectedModRels = new Set([rel])
-  lastSelectedRel = rel
+  const actualRel = item.dataset.rel
+  if (pendingDetailFocusRel === focusRel) {
+    selectedModRels = new Set([actualRel])
+    lastSelectedRel = actualRel
+  }
+  if (selectedModRel !== actualRel || !item.classList.contains('selected')) selectMod(item, actualRel)
+  else item.classList.add('selected')
+  selectedModRel = actualRel
   updateBatchSelection()
-  selectMod(item, rel)
-  item.scrollIntoView({ block: 'center', behavior: 'smooth' })
+  if (pendingDetailFocusRel === focusRel) {
+    pendingDetailFocusRel = null
+    scrollModRowIntoView(item)
+  }
   return true
+}
+
+function focusModRow(rel) {
+  requestDetailModFocus(rel)
+  return restoreSelectedModUi()
 }
 
 function jumpToFrameworkIsolationTarget(rel = '') {
@@ -1250,6 +1374,7 @@ function openDetail(group, focusRel = null) {
   detailSearchTerm = ''
   dom.detailSearch.value = ''
   selectedModRel = null
+  pendingDetailFocusRel = focusRel
   selectedModRels.clear()
   lastSelectedRel = null
 
@@ -1271,9 +1396,6 @@ function openDetail(group, focusRel = null) {
     sortCurrentMods()
     renderModTable()
   }).catch(() => {})
-  if (focusRel) {
-    focusModRow(focusRel)
-  }
   updateFrameworkIsolationNotice()
 }
 
@@ -1354,20 +1476,23 @@ function renderModTable() {
   bindModItems()
   preloadModImages(mods)
   applyFrameworkIsolationUi()
-  if (modPane) modPane.scrollTop = previousScrollTop
+  if (modPane && !pendingDetailFocusRel) modPane.scrollTop = previousScrollTop
+  scheduleSelectedModRestore()
 }
 
 function reconcilePendingModToggles() {
   if (!pendingModToggles.size) return
   const currentRels = new Set((activeGroup?.mods || []).map((mod) => mod.rel))
   for (const [rel] of pendingModToggles) {
-    if (!currentRels.has(rel)) pendingModToggles.delete(rel)
+    if (![...currentRels].some((currentRel) => normalizeModIdentity(currentRel) === normalizeModIdentity(rel))) {
+      pendingModToggles.delete(rel)
+    }
   }
   if (pendingModToggles.size) {
     requestAnimationFrame(() => {
       dom.modList.querySelectorAll('.mod-item').forEach((item) => {
         const rel = item.dataset.rel
-        if (!pendingModToggles.has(rel)) return
+        if (!hasPendingModToggle(rel)) return
         applyModRowState(item, getEffectiveModDisabled(rel), true)
       })
       updateModCounts()
@@ -1476,13 +1601,13 @@ function renderModRow(m, extraClass = '') {
     : ''
   const group = displayGroup(m)
   const disabled = getEffectiveModDisabled(m)
-  const pending = pendingModToggles.has(m.rel)
+  const pending = hasPendingModToggle(m.rel)
   return `<div class="mod-row mod-item ${disabled ? 'disabled' : ''} ${pending ? 'pending-toggle' : ''} ${extraClass}" data-rel="${escapeAttr(m.rel)}" data-preview-src="${escapeAttr(previewSrc)}">
       <input type="checkbox" class="mod-check" ${disabled ? '' : 'checked'} />
       <button class="btn-lock ${m.locked ? 'locked' : ''}" title="${m.locked ? '取消锁定配置' : '锁定配置'}">${renderLockIcon(m.locked)}</button>
       <div class="mod-thumb">${thumb}</div>
       <div class="mod-info">
-        <div class="mod-name" data-edit-name>${escapeHtml(m.name)}</div>
+        <div class="mod-name" data-edit-name style="${escapeAttr(getModNameStyle(m))}">${escapeHtml(m.name)}</div>
         ${group ? `<div class="mod-group">${escapeHtml(group)}</div>` : ''}
       </div>
       ${movedModRels.has(normalizeMovedModRel(m.rel)) ? '<span class="mod-moved-marker" title="本次运行中已移动">↔</span>' : ''}
@@ -1506,7 +1631,7 @@ function renderModCard(m, extraClass = '') {
     : `<div class="no-thumb">MOD</div>`
   const group = displayGroup(m)
   const disabled = getEffectiveModDisabled(m)
-  const pending = pendingModToggles.has(m.rel)
+  const pending = hasPendingModToggle(m.rel)
   return `<div class="mod-card mod-item ${disabled ? 'disabled' : ''} ${pending ? 'pending-toggle' : ''} ${extraClass}" data-rel="${escapeAttr(m.rel)}" data-preview-src="${escapeAttr(previewSrc)}">
       <div class="mod-card-image">
         ${thumb}
@@ -1520,7 +1645,7 @@ function renderModCard(m, extraClass = '') {
         <span class="mod-clipboard-marker" aria-hidden="true"></span>
       </div>
       <div class="mod-card-body">
-        <div class="mod-name" data-edit-name>${escapeHtml(m.name)}</div>
+        <div class="mod-name" data-edit-name style="${escapeAttr(getModNameStyle(m))}">${escapeHtml(m.name)}</div>
         ${group ? `<div class="mod-card-meta">${escapeHtml(group)}</div>` : ''}
       </div>
     </div>`
@@ -1536,7 +1661,7 @@ function bindModItems() {
     const nameEl = item.querySelector('[data-edit-name]')
     const previewSrc = item.dataset.previewSrc
     const hoverPreviewEnabled = detailViewMode !== 'card'
-    applyModRowState(item, getEffectiveModDisabled(rel), pendingModToggles.has(rel))
+    applyModRowState(item, getEffectiveModDisabled(rel), hasPendingModToggle(rel))
     if (isModBusy(rel)) item.classList.add('busy')
 
     item.addEventListener('click', (e) => {
@@ -2461,7 +2586,7 @@ async function applySelectedEnabled(enable) {
   }
   const targets = rels
     .map((rel) => getModByRel(rel))
-    .filter((mod) => mod && !mod.locked && (getEffectiveModEnabled(mod) !== enable || pendingModToggles.has(mod.rel)))
+    .filter((mod) => mod && !mod.locked && (getEffectiveModEnabled(mod) !== enable || hasPendingModToggle(mod.rel)))
   if (!targets.length) {
     showToast(enable ? '所选 mod 已启用' : '所选 mod 已停用')
     return
@@ -2956,9 +3081,10 @@ function selectMod(item, rel) {
   const renderToken = ++previewRenderToken
   dom.modList.querySelectorAll('.mod-item.selected').forEach((el) => el.classList.remove('selected'))
   item.classList.add('selected')
-  selectedModRel = rel
+  const actualRel = item.dataset.rel || rel
+  selectedModRel = actualRel
 
-  const mod = activeGroup.mods.find((m) => m.rel === rel)
+  const mod = getModByRel(actualRel)
   if (!mod) return
 
   dom.detailPreview.classList.remove('hidden')
@@ -3518,7 +3644,19 @@ function ensureModHoverPreview() {
 }
 
 function hideModHoverPreview() {
-  modHoverPreviewEl?.classList.add('hidden')
+  if (!modHoverPreviewEl) return
+  modHoverPreviewEl.classList.add('hidden')
+  const img = modHoverPreviewEl.querySelector('img')
+  if (img) img.removeAttribute('src')
+}
+
+function releaseModPreviewResources() {
+  hideModHoverPreview()
+  dom.previewImg?.replaceChildren()
+  dom.detailPreview?.classList.add('hidden')
+  dom.modList?.querySelectorAll('img').forEach((img) => img.removeAttribute('src'))
+  for (const img of preloadedImages.values()) img.removeAttribute('src')
+  preloadedImages.clear()
 }
 
 function refreshModHoverPreviewAtPointer() {
@@ -3570,9 +3708,9 @@ function preloadModImages(mods) {
       if (!mod.preview) continue
       const src = imageSrc(mod.preview)
       if (preloadedImages.has(src)) continue
-      preloadedImages.add(src)
       const img = new Image()
       img.src = src
+      preloadedImages.set(src, img)
     }
   }
   if ('requestIdleCallback' in window) requestIdleCallback(work, { timeout: 800 })
@@ -3589,14 +3727,24 @@ function showToast(msg, kind = 'ok') {
 
 function showMoveResult(result, itemName, actionName) {
   const skipped = Array.isArray(result?.skipped) ? result.skipped : []
-  if (!skipped.length) {
+  const failed = Array.isArray(result?.failed) ? result.failed : []
+  if (!skipped.length && !failed.length) {
     showToast(`已${actionName} ${result?.moved || 0} 个${itemName}`)
     return
   }
-  const names = skipped.slice(0, 3).join('、')
-  const suffix = skipped.length > 3 ? '等' : ''
   const movedText = result?.moved ? `已${actionName} ${result.moved} 个${itemName}；` : ''
-  showToast(`${movedText}跳过 ${skipped.length} 个同名${itemName}：${names}${suffix}`, 'err')
+  const messages = []
+  if (skipped.length) {
+    const names = skipped.slice(0, 3).join('、')
+    const suffix = skipped.length > 3 ? '等' : ''
+    messages.push(`跳过 ${skipped.length} 个同名${itemName}：${names}${suffix}`)
+  }
+  if (failed.length) {
+    const first = failed[0]
+    const suffix = failed.length > 1 ? `等 ${failed.length} 个` : ''
+    messages.push(`${suffix}移动失败：${first.name || '未知目录'}（${first.error || '文件系统操作失败'}）`)
+  }
+  showToast(`${movedText}${messages.join('；')}`, 'err')
 }
 
 const UPDATE_CONFIG_STEPS = [
@@ -3682,14 +3830,17 @@ async function loadData(options = {}) {
       const updated = overviewGroups.find((g) => g.path === activeGroup.path)
       if (updated) {
         activeGroup = updated
+        remapSelectedModState(activeGroup.mods)
         updateDetailHeader(activeGroup)
         renderModTable()
         reconcilePendingModToggles()
-        if (selectedModRel) {
-          const selectedItem = Array.from(dom.modList.querySelectorAll('.mod-item'))
-            .find((item) => item.dataset.rel === selectedModRel)
-          if (selectedItem) selectMod(selectedItem, selectedModRel)
-          else dom.detailPreview.classList.add('hidden')
+        const focusRel = pendingDetailFocusRel || selectedModRel
+        if (focusRel) {
+          const selectedItem = findModItemByIdentity(focusRel)
+          if (selectedItem) {
+            selectedModRel = selectedItem.dataset.rel
+            selectMod(selectedItem, selectedItem.dataset.rel)
+          }
         }
       }
     } else {
