@@ -7,7 +7,7 @@ const fsp = require('fs/promises')
 const crypto = require('crypto')
 const { pathToFileURL } = require('url')
 const { spawn, spawnSync } = require('child_process')
-const { getChineseName } = require('./character-map')
+const { CHARACTER_MAP, getChineseName } = require('./character-map')
 
 // Mods 鏍圭洰褰曪紙WWMI 閫氳繃 d3dx.ini 鐨?include_recursive = Mods 鎵弿瀹冿級
 const DEFAULT_MODS_ROOT = 'D:\\0Temp\\mingchao\\WWMI\\Mods'
@@ -102,6 +102,8 @@ const SPECIAL_EXPAND_DIR = 'character'
 const JASM_WUWA_ROOT = 'D:\\0Temp\\mingchao\\JASM\\Assets\\Games\\WuWa'
 const JASM_WUWA_CHARACTER_DIR = path.join(JASM_WUWA_ROOT, 'Images', 'Characters')
 const JASM_ASSETS_ROOT = 'D:\\0Temp\\mingchao\\JASM\\Assets'
+const MODORA_INSTALL_ROOT = 'D:\\Program Files\\MODORA'
+const MODORA_EXECUTABLE = path.join(MODORA_INSTALL_ROOT, 'modflix.exe')
 const MODORA_RENDERER_ROOT = 'D:\\Program Files\\MODORA Preview\\resources\\app.asar.unpacked\\renderer'
 const MODORA_ICONS_DIR = path.join(MODORA_RENDERER_ROOT, 'icons')
 const MODORA_OFFICIAL_CHARACTER_DIR = path.join(MODORA_RENDERER_ROOT, 'characters', 'official')
@@ -163,11 +165,13 @@ const CHARACTER_CANONICAL_KEYS = {
   luukherssen: 'luukherssen',
   floro: 'phrolova',
   phrolova: 'phrolova',
+  xiankong: 'ciaccona',
 }
 
 // Encore API 瑙掕壊鏁版嵁缂撳瓨
 let characterAvatarCache = {} // { englishName: avatarUrl }
 let characterDataLoaded = false
+let modoraEmbeddedAvatarsLoaded = false
 let defaultCoverHash = null
 
 function getFileHash(filePath) {
@@ -243,6 +247,25 @@ function getJpegSize(buffer) {
   return null
 }
 
+function getImageSizeFromBuffer(buffer) {
+  if (!Buffer.isBuffer(buffer)) return null
+  if (buffer.length >= 24 && buffer.slice(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) {
+    return { width: buffer.readUInt32BE(16), height: buffer.readUInt32BE(20) }
+  }
+  if (buffer.length >= 12 && buffer.slice(0, 4).toString('ascii') === 'RIFF' && buffer.slice(8, 12).toString('ascii') === 'WEBP') {
+    return getWebpSize(buffer)
+  }
+  if (buffer.length >= 4 && buffer[0] === 0xff && buffer[1] === 0xd8) return getJpegSize(buffer)
+  return null
+}
+
+function isLikelyAvatarBuffer(buffer) {
+  const size = getImageSizeFromBuffer(buffer)
+  if (!size) return false
+  const ratio = size.width / size.height
+  return ratio >= 0.72 && ratio <= 1.38
+}
+
 function isLikelyAvatarFile(filePath) {
   const size = getLocalImageSize(filePath)
   if (!size) return false
@@ -301,10 +324,10 @@ function getCharacterAvatarFilePath(dirName) {
   for (const key of keys) {
     const base = safeAvatarFileBase(key)
     for (const ext of ['.png', '.jpg', '.jpeg', '.webp', '.gif']) {
-      const filePath = path.join(CHARACTER_AVATAR_DIR, `${base}${ext}`)
-      if (imageFileExists(filePath) && isLikelyAvatarFile(filePath)) return filePath
       const userPath = path.join(USER_CHARACTER_AVATAR_DIR, `${base}${ext}`)
       if (imageFileExists(userPath) && isLikelyAvatarFile(userPath)) return userPath
+      const filePath = path.join(CHARACTER_AVATAR_DIR, `${base}${ext}`)
+      if (imageFileExists(filePath) && isLikelyAvatarFile(filePath)) return filePath
     }
   }
   return null
@@ -347,6 +370,188 @@ async function copyCharacterAvatar(sourcePath, cacheKey) {
   return toAssetImageUrl(dest)
 }
 
+async function copyCharacterAvatarBuffer(buffer, cacheKey, ext) {
+  if (!isLikelyAvatarBuffer(buffer)) return null
+  const avatarDir = USER_CHARACTER_AVATAR_DIR
+  await fsp.mkdir(avatarDir, { recursive: true })
+  const normalizedExt = ['.png', '.jpg', '.jpeg', '.webp', '.gif'].includes(ext) ? ext : '.png'
+  for (const existingExt of ['.png', '.jpg', '.jpeg', '.webp', '.gif']) {
+    if (existingExt === normalizedExt) continue
+    await fsp.rm(path.join(avatarDir, `${safeAvatarFileBase(cacheKey)}${existingExt}`), { force: true })
+  }
+  const dest = path.join(avatarDir, `${safeAvatarFileBase(cacheKey)}${normalizedExt}`)
+  await fsp.writeFile(dest, buffer)
+  return toAssetImageUrl(dest)
+}
+
+function getModoraExecutablePath() {
+  const candidates = [
+    MODORA_EXECUTABLE,
+    path.join(process.env.ProgramFiles || 'C:\\Program Files', 'MODORA', 'modflix.exe'),
+  ]
+  return candidates.find(imageFileExists) || null
+}
+
+function findEmbeddedImageStart(buffer, from, limit) {
+  const end = Math.min(buffer.length, from + limit)
+  const signatures = [
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    Buffer.from('RIFF', 'ascii'),
+    Buffer.from([0xff, 0xd8, 0xff]),
+  ]
+  let found = -1
+  for (const signature of signatures) {
+    const position = buffer.indexOf(signature, from)
+    if (position >= from && position < end && (found < 0 || position < found)) found = position
+  }
+  return found
+}
+
+function getEmbeddedImageEnd(buffer, start, ext) {
+  if (ext === '.png') {
+    let offset = start + 8
+    while (offset + 12 <= buffer.length) {
+      const length = buffer.readUInt32BE(offset)
+      const next = offset + 12 + length
+      if (next > buffer.length) return -1
+      if (buffer.slice(offset + 4, offset + 8).toString('ascii') === 'IEND') return next
+      offset = next
+    }
+    return -1
+  }
+  if (ext === '.webp' && start + 8 <= buffer.length && buffer.slice(start, start + 4).toString('ascii') === 'RIFF') {
+    const end = start + 8 + buffer.readUInt32LE(start + 4)
+    return end <= buffer.length ? end : -1
+  }
+  return -1
+}
+
+const NON_CHARACTER_ASSET_KEYS = new Set([
+  'art', 'interface', 'mod', 'npc', 'other', 'others', 'unclassified', 'utility', 'weapon', 'glider', 'gliders',
+])
+
+function getModoraCharacterAssetNames() {
+  const names = new Map()
+  const add = (name, canonical = name) => {
+    const key = normalizeAssetKey(name)
+    if (!key || NON_CHARACTER_ASSET_KEYS.has(key) || PLACEHOLDER_ASSET_KEYS.has(key)) return
+    const canonicalName = getCanonicalCharacterName(canonical)
+    if (!names.has(key)) names.set(key, canonicalName)
+  }
+  try {
+    const characterRoot = path.join(MODS_ROOT, SPECIAL_EXPAND_DIR)
+    for (const entry of fs.readdirSync(characterRoot, { withFileTypes: true })) {
+      if (entry.isDirectory() && !isDisabledDirName(entry.name)) add(entry.name, entry.name)
+    }
+  } catch {}
+  for (const [name, chineseName] of Object.entries(CHARACTER_MAP)) {
+    add(name, name)
+    add(chineseName, name)
+  }
+  for (const [name, aliases] of Object.entries(CHARACTER_AVATAR_ALIASES)) {
+    add(name, name)
+    for (const alias of aliases) add(alias, name)
+  }
+  for (const [, englishName, chineseName] of MODORA_ROSTER_CHARACTER_ASSETS) {
+    add(englishName, englishName)
+    add(chineseName, englishName)
+  }
+  return names
+}
+
+function getModoraCharacterRosterKey(name, characterNames = getModoraCharacterAssetNames()) {
+  const key = normalizeAssetKey(name)
+  return normalizeAssetKey(CHARACTER_CANONICAL_KEYS[key] || characterNames.get(key) || name)
+}
+
+function chooseEmbeddedAvatar(previous, next) {
+  if (!previous) return next
+  if (next.pixels !== previous.pixels) return next.pixels > previous.pixels ? next : previous
+  if (next.bytes !== previous.bytes) return next.bytes > previous.bytes ? next : previous
+  if (next.ext === '.png' && previous.ext !== '.png') return next
+  return previous
+}
+
+function extractModoraEmbeddedAvatars(characterNames) {
+  const executable = getModoraExecutablePath()
+  if (!executable) return new Map()
+  let buffer
+  try {
+    buffer = fs.readFileSync(executable)
+  } catch {
+    return new Map()
+  }
+  const text = buffer.toString('ascii')
+  const assets = new Map()
+  const nameEntries = Array.from(characterNames.entries()).sort((a, b) => b[0].length - a[0].length)
+  const pattern = /\/assets\/([A-Za-z0-9._-]+\.(?:png|jpe?g|webp|gif))/gi
+  let match
+  while ((match = pattern.exec(text))) {
+    const fileName = match[1]
+    const ext = path.extname(fileName).toLowerCase()
+    const start = findEmbeddedImageStart(buffer, match.index + match[0].length, 256)
+    if (start < 0) continue
+    const end = getEmbeddedImageEnd(buffer, start, ext)
+    if (end <= start) continue
+    const image = buffer.subarray(start, end)
+    if (!isLikelyAvatarBuffer(image)) continue
+    const stem = path.basename(fileName, ext)
+    const assetKey = normalizeAssetKey(stem)
+    const matched = nameEntries.find(([key]) => assetKey === key || assetKey.startsWith(key))
+    if (!matched) continue
+    const [key, name] = matched
+    const size = getImageSizeFromBuffer(image)
+    const candidate = {
+      name,
+      ext,
+      image,
+      bytes: image.length,
+      pixels: size ? size.width * size.height : 0,
+    }
+    assets.set(key, chooseEmbeddedAvatar(assets.get(key), candidate))
+  }
+  return assets
+}
+
+function addCharacterAvatarCacheAliases(name, avatarUrl) {
+  const names = new Set([name, getChineseName(name)])
+  const key = normalizeAssetKey(name)
+  for (const [alias, chineseName] of Object.entries(CHARACTER_MAP)) {
+    if (normalizeAssetKey(alias) === key || normalizeAssetKey(chineseName) === key) {
+      names.add(alias)
+      names.add(chineseName)
+    }
+  }
+  for (const alias of names) if (alias) characterAvatarCache[alias] = avatarUrl
+}
+
+async function syncModoraEmbeddedAvatars() {
+  const characterNames = getModoraCharacterAssetNames()
+  const assets = extractModoraEmbeddedAvatars(characterNames)
+  const allowedKeys = new Set(characterNames.keys())
+  for (const [name, avatar] of Object.entries(characterAvatarCache)) {
+    const avatarPath = assetImageUrlToPath(avatar)
+    const isCachedAvatar = avatarPath && (
+      isInsideRoot(avatarPath, USER_CHARACTER_AVATAR_DIR) || isInsideRoot(avatarPath, CHARACTER_AVATAR_DIR)
+    )
+    if (isCachedAvatar && !allowedKeys.has(normalizeAssetKey(name))) {
+      delete characterAvatarCache[name]
+    }
+  }
+  let copied = 0
+  for (const asset of assets.values()) {
+    try {
+      const avatarUrl = await copyCharacterAvatarBuffer(asset.image, asset.name, asset.ext)
+      if (!avatarUrl) continue
+      addCharacterAvatarCacheAliases(asset.name, avatarUrl)
+      copied++
+    } catch (error) {
+      console.error('提取 MODORA 新版角色头像失败:', asset.name, error.message)
+    }
+  }
+  return { copied, syncedNames: new Set(assets.keys()) }
+}
+
 async function downloadCharacterAvatar(url, cacheKey) {
   if (!url) return null
   const response = await fetch(url)
@@ -361,8 +566,9 @@ async function downloadCharacterAvatar(url, cacheKey) {
 }
 
 async function syncModoraRosterAvatars() {
-  let copied = 0
-  const syncedNames = new Set()
+  const embedded = await syncModoraEmbeddedAvatars()
+  let copied = embedded.copied
+  const syncedNames = new Set(embedded.syncedNames)
   for (const record of Object.values(MODORA_OFFICIAL_CHARACTER_ASSETS)) {
     const imagePath = path.join(MODORA_OFFICIAL_CHARACTER_DIR, record.file)
     if (!imageFileExists(imagePath) || !isLikelyAvatarFile(imagePath)) continue
@@ -394,6 +600,12 @@ async function syncModoraRosterAvatars() {
       console.error('复制 MODORA 角色头像失败:', englishName, error.message)
     }
   }
+  // Legacy aliases must reuse the canonical avatar instead of retaining stale cached art.
+  for (const [aliasKey, canonicalKey] of Object.entries(CHARACTER_CANONICAL_KEYS)) {
+    const canonicalName = getCanonicalCharacterName(canonicalKey)
+    const avatar = getCharacterAvatar(canonicalName)
+    if (avatar) characterAvatarCache[aliasKey] = avatar
+  }
   wuwaCharacterAssets = null
   return { copied, syncedNames }
 }
@@ -410,10 +622,16 @@ async function fetchCharacterAvatars(force = false) {
   if (force) {
     characterDataLoaded = false
     characterAvatarCache = {}
+    modoraEmbeddedAvatarsLoaded = false
   }
-  if (characterDataLoaded) return { ok: true, count: Object.keys(characterAvatarCache).length, cached: true }
   try {
-    const modora = await syncModoraRosterAvatars()
+    let modora = { copied: 0, syncedNames: new Set() }
+    if (!modoraEmbeddedAvatarsLoaded) {
+      modora = await syncModoraRosterAvatars()
+      modoraEmbeddedAvatarsLoaded = true
+      saveConfig()
+    }
+    if (characterDataLoaded) return { ok: true, count: Object.keys(characterAvatarCache).length, cached: true, modora: modora.copied }
     saveConfig()
     const response = await fetch('https://api-v2.encore.moe/api/en/character?v=Beta')
     if (!response.ok) throw new Error(`API request failed: ${response.status}`)
@@ -450,6 +668,8 @@ async function fetchCharacterAvatars(force = false) {
 // 鑾峰彇瑙掕壊澶村儚URL
 function getCharacterAvatar(dirName) {
   if (PLACEHOLDER_ASSET_KEYS.has(normalizeAssetKey(dirName))) return null
+  const canonicalName = getCanonicalCharacterName(dirName)
+  if (canonicalName !== dirName) return getCharacterAvatar(canonicalName)
   const officialPath = getModoraOfficialCharacterAssetPath(dirName)
   if (officialPath) return toAssetImageUrl(officialPath)
   const localPath = getCharacterAvatarFilePath(dirName)
@@ -477,6 +697,13 @@ function normalizeAssetKey(value) {
     .toLowerCase()
     .replace(/[\s_\-./\\()[\]{}'"`，。！？、：；（）【】]+/g, '')
   return CHARACTER_CANONICAL_KEYS[normalized] || normalized
+}
+
+function getCanonicalCharacterName(value) {
+  const canonicalKey = normalizeAssetKey(value)
+  return Object.keys(CHARACTER_MAP).find((name) => (
+    /^[A-Za-z]/.test(name) && normalizeAssetKey(name) === canonicalKey
+  )) || value
 }
 
 function preferCharacterDir(candidate, current) {
@@ -717,8 +944,18 @@ function getReferenceCharacterDirs() {
     const imagePath = path.join(MODORA_OFFICIAL_CHARACTER_DIR, record.file)
     if (imageFileExists(imagePath)) result.set(dirName, toAssetImageUrl(imagePath))
   }
+  // Keep the reference roster visible even when a character has no installed MOD folder.
+  const seenRosterKeys = new Set(result.keys())
+  const characterNames = getModoraCharacterAssetNames()
+  for (const [dirName, canonicalName] of characterNames) {
+    const rosterKey = getModoraCharacterRosterKey(canonicalName, characterNames)
+    if (!rosterKey || seenRosterKeys.has(rosterKey)) continue
+    const avatar = getCharacterAvatar(canonicalName) || getReferenceCharacterImage(dirName)
+    result.set(rosterKey, avatar || null)
+    seenRosterKeys.add(rosterKey)
+  }
   for (const [key, avatar] of Object.entries(characterAvatarCache)) {
-    const dirName = normalizeAssetKey(key)
+    const dirName = getModoraCharacterRosterKey(key)
     if (PLACEHOLDER_ASSET_KEYS.has(dirName)) continue
     if (!isLikelyAvatarUrl(avatar)) continue
     if (!/^[a-z][a-z0-9]*$/i.test(dirName)) continue
@@ -1919,7 +2156,7 @@ async function setModKey(rel, binding, nextKey) {
 // character鐗规畩澶勭悊锛氬睍寮€瀹冪殑瀛愮洰褰曚綔涓?绾х晫闈?// 鍏朵粬鐩綍鐩存帴浣滀负1绾х晫闈?// 闅愯棌/鐗规畩鐩綍鎺掗櫎
 async function buildOverviewGroups() {
   // 头像数据不阻塞首屏，后台补齐即可
-  if (!characterDataLoaded) {
+  if (!characterDataLoaded || !modoraEmbeddedAvatarsLoaded) {
     fetchCharacterAvatars().then(() => scheduleRescan()).catch(() => {})
   }
 
@@ -1942,12 +2179,14 @@ async function buildOverviewGroups() {
         visibleSubEntryMap.set(key, preferCharacterDir(subEntry, visibleSubEntryMap.get(key)))
       }
       const uniqueVisibleSubEntries = Array.from(visibleSubEntryMap.values())
-      const existingCharacterDirs = new Set(characterDirs.map((subEntry) => normalizeAssetKey(subEntry.name)))
+      const characterNames = getModoraCharacterAssetNames()
+      const existingCharacterDirs = new Set(characterDirs.map((subEntry) => getModoraCharacterRosterKey(subEntry.name, characterNames)))
       const subGroups = await Promise.all(uniqueVisibleSubEntries.map(async (subEntry) => {
         const mods = await scanCategory(path.join(entry.name, subEntry.name))
         const groupDir = path.join(dirPath, subEntry.name)
         const manualPreview = findLocalCoverSync(groupDir)
-        const avatar = getCharacterAvatar(subEntry.name)
+        const rosterKey = getModoraCharacterRosterKey(subEntry.name, characterNames)
+        const avatar = getCharacterAvatar(rosterKey) || getCharacterAvatar(subEntry.name)
         const artwork = avatar || getReferenceCharacterImage(subEntry.name)
         const cover = manualPreview || artwork || (mods.length > 0 ? avatar : null)
         return {
@@ -1963,7 +2202,7 @@ async function buildOverviewGroups() {
         }
       }))
       const missingGroups = Array.from(getReferenceCharacterDirs(), ([dirName, avatar]) => {
-        if (existingCharacterDirs.has(dirName)) return null
+        if (existingCharacterDirs.has(getModoraCharacterRosterKey(dirName, characterNames))) return null
         const artwork = avatar || getReferenceCharacterImage(dirName)
         return {
           name: dirName,
@@ -3203,6 +3442,21 @@ async function resolveArchiveContainer(source) {
   return source
 }
 
+function getMoveNameKey(name) {
+  return stripDisabled(String(name || '').normalize('NFKC')).toLowerCase()
+}
+
+async function findMoveNameConflict(parent, name) {
+  let entries
+  try {
+    entries = await fsp.readdir(parent, { withFileTypes: true })
+  } catch {
+    return null
+  }
+  const key = getMoveNameKey(name)
+  return entries.find((entry) => getMoveNameKey(entry.name) === key) || null
+}
+
 async function moveMods(rels, targetDir) {
   const moved = []
   const movedRels = []
@@ -3229,7 +3483,7 @@ async function moveMods(rels, targetDir) {
       continue
     }
     const dest = path.join(resolvedTarget, path.basename(resolvedSource))
-    if (fs.existsSync(dest)) {
+    if (await findMoveNameConflict(resolvedTarget, path.basename(resolvedSource))) {
       skipped.push(path.basename(resolvedSource))
       continue
     }
@@ -3278,7 +3532,7 @@ async function moveDirectoryLike(source, targetDir) {
   if (sameParent) return false
 
   const dest = path.join(targetDir, path.basename(source))
-  if (fs.existsSync(dest)) return false
+  if (await findMoveNameConflict(resolvedTarget, path.basename(source))) return false
   try {
     await fsp.rename(source, dest)
   } catch (error) {
@@ -3302,7 +3556,7 @@ async function moveSourceDirs(targetGroupPath, sourceDirs) {
     if (!fs.existsSync(resolved)) continue
     const next = path.join(targetDir, path.basename(resolved))
     if (path.resolve(next).toLowerCase() === resolved.toLowerCase()) continue
-    if (fs.existsSync(next)) {
+    if (await findMoveNameConflict(targetDir, path.basename(resolved))) {
       skipped.push(path.basename(resolved))
       continue
     }
@@ -3323,13 +3577,19 @@ async function moveSourceDirs(targetGroupPath, sourceDirs) {
 }
 
 function uniqueDestination(parent, baseName) {
+  let entries = []
+  try {
+    entries = fs.readdirSync(parent, { withFileTypes: true })
+  } catch {}
+  const used = new Set(entries.map((entry) => getMoveNameKey(entry.name)))
   let candidate = path.join(parent, baseName)
-  if (!fs.existsSync(candidate)) return candidate
+  if (!used.has(getMoveNameKey(baseName))) return candidate
   let index = 1
   do {
-    candidate = path.join(parent, `${baseName}_copy${index}`)
+    const candidateName = `${baseName}_copy${index}`
+    candidate = path.join(parent, candidateName)
     index++
-  } while (fs.existsSync(candidate))
+  } while (used.has(getMoveNameKey(path.basename(candidate))))
   return candidate
 }
 
